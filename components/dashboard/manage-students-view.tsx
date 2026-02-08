@@ -84,7 +84,7 @@ export function ManageStudentsView() {
             if (!res.ok) return
             const data = await res.json()
             if (data?.full_name) setStudentNames(prev => ({ ...prev, [s.id]: data.full_name }))
-          } catch {}
+          } catch { }
         }))
       }
     }
@@ -100,7 +100,7 @@ export function ManageStudentsView() {
             if (!res.ok) return
             const data = await res.json()
             if (data?.full_name) setTeacherNames(prev => ({ ...prev, [t.id]: data.full_name }))
-          } catch {}
+          } catch { }
         }))
       }
     }
@@ -132,134 +132,217 @@ export function ManageStudentsView() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-4">
-      <div className="lg:col-span-1 space-y-4">
-        <Card>
+    <div className="space-y-4 md:space-y-6">
+      {/* Mobile Filter Dropdown */}
+      <Card className="md:hidden">
+        <CardContent className="p-4">
+          <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+            <SelectTrigger className="w-full min-h-[44px]">
+              <SelectValue placeholder="اختر معلماً" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">جميع الطلاب ({students.length})</SelectItem>
+              <SelectItem value="unassigned">غير معينين ({students.filter((s) => !s.teacher_id).length})</SelectItem>
+              {teachers.map((teacher) => (
+                <SelectItem key={teacher.id} value={teacher.id}>
+                  {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"} ({students.filter((s) => s.teacher_id === teacher.id).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:gap-6 md:grid-cols-4">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block md:col-span-1 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Users className="h-4 w-4" />
+                المعلمون
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                variant={selectedTeacher === "" ? "default" : "ghost"}
+                className="w-full justify-start min-h-[44px]"
+                onClick={() => setSelectedTeacher("")}
+              >
+                جميع الطلاب
+                <Badge variant="secondary" className="mr-auto">
+                  {students.length}
+                </Badge>
+              </Button>
+              <Button
+                variant={selectedTeacher === "unassigned" ? "default" : "ghost"}
+                className="w-full justify-start min-h-[44px]"
+                onClick={() => setSelectedTeacher("unassigned")}
+              >
+                غير معينين
+                <Badge variant="secondary" className="mr-auto">
+                  {students.filter((s) => !s.teacher_id).length}
+                </Badge>
+              </Button>
+              <div className="border-t my-2" />
+              {teachers.map((teacher) => (
+                <Button
+                  key={teacher.id}
+                  variant={selectedTeacher === teacher.id ? "default" : "ghost"}
+                  className="w-full justify-start min-h-[44px]"
+                  onClick={() => setSelectedTeacher(teacher.id)}
+                >
+                  {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"}
+                  <Badge variant="secondary" className="mr-auto">
+                    {students.filter((s) => s.teacher_id === teacher.id).length}
+                  </Badge>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="md:col-span-3">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
-              المعلمون
+            <CardTitle>
+              {selectedTeacher === ""
+                ? "جميع الطلاب"
+                : selectedTeacher === "unassigned"
+                  ? "طلاب غير معينين"
+                  : `طلاب ${teachers.find((t) => t.id === selectedTeacher)?.profile?.full_name || ""}`}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              variant={selectedTeacher === "" ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setSelectedTeacher("")}
-            >
-              جميع الطلاب
-              <Badge variant="secondary" className="mr-auto">
-                {students.length}
-              </Badge>
-            </Button>
-            <Button
-              variant={selectedTeacher === "unassigned" ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setSelectedTeacher("unassigned")}
-            >
-              غير معينين
-              <Badge variant="secondary" className="mr-auto">
-                {students.filter((s) => !s.teacher_id).length}
-              </Badge>
-            </Button>
-            <div className="border-t my-2" />
-            {teachers.map((teacher) => (
-            <Button
-            key={teacher.id}
-            variant={selectedTeacher === teacher.id ? "default" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => setSelectedTeacher(teacher.id)}
-            >
-            {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"}
-            <Badge variant="secondary" className="mr-auto">
-            {students.filter((s) => s.teacher_id === teacher.id).length}
-            </Badge>
-            </Button>
-            ))}
+          <CardContent>
+            {filteredStudents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                لا يوجد طلاب
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>الطالب</TableHead>
+                        <TableHead>البريد الإلكتروني</TableHead>
+                        <TableHead>المعلم الحالي</TableHead>
+                        <TableHead>الإجراءات</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">
+                            {student.profile?.full_name || studentNames[student.id] || "طالب"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {student.profile?.email}
+                          </TableCell>
+                          <TableCell>
+                            {student.teacher ? (
+                              <Badge variant="secondary">
+                                {student.teacher.profile?.full_name || (student.teacher.id ? teacherNames[student.teacher.id] : '') || 'معلم'}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">غير معين</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                onValueChange={(value) =>
+                                  handleAssign(student.id, value)
+                                }
+                              >
+                                <SelectTrigger className="w-[180px]">
+                                  <SelectValue placeholder="تعيين لمعلم" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {teachers.map((teacher) => (
+                                    <SelectItem key={teacher.id} value={teacher.id}>
+                                      {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {student.teacher_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemove(student.id)}
+                                  title="إزالة من المعلم"
+                                >
+                                  <UserMinus className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Card Layout */}
+                <div className="md:hidden space-y-3">
+                  {filteredStudents.map((student) => (
+                    <Card key={student.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">
+                              {student.profile?.full_name || studentNames[student.id] || "طالب"}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {student.profile?.email}
+                            </p>
+                          </div>
+                          {student.teacher ? (
+                            <Badge variant="secondary" className="shrink-0">
+                              {student.teacher.profile?.full_name || (student.teacher.id ? teacherNames[student.teacher.id] : '') || 'معلم'}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="shrink-0">غير معين</Badge>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Select
+                            onValueChange={(value) => handleAssign(student.id, value)}
+                          >
+                            <SelectTrigger className="flex-1 min-h-[44px]">
+                              <SelectValue placeholder="تعيين لمعلم" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teachers.map((teacher) => (
+                                <SelectItem key={teacher.id} value={teacher.id}>
+                                  {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {student.teacher_id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="min-h-[44px] min-w-[44px] shrink-0"
+                              onClick={() => handleRemove(student.id)}
+                              title="إزالة من المعلم"
+                            >
+                              <UserMinus className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      <Card className="lg:col-span-3">
-        <CardHeader>
-          <CardTitle>
-            {selectedTeacher === ""
-              ? "جميع الطلاب"
-              : selectedTeacher === "unassigned"
-                ? "طلاب غير معينين"
-                : `طلاب ${teachers.find((t) => t.id === selectedTeacher)?.profile?.full_name || ""}`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredStudents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              لا يوجد طلاب
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>الطالب</TableHead>
-                  <TableHead>البريد الإلكتروني</TableHead>
-                  <TableHead>المعلم الحالي</TableHead>
-                  <TableHead>الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">
-                      {student.profile?.full_name || studentNames[student.id] || "طالب"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {student.profile?.email}
-                    </TableCell>
-                    <TableCell>
-                      {student.teacher ? (
-                        <Badge variant="secondary">
-                          {student.teacher.profile?.full_name || (student.teacher.id ? teacherNames[student.teacher.id] : '') || 'معلم'}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">غير معين</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Select
-                          onValueChange={(value) =>
-                            handleAssign(student.id, value)
-                          }
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="تعيين لمعلم" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teachers.map((teacher) => (
-                              <SelectItem key={teacher.id} value={teacher.id}>
-                                {teacher.profile?.full_name || teacherNames[teacher.id] || "معلم"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {student.teacher_id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemove(student.id)}
-                            title="إزالة من المعلم"
-                          >
-                            <UserMinus className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

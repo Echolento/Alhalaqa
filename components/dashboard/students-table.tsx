@@ -100,8 +100,8 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
           />
         </div>
 
-        {/* Table */}
-        <div className="rounded-lg border overflow-hidden">
+        {/* Desktop Table */}
+        <div className="hidden md:block rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -196,6 +196,93 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Card Layout */}
+        <div className="md:hidden space-y-3">
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              لا يوجد طلاب
+            </div>
+          ) : (
+            filteredStudents.map((student) => (
+              <Card key={student.id}>
+                <CardContent className="p-4 space-y-3">
+                  {/* Student Info */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-lg font-medium text-primary">
+                        {student.profile?.full_name?.charAt(0) || '؟'}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {student.profile?.full_name || 'طالب'}
+                      </p>
+                      {student.current_surah ? (
+                        <Badge variant="secondary" className="flex items-center gap-1 w-fit mt-1">
+                          <BookOpen className="w-3 h-3" />
+                          {student.current_surah} : {student.current_ayah || 1}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Admin: Teacher Info */}
+                  {isAdmin && student.teacher && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">المعلم:</span>
+                      <span className="font-medium">{student.teacher.profile?.full_name || '-'}</span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    {isAdmin ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 min-h-[44px]"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setIsTransferOpen(true)
+                        }}
+                      >
+                        <ArrowLeftRight className="w-4 h-4 ml-1" />
+                        نقل
+                      </Button>
+                    ) : (
+                      <>
+                        <CreateSessionDialog
+                          students={students}
+                          defaultStudentId={student.id}
+                          trigger={
+                            <Button size="sm" variant="outline" className="flex-1 min-h-[44px] gap-1">
+                              <Calendar className="w-4 h-4" />
+                              جدولة حصة
+                            </Button>
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-[44px] min-w-[44px] text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() => {
+                            setSelectedStudent(student)
+                            setIsRemoveOpen(true)
+                          }}
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </CardContent>
 
