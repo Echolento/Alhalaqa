@@ -244,20 +244,60 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
 
 async function WeeklySummary() {
   const weekly = await getTeacherWeeklySessionCounts()
+
+  // Today's local date string for comparison
+  const now = new Date()
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
   return (
     <section>
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <Calendar className="w-5 h-5 text-primary" />
-        جدول هذا الأسبوع
+        جدول الأسبوع القادم
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
+      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-3">
         {weekly.map((d) => {
-          const dateObj = new Date(d.date)
-          const label = dateObj.toLocaleDateString(undefined, { weekday: 'short' })
+          const dateObj = new Date(d.date + 'T12:00:00') // noon local to avoid DST edge-cases
+          const isToday = d.date === todayKey
+          const hasSession = d.count > 0
+
+          const dayLabel = dateObj.toLocaleDateString('ar-SA', { weekday: 'short' })
+          const dayNum = dateObj.getDate()
+
           return (
-            <Link key={d.date} href={`/dashboard/sessions?date=${d.date}`} className="p-2 md:p-3 min-h-[60px] flex flex-col justify-center rounded-xl border bg-card hover:bg-accent/30 transition-colors text-right">
-              <div className="text-xs text-muted-foreground">{label}</div>
-              <div className="text-lg font-bold">{d.count}</div>
+            <Link
+              key={d.date}
+              href={`/dashboard/sessions`}
+              className={`
+                p-2 md:p-3 min-h-[72px] flex flex-col items-center justify-center gap-1
+                rounded-xl border transition-all text-center
+                ${isToday
+                  ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                  : hasSession
+                    ? 'border-primary/30 bg-primary/5 hover:bg-primary/10'
+                    : 'border-muted bg-card hover:bg-accent/30'
+                }
+              `}
+            >
+              <span className={`text-xs font-medium ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                {isToday ? 'اليوم' : dayLabel}
+              </span>
+              <span className={`text-sm font-bold ${isToday ? 'text-primary-foreground' : ''}`}>
+                {dayNum}
+              </span>
+              <div className={`
+                text-lg font-bold leading-none
+                ${isToday ? 'text-primary-foreground' : hasSession ? 'text-primary' : 'text-muted-foreground'}
+              `}>
+                {d.count}
+              </div>
+              {hasSession && !isToday && (
+                <div className="flex gap-0.5 mt-0.5">
+                  {Array.from({ length: Math.min(d.count, 3) }).map((_, i) => (
+                    <div key={i} className="w-1 h-1 rounded-full bg-primary" />
+                  ))}
+                </div>
+              )}
             </Link>
           )
         })}

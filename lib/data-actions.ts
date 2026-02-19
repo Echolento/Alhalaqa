@@ -449,32 +449,37 @@ export async function getTeacherWeeklySessionCounts() {
     .maybeSingle()
   if (!teacher) return []
 
-  // Compute current week [start..end)
-  const now = new Date()
-  const day = now.getDay() // 0..6 (Sun..Sat)
-  const weekStart = new Date(now)
-  weekStart.setHours(0, 0, 0, 0)
-  weekStart.setDate(weekStart.getDate() - day) // start on Sunday
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 7)
+  // Build a 7-day window starting from TODAY (local date)
+  // toLocaleDateString gives us the local date string unaffected by UTC offset
+  const todayLocal = new Date()
+  todayLocal.setHours(0, 0, 0, 0)          // start of today in local time
 
+  const weekEndLocal = new Date(todayLocal)
+  weekEndLocal.setDate(todayLocal.getDate() + 7) // exclusive upper bound
+
+  // Fetch all sessions within that window (use ISO strings so Supabase comparison is UTC-correct)
   const { data: sessions } = await supabase
     .from('sessions')
     .select('id, scheduled_at')
     .eq('teacher_id', (teacher as any).id)
-    .gte('scheduled_at', weekStart.toISOString())
-    .lt('scheduled_at', weekEnd.toISOString())
+    .gte('scheduled_at', todayLocal.toISOString())
+    .lt('scheduled_at', weekEndLocal.toISOString())
+
+  // Build a counts map keyed by LOCAL date string "YYYY-MM-DD"
+  const localDateKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
   const counts: Record<string, number> = {}
   for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart)
-    d.setDate(weekStart.getDate() + i)
-    const key = d.toISOString().slice(0, 10)
-    counts[key] = 0
+    const d = new Date(todayLocal)
+    d.setDate(todayLocal.getDate() + i)
+    counts[localDateKey(d)] = 0
   }
 
+  // For each session, convert its UTC timestamp to local date and tally
   sessions?.forEach(s => {
-    const key = new Date((s as any).scheduled_at).toISOString().slice(0, 10)
+    const sessionLocalDate = new Date((s as any).scheduled_at)
+    const key = localDateKey(sessionLocalDate)
     if (counts[key] !== undefined) counts[key]++
   })
 
