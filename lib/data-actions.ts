@@ -6,8 +6,10 @@ import type { SessionNoteForm, SessionForm } from './types'
 
 // Teacher actions
 export async function getTeacherDashboard() {
+  console.log('[getTeacherDashboard] start')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  console.log('[getTeacherDashboard] user:', { id: user?.id, email: user?.email })
 
   if (!user) return null
 
@@ -18,9 +20,12 @@ export async function getTeacherDashboard() {
     .eq('profile_id', user.id)
     .single()
 
+  console.log('[getTeacherDashboard] teacher record:', { id: (teacher as any)?.id, profile_id: (teacher as any)?.profile_id })
+
   if (!teacher) {
     // If user is a teacher but record is missing, return skeleton data
     // to allow the dashboard to render with "Get Started" actions
+    console.log('[getTeacherDashboard] no teacher record found → needsSetup')
     return {
       teacher: { google_meet_link: null },
       stats: {
@@ -42,8 +47,10 @@ export async function getTeacherDashboard() {
     .select('*', { count: 'exact', head: true })
     .eq('teacher_id', teacher.id)
 
-  // Get sessions
-  const { data: sessions } = await supabase
+  console.log('[getTeacherDashboard] students count for teacher', teacher.id, ':', studentsCount)
+
+  // Get sessions — MUST filter by teacher_id to avoid cross-teacher data leakage
+  const { data: sessions, error: sessionsError } = await supabase
     .from('sessions')
     .select(`
       *,
@@ -52,7 +59,21 @@ export async function getTeacherDashboard() {
         profile:profiles(*)
       )
     `)
+    .eq('teacher_id', teacher.id)
     .order('scheduled_at', { ascending: true })
+
+  console.log('[getTeacherDashboard] sessions query error:', sessionsError)
+  console.log('[getTeacherDashboard] raw sessions count:', sessions?.length)
+  if (sessions && sessions.length > 0) {
+    const first = sessions[0] as any
+    console.log('[getTeacherDashboard] first session raw:', {
+      id: first.id,
+      teacher_id: first.teacher_id,
+      student_id: first.student_id,
+      studentRaw: first.student,
+      profileRaw: Array.isArray(first.student) ? first.student[0]?.profile : first.student?.profile,
+    })
+  }
 
   // Validate and normalize student profiles
   const normalizedSessions = sessions?.map(session => {
@@ -63,17 +84,25 @@ export async function getTeacherDashboard() {
     if (student) {
       // Handle case where profile is an array (common with Supabase joins)
       const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile
+      const resolvedName = profile?.full_name || profile?.email || `Student ${student.id?.substring(0, 4)}...`
+      console.log(`[getTeacherDashboard] session ${s.id} → student ${student.id} → profile:`, {
+        isProfileArray: Array.isArray(student.profile),
+        full_name: profile?.full_name,
+        email: profile?.email,
+        resolved: resolvedName,
+      })
       return {
         ...session,
         student: {
           ...student,
           profile: {
             ...profile,
-            full_name: profile?.full_name || profile?.email || `Student ${student.id?.substring(0, 4)}...`
+            full_name: resolvedName
           }
         }
       }
     }
+    console.log(`[getTeacherDashboard] session ${s.id} has no student attached`)
     return session
   }) || []
 
@@ -89,6 +118,8 @@ export async function getTeacherDashboard() {
   const completedSessions = normalizedSessions
     .filter(s => s.status === 'completed')
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
+  console.log('[getTeacherDashboard] upcoming:', upcomingSessions.length, '| completed:', completedSessions.length)
 
   // Get average rating
   const { data: notes } = await supabase
@@ -121,6 +152,7 @@ export async function getTeacherDashboard() {
 }
 
 export async function getTeacherStudents() {
+  console.log('[getTeacherStudents] start')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -132,9 +164,10 @@ export async function getTeacherStudents() {
     .eq('profile_id', user.id)
     .single()
 
+  console.log('[getTeacherStudents] teacher id:', (teacher as any)?.id)
   if (!teacher) return []
 
-  const { data: students } = await supabase
+  const { data: students, error: studentsError } = await supabase
     .from('students')
     .select(`
       *,
@@ -143,14 +176,24 @@ export async function getTeacherStudents() {
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
+  console.log('[getTeacherStudents] query error:', studentsError)
+  console.log('[getTeacherStudents] raw students count:', students?.length)
+
   const normalizedStudents = students?.map(student => {
     const s = student as any
     const profile = Array.isArray(s.profile) ? s.profile[0] : s.profile
+    const resolvedName = profile?.full_name || profile?.email || `Student ${s.id?.substring(0, 4)}...`
+    console.log(`[getTeacherStudents] student ${s.id} → profile:`, {
+      isProfileArray: Array.isArray(s.profile),
+      full_name: profile?.full_name,
+      email: profile?.email,
+      resolved: resolvedName,
+    })
     return {
       ...s,
       profile: {
         ...profile,
-        full_name: profile?.full_name || profile?.email || `Student ${s.id?.substring(0, 4)}...`
+        full_name: resolvedName
       }
     }
   }) || []
@@ -159,6 +202,7 @@ export async function getTeacherStudents() {
 }
 
 export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'completed') {
+  console.log('[getTeacherSessions] start, filter:', filter)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -170,6 +214,7 @@ export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'complete
     .eq('profile_id', user.id)
     .single()
 
+  console.log('[getTeacherSessions] teacher id:', (teacher as any)?.id)
   if (!teacher) return []
 
   let query = supabase
@@ -197,7 +242,10 @@ export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'complete
     query = query.eq('status', 'completed')
   }
 
-  const { data: sessions } = await query
+  const { data: sessions, error: sessionsError } = await query
+
+  console.log('[getTeacherSessions] query error:', sessionsError)
+  console.log('[getTeacherSessions] raw sessions count:', sessions?.length)
 
   // Normalize student profile data
   const normalizedSessions = sessions?.map(session => {
@@ -206,17 +254,25 @@ export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'complete
 
     if (student) {
       const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile
+      const resolvedName = profile?.full_name || profile?.email || `Student ${student.id?.substring(0, 4)}...`
+      console.log(`[getTeacherSessions] session ${s.id} → student ${student.id} → profile:`, {
+        isProfileArray: Array.isArray(student.profile),
+        full_name: profile?.full_name,
+        email: profile?.email,
+        resolved: resolvedName,
+      })
       return {
         ...session,
         student: {
           ...student,
           profile: {
             ...profile,
-            full_name: profile?.full_name || profile?.email || `Student ${student.id?.substring(0, 4)}...`
+            full_name: resolvedName
           }
         }
       }
     }
+    console.log(`[getTeacherSessions] session ${s.id} has no student attached`)
     return session
   }) || []
 
@@ -488,12 +544,14 @@ export async function getTeacherWeeklySessionCounts() {
 
 // Student actions
 export async function getStudentDashboard() {
+  console.log('[getStudentDashboard] start')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  console.log('[getStudentDashboard] user:', { id: user?.id, email: user?.email })
 
   if (!user) return null
 
-  const { data: student } = await supabase
+  const { data: student, error: studentError } = await supabase
     .from('students')
     .select(`
       *,
@@ -506,6 +564,15 @@ export async function getStudentDashboard() {
     .eq('profile_id', user.id)
     .single()
 
+  console.log('[getStudentDashboard] student query error:', studentError)
+  console.log('[getStudentDashboard] raw student:', {
+    id: (student as any)?.id,
+    profile_id: (student as any)?.profile_id,
+    teacher_id: (student as any)?.teacher_id,
+    profileRaw: (student as any)?.profile,
+    teacherRaw: (student as any)?.teacher,
+  })
+
   if (!student) return null
 
   // Normalize student profile and teacher profile data
@@ -513,21 +580,45 @@ export async function getStudentDashboard() {
   const studentProfile = Array.isArray(s.profile) ? s.profile[0] : s.profile
   const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
 
+  console.log('[getStudentDashboard] studentProfile (after array-unwrap):', {
+    isArray: Array.isArray(s.profile),
+    full_name: studentProfile?.full_name,
+    email: studentProfile?.email,
+  })
+  console.log('[getStudentDashboard] teacher (after array-unwrap):', {
+    id: teacher?.id,
+    isArray: Array.isArray(s.teacher),
+    profileRaw: teacher?.profile,
+  })
+
   if (teacher) {
     const teacherProfile = Array.isArray(teacher.profile) ? teacher.profile[0] : teacher.profile
+    const resolvedTeacherName = teacherProfile?.full_name || teacherProfile?.email || `Teacher ${teacher.id?.substring(0, 4)}...`
+    console.log('[getStudentDashboard] teacher profile resolution:', {
+      isProfileArray: Array.isArray(teacher.profile),
+      full_name: teacherProfile?.full_name,
+      email: teacherProfile?.email,
+      resolved: resolvedTeacherName,
+    })
     s.teacher = {
       ...teacher,
       profile: {
         ...teacherProfile,
-        full_name: teacherProfile?.full_name || teacherProfile?.email || `Teacher ${teacher.id?.substring(0, 4)}...`
+        full_name: resolvedTeacherName
       }
     }
   }
 
   if (studentProfile) {
+    const resolvedStudentName = studentProfile?.full_name || studentProfile?.email || `Student ${student.id?.substring(0, 4)}...`
+    console.log('[getStudentDashboard] student profile resolution:', {
+      full_name: studentProfile?.full_name,
+      email: studentProfile?.email,
+      resolved: resolvedStudentName,
+    })
     s.profile = {
       ...studentProfile,
-      full_name: studentProfile?.full_name || studentProfile?.email || `Student ${student.id?.substring(0, 4)}...`
+      full_name: resolvedStudentName
     }
   }
 
@@ -578,6 +669,7 @@ export async function getStudentDashboard() {
 }
 
 export async function getStudentSessions() {
+  console.log('[getStudentSessions] start')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -589,9 +681,10 @@ export async function getStudentSessions() {
     .eq('profile_id', user.id)
     .single()
 
+  console.log('[getStudentSessions] student id:', (student as any)?.id)
   if (!student) return []
 
-  const { data: sessions } = await supabase
+  const { data: sessions, error: sessionsError } = await supabase
     .from('sessions')
     .select(`
       *,
@@ -604,23 +697,34 @@ export async function getStudentSessions() {
     .eq('student_id', student.id)
     .order('scheduled_at', { ascending: false })
 
+  console.log('[getStudentSessions] query error:', sessionsError)
+  console.log('[getStudentSessions] raw sessions count:', sessions?.length)
+
   const normalizedSessions = sessions?.map(session => {
     const s = session as any
     const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
 
     if (teacher) {
       const profile = Array.isArray(teacher.profile) ? teacher.profile[0] : teacher.profile
+      const resolvedName = profile?.full_name || profile?.email || `Teacher ${teacher.id?.substring(0, 4)}...`
+      console.log(`[getStudentSessions] session ${s.id} → teacher ${teacher.id} → profile:`, {
+        isProfileArray: Array.isArray(teacher.profile),
+        full_name: profile?.full_name,
+        email: profile?.email,
+        resolved: resolvedName,
+      })
       return {
         ...session,
         teacher: {
           ...teacher,
           profile: {
             ...profile,
-            full_name: profile?.full_name || profile?.email || `Teacher ${teacher.id?.substring(0, 4)}...`
+            full_name: resolvedName
           }
         }
       }
     }
+    console.log(`[getStudentSessions] session ${s.id} has no teacher attached`)
     return session
   }) || []
 
@@ -788,4 +892,46 @@ export async function removeStudent(studentId: string) {
   revalidatePath('/dashboard/students')
 
   return { success: true }
+}
+
+export async function getStudentLastSessionNotes(studentId: string) {
+  const supabase = await createClient()
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select(`
+      id,
+      scheduled_at,
+      status,
+      session_notes!inner (
+        id,
+        new_content,
+        far_past_review,
+        recent_past_review,
+        general_notes,
+        rating_new,
+        rating_far_past,
+        rating_recent_past
+      )
+    `)
+    .eq('student_id', studentId)
+    .eq('status', 'completed')
+    .order('scheduled_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!session || !session.session_notes) {
+    return { data: null }
+  }
+
+  // Handle both array and object responses for the join
+  const notes = Array.isArray(session.session_notes)
+    ? session.session_notes[0]
+    : session.session_notes
+
+  if (!notes) {
+    return { data: null }
+  }
+
+  return { data: { session, notes } }
 }

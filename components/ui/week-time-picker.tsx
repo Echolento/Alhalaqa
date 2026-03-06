@@ -203,18 +203,27 @@ export function WeekTimePicker({
           {/* Minute */}
           <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-bold text-muted-foreground uppercase">الدقيقة</span>
-            <Select value={minute} onValueChange={setMinute}>
-              <SelectTrigger className="w-20 h-16 text-2xl font-bold rounded-xl border-2 focus:ring-primary">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 60 / minuteStep }, (_, i) => String(i * minuteStep).padStart(2, '0')).map((m) => (
-                  <SelectItem key={m} value={m} className="text-lg font-bold">
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={2}
+              value={minute}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '')
+                if (val === '') {
+                  setMinute('00')
+                } else {
+                  const n = parseInt(val)
+                  if (n <= 59) setMinute(val)
+                }
+              }}
+              onBlur={(e) => {
+                const n = Math.max(0, Math.min(59, parseInt(e.target.value) || 0))
+                setMinute(String(n).padStart(2, '0'))
+              }}
+              className="w-20 h-16 text-2xl font-bold rounded-xl border-2 text-center bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              placeholder="00"
+            />
           </div>
 
           {/* AM/PM */}

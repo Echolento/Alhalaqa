@@ -4,7 +4,7 @@ import { SessionsList } from '@/components/dashboard/sessions-list'
 import { CreateSessionDialog } from '@/components/dashboard/create-session-dialog'
 import { getTeacherSessions, getStudentSessions, getTeacherStudents } from '@/lib/data-actions'
 
-export default async function SessionsPage({ searchParams }: { searchParams: { date?: string } }) {
+export default async function SessionsPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -29,11 +29,13 @@ export default async function SessionsPage({ searchParams }: { searchParams: { d
     isTeacher ? getTeacherStudents() : []
   ])
 
-  // Optional date filter (YYYY-MM-DD) to show sessions for a specific day
-  const date = searchParams?.date
+  // Await searchParams in Next.js 15+
+  const resolvedParams = await searchParams
+  const date = resolvedParams?.date
+
   if (date) {
     const start = new Date(date)
-    start.setHours(0,0,0,0)
+    start.setHours(0, 0, 0, 0)
     const end = new Date(start)
     end.setDate(start.getDate() + 1)
 

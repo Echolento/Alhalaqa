@@ -204,6 +204,23 @@ export async function acceptInvitation(invitationId: string) {
             })
     }
 
+    // Defensive upsert: ensure the profiles row exists and has a real name.
+    // The DB trigger SHOULD have created it on auth.users insert, but it can
+    // be missing or have a placeholder (e.g. 'طالب جديد') if the user was
+    // created via admin.inviteUserByEmail() before the trigger was in place.
+    const userName = (user.user_metadata?.full_name && user.user_metadata.full_name !== 'طالب جديد')
+        ? user.user_metadata.full_name
+        : (user.email || 'طالب')
+    console.log('[acceptInvitation] upserting profile for user', user.id, 'name:', userName)
+    await supabase
+        .from('profiles')
+        .upsert({
+            id: user.id,
+            full_name: userName,
+            email: user.email,
+            role: 'student',
+        }, { onConflict: 'id' })
+
     // Mark invitation as accepted
     await supabase
         .from('invitations')
@@ -290,9 +307,6 @@ export async function autoAcceptInvitations() {
             .maybeSingle()
 
         if (student) {
-            // If student exists but has no teacher, or if we want to honor the latest invitation
-            // Logic: If they have NO teacher, or if this is the most recent invite, assign them.
-            // For now, if they have NO teacher, assign them.
             if (!student.teacher_id) {
                 await supabase
                     .from('students')
@@ -308,6 +322,19 @@ export async function autoAcceptInvitations() {
                     teacher_id: invite.teacher_id,
                 })
         }
+
+        // Defensive upsert: ensure profiles row exists with a real name
+        const userName = (user.user_metadata?.full_name && user.user_metadata.full_name !== 'طالب جديد')
+            ? user.user_metadata.full_name
+            : (user.email || 'طالب')
+        await supabase
+            .from('profiles')
+            .upsert({
+                id: user.id,
+                full_name: userName,
+                email: user.email,
+                role: 'student',
+            }, { onConflict: 'id' })
 
         // Mark as accepted
         await supabase

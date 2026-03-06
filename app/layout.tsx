@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`${notoArabic.className} antialiased`}>
+      <body className={`${notoArabic.className} antialiased`} suppressHydrationWarning>
         {children}
         <Analytics />
       </body>

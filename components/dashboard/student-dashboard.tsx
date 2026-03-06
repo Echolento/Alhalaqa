@@ -64,16 +64,23 @@ export function StudentDashboard({ data }: StudentDashboardProps) {
 
   const { student, stats, upcomingSessions, recentSessions } = data
 
+  console.log('[StudentDashboard] render — teacher raw:', (student as any)?.teacher)
+  console.log('[StudentDashboard] render — teacher.profile.full_name:', (student as any)?.teacher?.profile?.full_name)
+  console.log('[StudentDashboard] render — teacherName state:', teacherName)
+
   useEffect(() => {
     async function fetchTeacherName() {
       try {
         const teacher = (student as any)?.teacher
         const haveName = teacher?.profile?.full_name
         const teacherId = teacher?.id
+        console.log('[StudentDashboard] useEffect — teacher:', { id: teacherId, haveName })
         if (!haveName && teacherId) {
+          console.log('[StudentDashboard] useEffect — fetching teacher name via API for id:', teacherId)
           const res = await fetch(`/api/teachers/${teacherId}/display`)
           if (res.ok) {
             const d = await res.json()
+            console.log('[StudentDashboard] useEffect — API returned:', d)
             if (d?.full_name) setTeacherName(d.full_name)
           }
         }

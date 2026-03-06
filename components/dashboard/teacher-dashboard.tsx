@@ -57,6 +57,19 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
 
   const { stats, upcomingSessions, recentSessions, teacher, needsSetup } = data
 
+  console.log('[TeacherDashboard] render — upcomingSessions:', upcomingSessions.map(s => ({
+    id: s.id,
+    studentName: s.student?.profile?.full_name,
+  })))
+  console.log('[TeacherDashboard] render — recentSessions:', recentSessions.map(s => ({
+    id: s.id,
+    studentName: s.student?.profile?.full_name,
+  })))
+  console.log('[TeacherDashboard] render — students:', students.map(s => ({
+    id: s.id,
+    name: s.profile?.full_name,
+  })))
+
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
       {/* Welcome & Header */}
@@ -155,7 +168,10 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
                         {session.student?.profile?.full_name?.charAt(0) || '؟'}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-lg truncate">{session.student?.profile?.full_name || 'طالب'}</p>
+                        <p className="font-bold text-lg truncate">
+                          <span className="sm:hidden">{session.student?.profile?.full_name?.split(' ')[0] || 'طالب'}</span>
+                          <span className="hidden sm:inline">{session.student?.profile?.full_name || 'طالب'}</span>
+                        </p>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5" />
@@ -216,7 +232,10 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
                         <CheckCircle className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{session.student?.profile?.full_name || 'طالب'}</p>
+                        <p className="font-medium text-sm">
+                          <span className="sm:hidden">{session.student?.profile?.full_name?.split(' ')[0] || 'طالب'}</span>
+                          <span className="hidden sm:inline">{session.student?.profile?.full_name || 'طالب'}</span>
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           <FormattedDate
                             date={session.scheduled_at}

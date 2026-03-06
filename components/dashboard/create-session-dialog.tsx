@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -38,6 +39,7 @@ interface CreateSessionDialogProps {
 }
 
 export function CreateSessionDialog({ students, trigger, defaultStudentId }: CreateSessionDialogProps) {
+    const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -114,6 +116,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                 } else {
                     setSuccess(true)
                     setNextSessions(createdDates)
+                    router.refresh()
                     setTimeout(() => {
                         setOpen(false)
                         setSuccess(false)
@@ -132,6 +135,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                 } else {
                     setSuccess(true)
                     setNextSessions([new Date(scheduledAt)])
+                    router.refresh()
                     setTimeout(() => {
                         setOpen(false)
                         setSuccess(false)

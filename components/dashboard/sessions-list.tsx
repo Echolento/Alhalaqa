@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -64,29 +65,14 @@ interface SessionsListProps {
 }
 
 export function SessionsList({ sessions, role }: SessionsListProps) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // Use state for 'now' to avoid server/client mismatch (hydration error)
-  const [now, setNow] = useState<string>('')
-
-  // Initialize 'now' on mount (client-side only)
-  // This ensures the initial render matches server (empty 'now' -> no upcoming filtering applied yet, or handled gracefully)
-  // However, we want to filter correctly. Better approach:
-  // Since we are checking upcoming vs past, we can trust the 'status' field primarily which comes from DB.
-  // But if we need real-time comparison, we must wait for mount.
-
-  // Actually, filtering based on 'scheduled_at' vs 'now' causes mismatch if 'now' differs.
-  // Let's rely on 'status' field from database which should be source of truth for 'completed'/'cancelled'.
-  // For 'upcoming', we can check if it is scheduled.
-  // The original code filtered: s.scheduled_at > now && s.status === 'scheduled'
-
-  // To fix mismatch:
-  useState(() => {
-    setNow(new Date().toISOString())
-  })
+  const [now] = useState<string>(() => new Date().toISOString())
 
   const filteredSessions = sessions.filter((session) => {
     const name = role === 'teacher'
@@ -95,48 +81,61 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
     return name?.toLowerCase().includes(search.toLowerCase()) || !search
   })
 
-  // Only filter by time if we have 'now' set (client-side), otherwise rely on status or show all scheduled
-  // Or simpler: just use status 'scheduled' for the list, users can see past scheduled as well if not completed.
-  // But usually we want future only.
-
-  const upcomingSessions = filteredSessions.filter(
-    s => s.status === 'scheduled' && (now ? s.scheduled_at > now : true)
-  )
+  // Show ALL scheduled sessions regardless of date — past-due sessions should still be completable
+  const upcomingSessions = filteredSessions.filter(s => s.status === 'scheduled')
   const completedSessions = filteredSessions.filter(s => s.status === 'completed')
   const cancelledSessions = filteredSessions.filter(s => s.status === 'cancelled')
 
-  const handleStatusChange = async (sessionId: string, status: 'completed' | 'cancelled') => {
+  const handleStatusChange = async (session: Session, status: 'completed' | 'cancelled') => {
     setLoading(true)
-    await updateSessionStatus(sessionId, status)
+    await updateSessionStatus(session.id, status)
     setLoading(false)
+    router.refresh()
+    // Auto-open notes dialog when a session is marked complete
+    if (status === 'completed') {
+      setSelectedSession(session)
+      setIsNotesOpen(true)
+    }
   }
 
   const handleSaveNotes = async (formData: FormData) => {
     if (!selectedSession) return
     setLoading(true)
 
-    // Save notes
-    await createSessionNote(selectedSession.id, {
-      new_content: formData.get('new_content') as string,
-      far_past_review: formData.get('far_past_review') as string,
-      recent_past_review: formData.get('recent_past_review') as string,
-      general_notes: formData.get('general_notes') as string,
-      next_task: formData.get('next_task') as string,
-      rating_new: parseInt(formData.get('rating_new') as string) || 0,
-      rating_far_past: parseInt(formData.get('rating_far_past') as string) || 0,
-      rating_recent_past: parseInt(formData.get('rating_recent_past') as string) || 0,
-    })
+    try {
+      // Save notes
+      const result = await createSessionNote(selectedSession.id, {
+        new_content: formData.get('new_content') as string,
+        far_past_review: formData.get('far_past_review') as string,
+        recent_past_review: formData.get('recent_past_review') as string,
+        general_notes: formData.get('general_notes') as string,
+        next_task: formData.get('next_task') as string,
+        rating_new: parseInt(formData.get('rating_new') as string) || 0,
+        rating_far_past: parseInt(formData.get('rating_far_past') as string) || 0,
+        rating_recent_past: parseInt(formData.get('rating_recent_past') as string) || 0,
+      })
 
-    // Update student progress if provided
-    const surah = formData.get('current_surah') as string
-    const ayah = parseInt(formData.get('current_ayah') as string)
+      if (result.error) {
+        console.error('Error saving notes:', result.error)
+        alert('حدث خطأ أثناء حفظ الملاحظات: ' + result.error)
+      } else {
+        // Update student progress if provided
+        const surah = formData.get('current_surah') as string
+        const ayah = parseInt(formData.get('current_ayah') as string)
 
-    if (surah && selectedSession.student?.id) {
-      await updateStudentProgress(selectedSession.student.id, surah, ayah || 1)
+        if (surah && selectedSession.student?.id) {
+          await updateStudentProgress(selectedSession.student.id, surah, ayah || 1)
+        }
+
+        setIsNotesOpen(false)
+        router.refresh()
+      }
+    } catch (e) {
+      console.error('Unhandled error saving notes:', e)
+      alert('حدث خطأ غير متوقع أثناء الحفظ')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
-    setIsNotesOpen(false)
   }
 
   const renderSessionCard = (session: Session) => {
@@ -158,7 +157,10 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium">{name || (role === 'teacher' ? 'طالب' : 'معلم')}</p>
+                  <p className="font-medium">
+                    <span className="sm:hidden">{name?.split(' ')[0] || (role === 'teacher' ? 'طالب' : 'معلم')}</span>
+                    <span className="hidden sm:inline">{name || (role === 'teacher' ? 'طالب' : 'معلم')}</span>
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     <FormattedDate
                       date={session.scheduled_at}
@@ -247,8 +249,9 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                   <Button
                     size="sm"
                     className="flex-1 sm:flex-none min-h-[44px]"
-                    onClick={() => handleStatusChange(session.id, 'completed')}
-                    disabled={loading}
+                    onClick={() => handleStatusChange(session, 'completed')}
+                    disabled={loading || session.scheduled_at > now}
+                    title={session.scheduled_at > now ? 'لا يمكن إتمام الحصة قبل موعدها' : 'إتمام الحصة'}
                   >
                     <CheckCircle className="w-4 h-4 ml-1" />
                     إتمام
@@ -257,8 +260,9 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                     size="sm"
                     variant="destructive"
                     className="flex-1 sm:flex-none min-h-[44px]"
-                    onClick={() => handleStatusChange(session.id, 'cancelled')}
-                    disabled={loading}
+                    onClick={() => handleStatusChange(session, 'cancelled')}
+                    disabled={loading || session.scheduled_at > now}
+                    title={session.scheduled_at > now ? 'لا يمكن إلغاء الحصة قبل موعدها' : 'إلغاء الحصة'}
                   >
                     <XCircle className="w-4 h-4 ml-1" />
                     إلغاء
@@ -370,35 +374,38 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
 
           <form action={handleSaveNotes} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new_content">الجديد</Label>
+              <Label htmlFor="new_content">الجديد <span className="text-destructive">*</span></Label>
               <Textarea
                 id="new_content"
                 name="new_content"
                 placeholder="ما تم حفظه من جديد..."
                 defaultValue={selectedSession?.session_notes?.[0]?.new_content || ''}
                 rows={2}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="far_past_review">الماضي البعيد</Label>
+              <Label htmlFor="far_past_review">الماضي البعيد <span className="text-destructive">*</span></Label>
               <Textarea
                 id="far_past_review"
                 name="far_past_review"
                 placeholder="مراجعة الماضي البعيد..."
                 defaultValue={selectedSession?.session_notes?.[0]?.far_past_review || ''}
                 rows={2}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="recent_past_review">الماضي القريب</Label>
+              <Label htmlFor="recent_past_review">الماضي القريب <span className="text-destructive">*</span></Label>
               <Textarea
                 id="recent_past_review"
                 name="recent_past_review"
                 placeholder="مراجعة الماضي القريب..."
                 defaultValue={selectedSession?.session_notes?.[0]?.recent_past_review || ''}
                 rows={2}
+                required
               />
             </div>
 
