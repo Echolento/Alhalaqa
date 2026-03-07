@@ -1,4 +1,5 @@
 'use client'
+// Force rebuild to resolve ReferenceError
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,10 +24,11 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, ArrowLeftRight, BookOpen, Users, UserMinus, Trash2, Calendar, FileText, Loader2 } from 'lucide-react'
-import { transferStudent, removeStudent, getStudentLastSessionNotes } from '@/lib/data-actions'
+import { Search, ArrowLeftRight, BookOpen, Users, UserMinus, Trash2, Calendar } from 'lucide-react'
+import { transferStudent, removeStudent } from '@/lib/data-actions'
 import { CreateSessionDialog } from './create-session-dialog'
 import { FormattedDate } from '@/components/ui/formatted-date'
+import { StudentNotesModal } from './student-notes-modal'
 
 interface Student {
   id: string
@@ -56,10 +58,6 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [selectedStudentForNotes, setSelectedStudentForNotes] = useState<Student | null>(null)
-  const [isNotesOpen, setIsNotesOpen] = useState(false)
-  const [notesLoading, setNotesLoading] = useState(false)
-  const [lastNotes, setLastNotes] = useState<any>(null)
 
   const filteredStudents = students.filter((student) =>
     student.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || !search
@@ -83,19 +81,6 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
     setLoading(false)
     setIsRemoveOpen(false)
     setSelectedStudent(null)
-  }
-
-  const handleViewNotes = async (student: Student) => {
-    setSelectedStudentForNotes(student)
-    setIsNotesOpen(true)
-    setNotesLoading(true)
-    setLastNotes(null)
-
-    const result = await getStudentLastSessionNotes(student.id)
-    if (result.data) {
-      setLastNotes(result.data)
-    }
-    setNotesLoading(false)
   }
 
   return (
@@ -140,19 +125,22 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
                 filteredStudents.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>
-                      <button
-                        onClick={() => handleViewNotes(student)}
-                        className="flex items-center gap-3 text-right hover:text-primary transition-colors text-right group w-full"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                          <span className="text-sm font-medium text-primary">
-                            {student.profile?.full_name?.charAt(0) || '؟'}
-                          </span>
-                        </div>
-                        <span className="font-medium">
-                          {student.profile?.full_name || 'طالب'}
-                        </span>
-                      </button>
+                      <StudentNotesModal
+                        studentId={student.id}
+                        studentName={student.profile?.full_name || 'طالب'}
+                        trigger={
+                          <button className="flex items-center gap-3 text-right hover:text-primary transition-colors text-right group w-full">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                              <span className="text-sm font-medium text-primary">
+                                {student.profile?.full_name?.charAt(0) || '؟'}
+                              </span>
+                            </div>
+                            <span className="font-medium">
+                              {student.profile?.full_name || 'طالب'}
+                            </span>
+                          </button>
+                        }
+                      />
                     </TableCell>
                     <TableCell>
                       {student.current_surah ? (
@@ -230,29 +218,32 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
               <Card key={student.id}>
                 <CardContent className="p-4 space-y-3">
                   {/* Student Info */}
-                  <button
-                    onClick={() => handleViewNotes(student)}
-                    className="flex items-center gap-3 w-full text-right hover:bg-muted/50 p-1 -m-1 rounded-lg transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-lg font-medium text-primary">
-                        {student.profile?.full_name?.charAt(0) || '؟'}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate text-primary hover:underline">
-                        {student.profile?.full_name || 'طالب'}
-                      </p>
-                      {student.current_surah ? (
-                        <Badge variant="secondary" className="flex items-center gap-1 w-fit mt-1">
-                          <BookOpen className="w-3 h-3" />
-                          {student.current_surah} : {student.current_ayah || 1}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
-                      )}
-                    </div>
-                  </button>
+                  <StudentNotesModal
+                    studentId={student.id}
+                    studentName={student.profile?.full_name || 'طالب'}
+                    trigger={
+                      <div className="flex items-center gap-3 w-full text-right hover:bg-muted/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-lg font-medium text-primary">
+                            {student.profile?.full_name?.charAt(0) || '؟'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate text-primary hover:underline">
+                            {student.profile?.full_name || 'طالب'}
+                          </p>
+                          {student.current_surah ? (
+                            <Badge variant="secondary" className="flex items-center gap-1 w-fit mt-1">
+                              <BookOpen className="w-3 h-3" />
+                              {student.current_surah} : {student.current_ayah || 1}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
+                          )}
+                        </div>
+                      </div>
+                    }
+                  />
 
                   {/* Admin: Teacher Info */}
                   {isAdmin && student.teacher && (
@@ -371,75 +362,7 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
         </DialogContent>
       </Dialog>
 
-      {/* Last Session Notes Dialog */}
-      <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              ملاحظات آخر حصة
-            </DialogTitle>
-            <DialogDescription>
-              سجل الطالب: {selectedStudentForNotes?.profile?.full_name}
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="py-4">
-            {notesLoading ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary opacity-50 mb-4" />
-                <p className="text-sm text-muted-foreground">جاري تحميل الملاحظات...</p>
-              </div>
-            ) : !lastNotes ? (
-              <div className="text-center py-8 bg-muted/30 rounded-lg">
-                <p className="text-muted-foreground">لا توجد ملاحظات سابقة لهذا الطالب.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground mb-4 bg-primary/5 p-3 rounded-lg flex items-center gap-2 border border-primary/10">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <span className="font-medium">تاريخ الحصة:</span>
-                  <FormattedDate date={lastNotes.session.scheduled_at} options={{ weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }} />
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-bold text-primary mb-1">الجديد</h4>
-                    <p className="text-sm bg-muted/30 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
-                      {lastNotes.notes.new_content}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-primary mb-1">الماضي البعيد</h4>
-                    <p className="text-sm bg-muted/30 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
-                      {lastNotes.notes.far_past_review}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-primary mb-1">الماضي القريب</h4>
-                    <p className="text-sm bg-muted/30 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
-                      {lastNotes.notes.recent_past_review}
-                    </p>
-                  </div>
-                  {lastNotes.notes.general_notes && (
-                    <div>
-                      <h4 className="text-sm font-bold text-primary mb-1">ملاحظات عامة</h4>
-                      <p className="text-sm bg-muted/30 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
-                        {lastNotes.notes.general_notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNotesOpen(false)} className="w-full sm:w-auto">
-              إغلاق
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   )
 }

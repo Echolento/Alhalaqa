@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const teacherId = params.id
+    const resolvedParams = await params
+    const teacherId = resolvedParams.id
     if (!teacherId) {
       return NextResponse.json({ error: 'Missing teacher id' }, { status: 400 })
     }

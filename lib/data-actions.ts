@@ -107,12 +107,23 @@ export async function getTeacherDashboard() {
   }) || []
 
   const now = new Date().toISOString()
+  const nowDate = new Date()
   /* 
    * SORTING LOGIC:
-   * Upcoming: Ascending (Close to future) -> Already sorted by query
-   * Completed: Descending (Close to past "now") -> Need to reverse or sort
+   * Upcoming: Upcoming sessions + sessions currently in progress
+   * A session is "upcoming/active" if:
+   * 1. Status is 'scheduled'
+   * 2. It hasn't finished yet (startTime + duration > now)
    */
-  const upcomingSessions = normalizedSessions.filter(s => s.scheduled_at > now && s.status === 'scheduled')
+  const upcomingSessions = normalizedSessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+
+    const startTime = new Date(s.scheduled_at)
+    const durationMs = (s.duration_minutes || 60) * 60 * 1000
+    const endTime = new Date(startTime.getTime() + durationMs)
+
+    return endTime > nowDate
+  })
 
   // Sort completed sessions by date descending (most recent first)
   const completedSessions = normalizedSessions
@@ -645,11 +656,14 @@ export async function getStudentDashboard() {
 
   const ratings: number[] = []
   sessions?.forEach(s => {
-    s.session_notes?.forEach((n: any) => {
-      if (n.rating_new) ratings.push(n.rating_new)
-      if (n.rating_far_past) ratings.push(n.rating_far_past)
-      if (n.rating_recent_past) ratings.push(n.rating_recent_past)
-    })
+    if (s.session_notes) {
+      const notesArray = Array.isArray(s.session_notes) ? s.session_notes : [s.session_notes];
+      notesArray.forEach((n: any) => {
+        if (n.rating_new) ratings.push(n.rating_new)
+        if (n.rating_far_past) ratings.push(n.rating_far_past)
+        if (n.rating_recent_past) ratings.push(n.rating_recent_past)
+      })
+    }
   })
 
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
@@ -664,7 +678,13 @@ export async function getStudentDashboard() {
       currentProgress: `${student.current_surah || '-'} : ${student.current_ayah || '-'}`,
     },
     upcomingSessions: upcomingSessions.slice(0, 5),
-    recentSessions: completedSessions.slice(0, 5),
+    recentSessions: sessions?.filter(s => {
+      const notes = Array.isArray(s.session_notes) ? s.session_notes[0] : s.session_notes;
+      return notes && (notes.new_content || notes.far_past_review || notes.recent_past_review || notes.general_notes);
+    }).slice(0, 5).map(s => ({
+      ...s,
+      session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : [])
+    })),
   }
 }
 

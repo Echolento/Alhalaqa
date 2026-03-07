@@ -22,6 +22,7 @@ import { FormattedDate } from '@/components/ui/formatted-date'
 import { InviteStudentDialog } from './invite-student-dialog'
 import { CreateSessionDialog } from './create-session-dialog'
 import { getTeacherWeeklySessionCounts } from '@/lib/data-actions'
+import { StudentNotesModal } from './student-notes-modal'
 
 interface TeacherDashboardProps {
   data: {
@@ -41,6 +42,7 @@ interface TeacherDashboardProps {
       id: string
       scheduled_at: string
       student: {
+        id: string
         profile: { full_name: string | null }
       }
     }>
@@ -168,10 +170,16 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
                         {session.student?.profile?.full_name?.charAt(0) || '؟'}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-lg truncate">
-                          <span className="sm:hidden">{session.student?.profile?.full_name?.split(' ')[0] || 'طالب'}</span>
-                          <span className="hidden sm:inline">{session.student?.profile?.full_name || 'طالب'}</span>
-                        </p>
+                        <StudentNotesModal
+                          studentId={session.student?.id}
+                          studentName={session.student?.profile?.full_name || 'طالب'}
+                          trigger={
+                            <p className="font-bold text-lg truncate hover:text-primary transition-colors cursor-pointer group-hover:underline decoration-primary/20 underline-offset-4">
+                              <span className="sm:hidden">{session.student?.profile?.full_name?.split(' ')[0] || 'طالب'}</span>
+                              <span className="hidden sm:inline">{session.student?.profile?.full_name || 'طالب'}</span>
+                            </p>
+                          }
+                        />
                         <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5 flex-wrap">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5" />

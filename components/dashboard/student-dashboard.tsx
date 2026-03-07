@@ -3,6 +3,13 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -14,6 +21,10 @@ import {
   ArrowLeft,
   BookOpen,
   User,
+  FileText,
+  History,
+  MessageSquare,
+  LayoutDashboard,
 } from 'lucide-react'
 import type { StudentStats } from '@/lib/types'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -43,6 +54,9 @@ interface StudentDashboardProps {
         rating_far_past: number | null
         rating_recent_past: number | null
         new_content: string | null
+        far_past_review: string | null
+        recent_past_review: string | null
+        general_notes: string | null
         next_task: string | null
       }>
     }>
@@ -51,6 +65,7 @@ interface StudentDashboardProps {
 
 export function StudentDashboard({ data }: StudentDashboardProps) {
   const [teacherName, setTeacherName] = useState<string | null>(null)
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
 
   if (!data) {
     return (
@@ -93,7 +108,7 @@ export function StudentDashboard({ data }: StudentDashboardProps) {
 
   const statCards = [
     { label: 'الحصص المكتملة', value: stats.completedSessions, icon: CheckCircle, color: 'text-success' },
-    { label: 'متوسط التقييم', value: stats.averageRating || '-', icon: Star, color: 'text-chart-3' },
+    // { label: 'متوسط التقييم', value: stats.averageRating || '-', icon: Star, color: 'text-chart-3' },
   ]
 
   // Get the latest task
@@ -134,21 +149,132 @@ export function StudentDashboard({ data }: StudentDashboardProps) {
             </Card>
           )}
 
-          {/* Stats */}
+          {/* Stats & Notes Summary (Plan B) */}
           <div className="grid grid-cols-2 gap-3 md:gap-4">
-            {statCards.map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className={`p-3 rounded-lg bg-muted ${stat.color}`}>
-                    <stat.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {/* Completed Sessions Card */}
+            <Card className="h-[120px] md:h-[140px] flex flex-col justify-center shadow-sm">
+              <CardContent className="p-3 md:p-4 flex flex-col md:flex-row items-center md:justify-center text-center md:text-right gap-2 md:gap-4 h-full">
+                <div className="p-2 md:p-3 rounded-full bg-success/10 text-success shrink-0">
+                  <CheckCircle className="w-6 h-6 md:w-8 md:h-8" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xl md:text-3xl font-bold text-success line-height-tight">{stats.completedSessions}</p>
+                  <p className="text-[10px] md:text-sm text-muted-foreground font-medium truncate">الحصص المكتملة</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Session Notes Stat Card -> Triggers Modal (Premium Aesthetic) */}
+            <Dialog open={isNotesModalOpen} onOpenChange={setIsNotesModalOpen}>
+              <DialogTrigger asChild>
+                <Card className="h-[120px] md:h-[140px] flex flex-col justify-center shadow-md cursor-pointer hover:bg-primary/5 transition-all active:scale-[0.98] border-primary/20 bg-primary/5 group">
+                  <CardContent className="p-3 md:p-4 flex flex-col items-center justify-center text-center gap-1 h-full">
+                    <div className="p-2 md:p-3 rounded-xl bg-primary text-primary-foreground shadow-sm group-hover:scale-110 transition-transform mb-1">
+                      <FileText className="w-5 h-5 md:w-6 md:h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm md:text-base font-bold text-primary">ملاحظات الحصة</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground font-medium">انقر للتفاصيل</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
+                <DialogHeader className="p-6 border-b sticky top-0 bg-background z-10">
+                  <DialogTitle className="flex items-center gap-2 text-xl">
+                    <FileText className="w-6 h-6 text-primary" />
+                    ملاحظات آخر حصة
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="p-6 space-y-6">
+                  {latestNote ? (
+                    <div className="space-y-6 md:space-y-8">
+                      {/* Session Date Header (Teacher-like) */}
+                      <div className="text-sm text-muted-foreground bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
+                        <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold opacity-70">تاريخ الحصة الأخيرة</span>
+                          <FormattedDate
+                            date={recentSessions[0].scheduled_at}
+                            options={{ weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:gap-6">
+                        {latestNote.new_content && (
+                          <div className="space-y-2">
+                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
+                              <BookOpen className="w-4 h-4" />
+                              الجديد
+                            </h4>
+                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
+                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
+                                {latestNote.new_content}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {latestNote.far_past_review && (
+                          <div className="space-y-2">
+                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
+                              <History className="w-4 h-4" />
+                              الماضي البعيد
+                            </h4>
+                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
+                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
+                                {latestNote.far_past_review}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {latestNote.recent_past_review && (
+                          <div className="space-y-2">
+                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
+                              <Clock className="w-4 h-4" />
+                              الماضي القريب
+                            </h4>
+                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
+                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
+                                {latestNote.recent_past_review}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {latestNote.general_notes && (
+                          <div className="space-y-2">
+                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
+                              <MessageSquare className="w-4 h-4" />
+                              ملاحظات عامة
+                            </h4>
+                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
+                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
+                                {latestNote.general_notes}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {!latestNote.new_content && !latestNote.far_past_review && !latestNote.recent_past_review && !latestNote.general_notes && (
+                        <div className="text-center py-10 bg-muted/20 rounded-xl border border-dashed">
+                          <p className="text-muted-foreground text-lg italic">لا توجد ملاحظات تفصيلية مسجلة لهذه الحصة.</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+                      <div className="bg-muted p-4 rounded-full">
+                        <FileText className="w-8 h-8 opacity-20" />
+                      </div>
+                      <p className="text-lg font-medium opacity-50 text-center">لا توجد ملاحظات مسجلة للحصة الأخيرة</p>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Upcoming Sessions */}
