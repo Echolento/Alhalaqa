@@ -29,13 +29,13 @@ export function CollapsibleSection({
       onOpenChange={setIsOpen}
       className={cn("space-y-4", className)}
     >
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          {icon}
-          {title}
-        </h2>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="w-9 p-0">
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between cursor-pointer group/header py-2 px-1 -mx-1 rounded-lg hover:bg-muted/50 transition-colors">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            {icon}
+            {title}
+          </h2>
+          <Button variant="ghost" size="sm" className="w-9 p-0 group-hover/header:bg-accent">
             {isOpen ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -43,8 +43,8 @@ export function CollapsibleSection({
             )}
             <span className="sr-only">تفعيل/تعطيل القسم</span>
           </Button>
-        </CollapsibleTrigger>
-      </div>
+        </div>
+      </CollapsibleTrigger>
       <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
         {children}
       </CollapsibleContent>

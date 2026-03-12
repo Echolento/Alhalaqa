@@ -129,24 +129,27 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
       </CollapsibleSection>
 
       {/* Weekly Summary */}
-      <WeeklySummary />
+      <CollapsibleSection title="جدول الأسبوع القادم" icon={<Calendar className="w-5 h-5 text-primary" />}>
+        <WeeklySummary />
+      </CollapsibleSection>
 
       <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
         {/* Upcoming Sessions - Larger Span */}
-        <Card className="lg:col-span-2 shadow-md border-muted-foreground/10">
-          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-            <div>
-              <CardTitle className="text-xl font-bold">جدول الحصص القادمة</CardTitle>
-              <CardDescription>الحصص المجدولة للأيام القادمة</CardDescription>
-            </div>
-            <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/5">
-              <Link href="/dashboard/calendar" className="flex items-center gap-1">
-                الكل
-                <ArrowLeft className="w-4 h-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-4 md:pt-6 px-4 md:px-6">
+        <div className="lg:col-span-2">
+          <CollapsibleSection title="جدول الحصص القادمة" icon={<Clock className="w-5 h-5 text-primary" />}>
+            <Card className="shadow-md border-muted-foreground/10 h-full">
+              <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                <div>
+                  <CardDescription>الحصص المجدولة للأيام القادمة</CardDescription>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/5">
+                  <Link href="/dashboard/calendar" className="flex items-center gap-1">
+                    الكل
+                    <ArrowLeft className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent className="pt-4 md:pt-6 px-4 md:px-6">
             {upcomingSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -213,16 +216,19 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </CollapsibleSection>
+        </div>
 
         {/* Recent Activity / Sessions */}
-        <Card className="shadow-md border-muted-foreground/10">
-          <CardHeader className="border-b pb-4">
-            <CardTitle className="text-lg">الحصص الأخيرة</CardTitle>
-            <CardDescription>آخر ما تم إنجازه</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4 md:pt-6 px-4 md:px-6">
+        <div>
+          <CollapsibleSection title="الحصص الأخيرة" icon={<CheckCircle className="w-5 h-5 text-primary" />}>
+            <Card className="shadow-md border-muted-foreground/10 h-full">
+              <CardHeader className="border-b pb-4">
+                <CardDescription>آخر ما تم إنجازه</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 md:pt-6 px-4 md:px-6">
             {recentSessions.length === 0 ? (
               <p className="text-muted-foreground text-center py-8 text-sm italic">لا توجد حصص مكتملة بعد</p>
             ) : (
@@ -259,8 +265,10 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </CollapsibleSection>
+        </div>
       </div>
     </div>
   )
@@ -274,12 +282,7 @@ async function WeeklySummary() {
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   return (
-    <section>
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Calendar className="w-5 h-5 text-primary" />
-        جدول الأسبوع القادم
-      </h2>
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-3">
+    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-3">
         {weekly.map((d) => {
           const dateObj = new Date(d.date + 'T12:00:00') // noon local to avoid DST edge-cases
           const isToday = d.date === todayKey
@@ -326,7 +329,6 @@ async function WeeklySummary() {
           )
         })}
       </div>
-    </section>
   )
 }
 
