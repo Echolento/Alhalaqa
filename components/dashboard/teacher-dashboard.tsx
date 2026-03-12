@@ -23,6 +23,7 @@ import { InviteStudentDialog } from './invite-student-dialog'
 import { CreateSessionDialog } from './create-session-dialog'
 import { getTeacherWeeklySessionCounts } from '@/lib/data-actions'
 import { StudentNotesModal } from './student-notes-modal'
+import { CollapsibleSection } from './collapsible-section'
 
 interface TeacherDashboardProps {
   data: {
@@ -106,11 +107,7 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
       )}
 
       {/* Quick Actions - Super obvious buttons for non-tech savvy users */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <LayoutDashboard className="w-5 h-5 text-primary" />
-          روابط سريعة
-        </h2>
+      <CollapsibleSection title="روابط سريعة" icon={<LayoutDashboard className="w-5 h-5 text-primary" />}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <InviteButton />
           <AddSessionButton students={students} />
@@ -129,7 +126,7 @@ export async function TeacherDashboard({ data, students }: TeacherDashboardProps
             color="bg-teal-500"
           />
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Weekly Summary */}
       <WeeklySummary />

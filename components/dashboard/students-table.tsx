@@ -29,6 +29,7 @@ import { transferStudent, removeStudent } from '@/lib/data-actions'
 import { CreateSessionDialog } from './create-session-dialog'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { StudentNotesModal } from './student-notes-modal'
+import { useToast } from '@/components/ui/use-toast'
 
 interface Student {
   id: string
@@ -58,6 +59,7 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
 
   const filteredStudents = students.filter((student) =>
     student.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || !search
@@ -67,20 +69,64 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
     if (!selectedStudent) return
     setLoading(true)
 
-    const newTeacherId = formData.get('teacher_id') as string
-    await transferStudent(selectedStudent.id, newTeacherId)
+    try {
+      const newTeacherId = formData.get('teacher_id') as string
+      const result = await transferStudent(selectedStudent.id, newTeacherId)
 
-    setLoading(false)
-    setIsTransferOpen(false)
+      if (result.success) {
+        toast({
+          title: "تم النقل بنجاح",
+          description: `تم نقل ${selectedStudent.profile?.full_name} إلى المعلم الجديد.`,
+        })
+        setIsTransferOpen(false)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "فشل النقل",
+          description: result.error || "حدث خطأ غير متوقع",
+        })
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "خطأ في النظام",
+        description: err.message || "فشل الاتصال بالخادم",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleRemove = async () => {
     if (!selectedStudent) return
     setLoading(true)
-    await removeStudent(selectedStudent.id)
-    setLoading(false)
-    setIsRemoveOpen(false)
-    setSelectedStudent(null)
+
+    try {
+      const result = await removeStudent(selectedStudent.id)
+
+      if (result.success) {
+        toast({
+          title: "تمت الإزالة",
+          description: `تمت إزالة ${selectedStudent.profile?.full_name} من قائمة طلابك.`,
+        })
+        setIsRemoveOpen(false)
+        setSelectedStudent(null)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "فشل الإزالة",
+          description: result.error || "حدث خطأ غير متوقع",
+        })
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "خطأ في النظام",
+        description: err.message || "فشل الاتصال بالخادم",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

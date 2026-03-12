@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle, Phone } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { PasswordInput } from '@/components/auth/password-input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -94,6 +94,22 @@ export default function SignUpPage() {
             className="text-right"
             dir="ltr"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone">رقم الهاتف</Label>
+          <div className="relative">
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="05xxxxxxxx"
+              required
+              className="text-right pr-10"
+              dir="ltr"
+            />
+            <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
         </div>
 
         <div className="space-y-2">

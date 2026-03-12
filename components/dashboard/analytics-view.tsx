@@ -55,9 +55,18 @@ const COLORS = {
 
 export function AnalyticsView({ sessions, students, role }: AnalyticsViewProps) {
   // Calculate statistics
+  const now = new Date()
   const completedSessions = sessions.filter(s => s.status === 'completed')
-  const scheduledSessions = sessions.filter(s => s.status === 'scheduled')
-  const cancelledSessions = sessions.filter(s => s.status === 'cancelled')
+  const overdueSessions = sessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+    return endTime <= now
+  })
+  const scheduledSessions = sessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+    return endTime > now
+  })
 
   const ratings = completedSessions
     .flatMap(s => s.session_notes?.map(n => n.rating) || [])
@@ -73,8 +82,8 @@ export function AnalyticsView({ sessions, students, role }: AnalyticsViewProps) 
   // Sessions by status for pie chart
   const statusData = [
     { name: 'مكتملة', value: completedSessions.length, color: COLORS.success },
-    { name: 'مجدولة', value: scheduledSessions.length, color: COLORS.primary },
-    { name: 'ملغية', value: cancelledSessions.length, color: COLORS.muted },
+    { name: 'قادمة', value: scheduledSessions.length, color: COLORS.primary },
+    { name: 'متأخرة', value: overdueSessions.length, color: COLORS.warning },
   ].filter(d => d.value > 0)
 
   // Sessions by month for bar chart
@@ -119,6 +128,18 @@ export function AnalyticsView({ sessions, students, role }: AnalyticsViewProps) 
 
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-warning/10 text-warning">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{overdueSessions.length}</p>
+              <p className="text-sm text-muted-foreground">متأخرة</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-lg bg-chart-3/10 text-chart-3">
               <Star className="w-5 h-5" />
             </div>
@@ -132,7 +153,7 @@ export function AnalyticsView({ sessions, students, role }: AnalyticsViewProps) 
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-lg bg-chart-4/10 text-chart-4">
-              <Clock className="w-5 h-5" />
+              <TrendingUp className="w-5 h-5" />
             </div>
             <div>
               <p className="text-2xl font-bold">{totalHours}</p>

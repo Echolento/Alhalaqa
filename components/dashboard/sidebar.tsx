@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
@@ -66,11 +67,16 @@ export function DashboardSidebar({ profile }: SidebarProps) {
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-sidebar-primary/10 rounded-lg flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-sidebar-primary" />
+          <div className="bg-sidebar-primary/10 backdrop-blur-sm border border-sidebar-border/50 rounded-xl p-1 shadow-sm">
+            <Image
+              src="/Logo.webp"
+              alt="Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
           <div>
-            <span className="font-bold text-sidebar-foreground">إتقان</span>
             <p className="text-xs text-sidebar-foreground/60">{roleLabels[profile.role]}</p>
           </div>
         </Link>

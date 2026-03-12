@@ -100,7 +100,7 @@ export function PendingInvitations({ invitations }: PendingInvitationsProps) {
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                             <UserPlus className="w-6 h-6 text-primary" />
                         </div>
-                        <DialogTitle className="text-2xl font-bold">لديك دعوة جديدة! 🎉</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold">لديك دعوة!</DialogTitle>
                         <DialogDescription className="text-base text-muted-foreground mt-2">
                             لقد تلقيت {invitations.length} دعوة للانضمام إلى قائمة طلاب المعلم
                         </DialogDescription>
@@ -116,15 +116,15 @@ export function PendingInvitations({ invitations }: PendingInvitationsProps) {
                                     <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white text-lg font-bold">
                                         {(
                                             (invitation.teacher?.profile?.full_name
-                                              || (invitation.teacher_id ? teacherNames[invitation.teacher_id] : '')
-                                              || '') as string
+                                                || (invitation.teacher_id ? teacherNames[invitation.teacher_id] : '')
+                                                || '') as string
                                         )?.charAt(0) || '؟'}
                                     </div>
                                     <div>
                                         <p className="font-bold text-lg">
                                             {invitation.teacher?.profile?.full_name
-                                              || (invitation.teacher_id ? teacherNames[invitation.teacher_id] : '')
-                                              || 'معلم'}
+                                                || (invitation.teacher_id ? teacherNames[invitation.teacher_id] : '')
+                                                || 'معلم'}
                                         </p>
                                         <p className="text-sm text-muted-foreground italic">يدعوك للانضمام كطالب في حلقته</p>
                                     </div>

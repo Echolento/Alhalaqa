@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function inviteStudent(email: string) {
+export async function inviteStudent(phone: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -50,7 +50,7 @@ export async function inviteStudent(email: string) {
     const { data: globalInvite } = await supabase
         .from('invitations')
         .select('id, teacher:teachers(profile:profiles(full_name))')
-        .eq('student_email', email.toLowerCase())
+        .eq('student_phone', phone)
         .eq('status', 'pending')
         .maybeSingle()
 
@@ -63,7 +63,7 @@ export async function inviteStudent(email: string) {
     const { data: existingStudentProfile } = await supabase
         .from('profiles')
         .select('id, students(teacher:teachers(profile:profiles(full_name)))')
-        .eq('email', email.toLowerCase())
+        .eq('phone', phone)
         .maybeSingle()
 
     const studentRecord = (existingStudentProfile?.students as any)?.[0]
@@ -77,7 +77,7 @@ export async function inviteStudent(email: string) {
         .from('invitations')
         .insert({
             teacher_id: teacherId,
-            student_email: email.toLowerCase(),
+            student_phone: phone,
         })
 
     if (inviteError) return { error: inviteError.message }
@@ -85,20 +85,22 @@ export async function inviteStudent(email: string) {
     // Check if user already exists
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('email', email.toLowerCase())
+        .select('id, email')
+        .eq('phone', phone)
         .maybeSingle()
 
     if (!profile) {
-        // Trigger Supabase Invite Email for new users
-        // Note: This requires service role/admin privileges in a real app, 
-        // but for a dev flow, it often works if configured in Supabase.
+        // Suppress email trigger since we only have phone. 
+        // Admin invite requires email, so we can't easily auto-invite by phone only via Supabase Auth Admin API 
+        // without an email. Students will have to sign up manually with their phone.
+        /* 
         await supabase.auth.admin.inviteUserByEmail(email.toLowerCase(), {
             data: {
                 role: 'student',
                 full_name: 'طالب جديد'
             }
         })
+        */
     }
 
     revalidatePath('/dashboard/students')
@@ -139,21 +141,21 @@ export async function getStudentInvitations() {
         return []
     }
 
-    const email = (user.email || '').toLowerCase()
-    console.log('[INV] getStudentInvitations: user email', email)
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', user.id)
+        .single()
 
-    // Visibility sanity check: how many rows are visible for this email (any status)?
-    const { count: visibleCount, error: visibleErr } = await supabase
-        .from('invitations')
-        .select('id', { count: 'exact', head: true })
-        .ilike('student_email', email)
-    console.log('[INV] visibleCount for email', { visibleCount, visibleErr: visibleErr?.message })
+    const phone = profile?.phone
+    console.log('[INV] getStudentInvitations: user phone', phone)
+
+    if (!phone) return []
 
     const { data: invitations, error } = await supabase
         .from('invitations')
-
         .select('*')
-        .ilike('student_email', email)
+        .eq('student_phone', phone)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
 
@@ -169,11 +171,17 @@ export async function acceptInvitation(invitationId: string) {
     if (!user) return { error: 'غير مصرح' }
 
     // Get the invitation
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', user.id)
+        .single()
+
     const { data: invitation } = await supabase
         .from('invitations')
         .select('*')
         .eq('id', invitationId)
-        .eq('student_email', user.email?.toLowerCase())
+        .eq('student_phone', profile?.phone)
         .eq('status', 'pending')
         .single()
 
@@ -218,6 +226,7 @@ export async function acceptInvitation(invitationId: string) {
             id: user.id,
             full_name: userName,
             email: user.email,
+            phone: user.user_metadata?.phone || invitation.student_phone,
             role: 'student',
         }, { onConflict: 'id' })
 
@@ -241,11 +250,17 @@ export async function rejectInvitation(invitationId: string) {
 
     if (!user) return { error: 'غير مصرح' }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', user.id)
+        .single()
+
     const { error } = await supabase
         .from('invitations')
         .update({ status: 'rejected' })
         .eq('id', invitationId)
-        .eq('student_email', user.email?.toLowerCase())
+        .eq('student_phone', profile?.phone)
 
     if (error) return { error: error.message }
 
@@ -288,11 +303,19 @@ export async function autoAcceptInvitations() {
 
     if (!user) return { success: false }
 
-    // Get all pending invitations for this user's email
+    const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', user.id)
+        .single()
+
+    if (!profileRow?.phone) return { success: true }
+
+    // Get all pending invitations for this user's phone
     const { data: invitations } = await supabase
         .from('invitations')
         .select('*')
-        .eq('student_email', user.email?.toLowerCase())
+        .eq('student_phone', profileRow.phone)
         .eq('status', 'pending')
 
     if (!invitations || invitations.length === 0) return { success: true }

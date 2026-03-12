@@ -18,8 +18,14 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
                     <div className="space-y-2 text-center">
                         {/* Mobile Logo (only visible on small screens) */}
                         <div className="lg:hidden flex justify-center mb-4">
-                            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                <BookOpen className="w-6 h-6 text-primary" />
+                            <div className="w-32 h-32 bg-card/50 backdrop-blur-sm border border-border rounded-2xl flex items-center justify-center p-3 shadow-sm">
+                                <Image
+                                    src="/Logo.webp"
+                                    alt="Logo"
+                                    width={120}
+                                    height={120}
+                                    className="object-contain"
+                                />
                             </div>
                         </div>
 
@@ -38,9 +44,16 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
                 <div className="absolute inset-0 bg-black/50" />
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-2 text-lg font-medium">
-                        <BookOpen className="w-6 h-6" />
-                        <span>إتقان</span>
+                    <div className="flex items-center gap-4 text-lg font-medium">
+                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 shadow-lg">
+                            <Image
+                                src="/Logo.webp"
+                                alt="Logo"
+                                width={80}
+                                height={80}
+                                className="object-contain"
+                            />
+                        </div>
                     </div>
                 </div>
 

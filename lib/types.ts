@@ -51,7 +51,7 @@ export interface Session {
   student_id: string;
   scheduled_at: string;
   duration_minutes: number;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed';
   google_meet_link: string | null;
   created_at: string;
   updated_at: string;
@@ -81,6 +81,7 @@ export interface TeacherStats {
   totalSessions: number;
   completedSessions: number;
   upcomingSessions: number;
+  overdueSessions: number;
   averageRating: number;
 }
 

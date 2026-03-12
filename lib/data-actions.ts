@@ -4,10 +4,31 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { SessionNoteForm, SessionForm } from './types'
 
+async function cleanupInactiveSessions(supabase: any) {
+  const fifteenDaysAgo = new Date()
+  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15)
+  const fifteenDaysAgoIso = fifteenDaysAgo.toISOString()
+
+  // 1. Delete all cancelled sessions
+  // 2. Delete all scheduled sessions older than 15 days
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .or(`status.eq.cancelled,and(status.eq.scheduled,scheduled_at.lt.${fifteenDaysAgoIso})`)
+
+  if (error) {
+    console.error('[cleanupInactiveSessions] error:', error)
+  }
+}
+
 // Teacher actions
 export async function getTeacherDashboard() {
   console.log('[getTeacherDashboard] start')
   const supabase = await createClient()
+
+  // Cleanup before fetching
+  await cleanupInactiveSessions(supabase)
+
   const { data: { user } } = await supabase.auth.getUser()
   console.log('[getTeacherDashboard] user:', { id: user?.id, email: user?.email })
 
@@ -125,6 +146,16 @@ export async function getTeacherDashboard() {
     return endTime > nowDate
   })
 
+  const overdueSessions = normalizedSessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+
+    const startTime = new Date(s.scheduled_at)
+    const durationMs = (s.duration_minutes || 60) * 60 * 1000
+    const endTime = new Date(startTime.getTime() + durationMs)
+
+    return endTime <= nowDate
+  })
+
   // Sort completed sessions by date descending (most recent first)
   const completedSessions = normalizedSessions
     .filter(s => s.status === 'completed')
@@ -154,6 +185,7 @@ export async function getTeacherDashboard() {
       totalSessions: sessions?.length || 0,
       completedSessions: completedSessions.length,
       upcomingSessions: upcomingSessions.length,
+      overdueSessions: overdueSessions.length,
       averageRating: Math.round(avgRating * 10) / 10,
     },
     upcomingSessions: upcomingSessions.slice(0, 5),
@@ -212,9 +244,13 @@ export async function getTeacherStudents() {
   return normalizedStudents
 }
 
-export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'completed') {
+export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'completed' | 'overdue') {
   console.log('[getTeacherSessions] start, filter:', filter)
   const supabase = await createClient()
+
+  // Cleanup before fetching
+  await cleanupInactiveSessions(supabase)
+
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return []
@@ -251,6 +287,8 @@ export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'complete
     query = query.gte('scheduled_at', now).eq('status', 'scheduled')
   } else if (filter === 'completed') {
     query = query.eq('status', 'completed')
+  } else if (filter === 'overdue') {
+    query = query.lt('scheduled_at', now).eq('status', 'scheduled')
   }
 
   const { data: sessions, error: sessionsError } = await query
@@ -290,6 +328,40 @@ export async function getTeacherSessions(filter?: 'all' | 'upcoming' | 'complete
   return normalizedSessions
 }
 
+async function checkSessionOverlap(
+  supabase: any,
+  teacherId: string,
+  scheduledAt: string,
+  durationMinutes: number,
+  excludeSessionId?: string
+) {
+  const start = new Date(scheduledAt)
+  const end = new Date(start.getTime() + durationMinutes * 60000)
+
+  // Fetch all potentially conflicting sessions for this teacher
+  const { data: existingSessions } = await supabase
+    .from('sessions')
+    .select('id, scheduled_at, duration_minutes')
+    .eq('teacher_id', teacherId)
+    .in('status', ['scheduled', 'in_progress'])
+
+  if (!existingSessions) return false
+
+  for (const session of existingSessions) {
+    if (excludeSessionId && session.id === excludeSessionId) continue
+
+    const sStart = new Date(session.scheduled_at)
+    const sEnd = new Date(sStart.getTime() + session.duration_minutes * 60000)
+
+    // Overlap condition: (StartA < EndB) AND (EndA > StartB)
+    if (start < sEnd && end > sStart) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export async function createSession(data: SessionForm) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -303,6 +375,18 @@ export async function createSession(data: SessionForm) {
     .single()
 
   if (!teacher) return { error: 'لم يتم العثور على المعلم' }
+
+  // Check for overlap
+  const isOverlapping = await checkSessionOverlap(
+    supabase,
+    teacher.id,
+    data.scheduled_at,
+    data.duration_minutes
+  )
+
+  if (isOverlapping) {
+    return { error: 'هذا الوقت محجوز مسبقاً، يرجى اختيار موعد آخر' }
+  }
 
   const { error } = await supabase
     .from('sessions')
@@ -447,6 +531,28 @@ export async function updateStudentProgress(studentId: string, surah: string, ay
 
 export async function updateSessionDetails(sessionId: string, data: SessionForm) {
   const supabase = await createClient()
+
+  // First, get the teacher_id for this session to check overlap
+  const { data: sessionData } = await supabase
+    .from('sessions')
+    .select('teacher_id')
+    .eq('id', sessionId)
+    .single()
+
+  if (!sessionData) return { error: 'الحصة غير موجودة' }
+
+  // Check for overlap (excluding the current session)
+  const isOverlapping = await checkSessionOverlap(
+    supabase,
+    sessionData.teacher_id,
+    data.scheduled_at,
+    data.duration_minutes,
+    sessionId
+  )
+
+  if (isOverlapping) {
+    return { error: 'هذا الوقت محجوز مسبقاً، يرجى اختيار موعد آخر' }
+  }
 
   const { error } = await supabase
     .from('sessions')

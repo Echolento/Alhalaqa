@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookOpen, Calendar, Users, BarChart3, Video, Shield } from 'lucide-react'
@@ -43,8 +44,14 @@ export default function HomePage() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-primary" />
+            <div className="w-20 h-20 bg-primary/10 backdrop-blur-sm border border-primary/20 rounded-2xl flex items-center justify-center p-2 shadow-sm">
+              <Image
+                src="/Logo.webp"
+                alt="Logo"
+                width={80}
+                height={80}
+                className="object-contain"
+              />
             </div>
             <span className="text-xl font-bold">منصة تحفيظ القرآن</span>
           </div>

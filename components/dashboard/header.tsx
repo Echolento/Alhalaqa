@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
@@ -84,14 +85,16 @@ export function DashboardHeader({ profile }: HeaderProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 p-0">
-            <div className="p-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <span className="font-bold text-lg">إتقان</span>
-                  <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
+            <div className="p-6 border-b border-border bg-primary/[0.03] backdrop-blur-sm shadow-sm">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-primary/10 backdrop-blur-sm border border-border rounded-xl flex items-center justify-center p-2 shadow-sm">
+                  <Image
+                    src="/Logo.webp"
+                    alt="Logo"
+                    width={48}
+                    height={48}
+                    className="object-contain"
+                  />
                 </div>
               </div>
             </div>
@@ -121,9 +124,16 @@ export function DashboardHeader({ profile }: HeaderProps) {
           </SheetContent>
         </Sheet>
 
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-bold text-lg">إتقان</span>
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="bg-primary/10 backdrop-blur-sm border border-border/50 rounded-lg p-1 shadow-sm">
+            <Image
+              src="/Logo.webp"
+              alt="Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
+          </div>
         </Link>
       </div>
 

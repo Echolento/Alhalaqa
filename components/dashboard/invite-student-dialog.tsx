@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react'
+import { UserPlus, AlertCircle, CheckCircle, Phone } from 'lucide-react'
 import { inviteStudent } from '@/lib/invitation-actions'
 
 interface InviteStudentDialogProps {
@@ -31,8 +31,8 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
         setError(null)
         setSuccess(false)
 
-        const email = formData.get('email') as string
-        const result = await inviteStudent(email)
+        const phone = formData.get('phone') as string
+        const result = await inviteStudent(phone)
 
         if (result.error) {
             setError(result.error)
@@ -61,7 +61,7 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
                 <DialogHeader>
                     <DialogTitle>دعوة طالب جديد</DialogTitle>
                     <DialogDescription>
-                        أدخل البريد الإلكتروني للطالب الذي ترغب بإضافته
+                        أدخل رقم هاتف الطالب الذي ترغب بإضافته
                     </DialogDescription>
                 </DialogHeader>
 
@@ -79,17 +79,22 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
                             </div>
                         )}
 
+
+
                         <div className="space-y-2">
-                            <Label htmlFor="email">البريد الإلكتروني للطالب</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="student@example.com"
-                                required
-                                dir="ltr"
-                                className="text-right"
-                            />
+                            <Label htmlFor="phone">رقم هاتف الطالب</Label>
+                            <div className="relative">
+                                <Input
+                                    id="phone"
+                                    name="phone"
+                                    type="tel"
+                                    placeholder="05xxxxxxxx"
+                                    required
+                                    className="text-right pr-10"
+                                    dir="ltr"
+                                />
+                                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            </div>
                         </div>
 
                         <DialogFooter>

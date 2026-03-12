@@ -14,22 +14,15 @@ export const metadata: Metadata = {
   title: 'Itqan - إتقان',
   description: 'منصة إتقان لإدارة حلقات تحفيظ القرآن الكريم',
   generator: 'v0.app',
+  themeColor: '#4d938b',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/Logo.webp',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/Logo.webp',
   },
 }
 

@@ -193,8 +193,8 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                 className={cn(
                   'text-[10px] md:text-xs p-0.5 md:p-1 rounded truncate leading-tight',
                   session.status === 'completed' && 'bg-success/20 text-success',
-                  session.status === 'scheduled' && 'bg-primary/20 text-primary',
-                  session.status === 'cancelled' && 'bg-destructive/20 text-destructive'
+                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) > new Date()) && 'bg-primary/20 text-primary',
+                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date()) && 'bg-warning/20 text-warning'
                 )}
               >
                 {new Date(session.scheduled_at).toLocaleTimeString('ar-SA', {
@@ -309,14 +309,20 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                       variant={
                         session.status === 'completed'
                           ? 'default'
-                          : session.status === 'cancelled'
-                            ? 'destructive'
-                            : 'secondary'
+                          : 'secondary'
+                      }
+                      className={
+                        (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date())
+                          ? 'bg-warning text-warning-foreground'
+                          : ''
                       }
                     >
                       {session.status === 'completed' && 'مكتمل'}
-                      {session.status === 'scheduled' && 'مجدول'}
-                      {session.status === 'cancelled' && 'ملغي'}
+                      {session.status === 'scheduled' && (
+                        new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) > new Date()
+                          ? 'مجدول'
+                          : 'متأخر'
+                      )}
                     </Badge>
                   </div>
                 </div>

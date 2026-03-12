@@ -24,8 +24,10 @@ import {
   Search,
   Star,
   BookOpen,
+  Calendar,
   Clock,
   FileText,
+  AlertTriangle,
 } from 'lucide-react'
 import { updateSessionStatus, createSessionNote, updateStudentProgress } from '@/lib/data-actions'
 import type { UserRole } from '@/lib/types'
@@ -82,11 +84,19 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
   })
 
   // Show ALL scheduled sessions regardless of date — past-due sessions should still be completable
-  const upcomingSessions = filteredSessions.filter(s => s.status === 'scheduled')
+  const upcomingSessions = filteredSessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+    return endTime > new Date(now)
+  })
   const completedSessions = filteredSessions.filter(s => s.status === 'completed')
-  const cancelledSessions = filteredSessions.filter(s => s.status === 'cancelled')
+  const overdueSessions = filteredSessions.filter(s => {
+    if (s.status !== 'scheduled') return false
+    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+    return endTime <= new Date(now)
+  })
 
-  const handleStatusChange = async (session: Session, status: 'completed' | 'cancelled') => {
+  const handleStatusChange = async (session: Session, status: 'completed') => {
     setLoading(true)
     await updateSessionStatus(session.id, status)
     setLoading(false)
@@ -181,14 +191,20 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                   variant={
                     session.status === 'completed'
                       ? 'default'
-                      : session.status === 'cancelled'
-                        ? 'destructive'
-                        : 'secondary'
+                      : 'secondary'
+                  }
+                  className={
+                    (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date(now))
+                      ? 'bg-warning text-warning-foreground'
+                      : ''
                   }
                 >
                   {session.status === 'completed' && 'مكتمل'}
-                  {session.status === 'scheduled' && 'مجدول'}
-                  {session.status === 'cancelled' && 'ملغي'}
+                  {session.status === 'scheduled' && (
+                    new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) > new Date(now)
+                      ? 'مجدول'
+                      : 'متأخر'
+                  )}
                 </Badge>
                 <Badge variant="outline" className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -250,22 +266,11 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                     size="sm"
                     className="flex-1 sm:flex-none min-h-[44px]"
                     onClick={() => handleStatusChange(session, 'completed')}
-                    disabled={loading || session.scheduled_at > now}
-                    title={session.scheduled_at > now ? 'لا يمكن إتمام الحصة قبل موعدها' : 'إتمام الحصة'}
+                    disabled={loading}
+                    title="إتمام الحصة"
                   >
                     <CheckCircle className="w-4 h-4 ml-1" />
                     إتمام
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="flex-1 sm:flex-none min-h-[44px]"
-                    onClick={() => handleStatusChange(session, 'cancelled')}
-                    disabled={loading || session.scheduled_at > now}
-                    title={session.scheduled_at > now ? 'لا يمكن إلغاء الحصة قبل موعدها' : 'إلغاء الحصة'}
-                  >
-                    <XCircle className="w-4 h-4 ml-1" />
-                    إلغاء
                   </Button>
                 </>
               )}
@@ -311,13 +316,13 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
             <Clock className="w-4 h-4" />
             القادمة ({upcomingSessions.length})
           </TabsTrigger>
+          <TabsTrigger value="overdue" className="flex items-center gap-1 md:gap-2 text-sm md:text-base min-h-[44px]">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            المتأخرة ({overdueSessions.length})
+          </TabsTrigger>
           <TabsTrigger value="completed" className="flex items-center gap-1 md:gap-2 text-sm md:text-base min-h-[44px]">
             <CheckCircle className="w-4 h-4" />
             المكتملة ({completedSessions.length})
-          </TabsTrigger>
-          <TabsTrigger value="cancelled" className="flex items-center gap-1 md:gap-2 text-sm md:text-base min-h-[44px]">
-            <XCircle className="w-4 h-4" />
-            الملغية ({cancelledSessions.length})
           </TabsTrigger>
         </TabsList>
 
@@ -333,6 +338,18 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
           )}
         </TabsContent>
 
+        <TabsContent value="overdue" className="space-y-3 md:space-y-4 mt-4">
+          {overdueSessions.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                لا توجد حصص متأخرة
+              </CardContent>
+            </Card>
+          ) : (
+            overdueSessions.map(renderSessionCard)
+          )}
+        </TabsContent>
+
         <TabsContent value="completed" className="space-y-3 md:space-y-4 mt-4">
           {completedSessions.length === 0 ? (
             <Card>
@@ -342,18 +359,6 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
             </Card>
           ) : (
             completedSessions.map(renderSessionCard)
-          )}
-        </TabsContent>
-
-        <TabsContent value="cancelled" className="space-y-3 md:space-y-4 mt-4">
-          {cancelledSessions.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                لا توجد حصص ملغية
-              </CardContent>
-            </Card>
-          ) : (
-            cancelledSessions.map(renderSessionCard)
           )}
         </TabsContent>
       </Tabs>
