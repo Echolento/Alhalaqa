@@ -140,33 +140,33 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
 
       {/* Simplified Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-        <Link href="/dashboard/payments" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex items-center gap-3">
-          <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
+        <Link href="/dashboard/payments" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2">
+          <div className="p-3 bg-amber-100 text-amber-700 rounded-full mb-1">
             <Wallet className="w-5 h-5" />
           </div>
-          <span className="font-bold">المدفوعات</span>
+          <span className="font-bold text-sm">المدفوعات</span>
         </Link>
         <InviteStudentDialog trigger={
-          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex items-center gap-3 w-full text-right">
-            <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
+          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2 w-full">
+            <div className="p-3 bg-blue-100 text-blue-700 rounded-full mb-1">
               <UserPlus className="w-5 h-5" />
             </div>
-            <span className="font-bold">دعوة طالب</span>
+            <span className="font-bold text-sm">دعوة طالب</span>
           </button>
         } />
         <CreateSessionDialog students={students} trigger={
-          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex items-center gap-3 w-full text-right">
-            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2 w-full">
+            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full mb-1">
               <Plus className="w-5 h-5" />
             </div>
-            <span className="font-bold">إضافة حصة</span>
+            <span className="font-bold text-sm">إضافة حصة</span>
           </button>
         } />
-        <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
+        <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2">
+          <div className="p-3 bg-indigo-100 text-indigo-700 rounded-full mb-1">
             <Calendar className="w-5 h-5" />
           </div>
-          <span className="font-bold">الجدول</span>
+          <span className="font-bold text-sm">الجدول</span>
         </Link>
       </div>
 

@@ -32,6 +32,16 @@ export default async function DashboardPage() {
   }
 
   if (profile.role === 'teacher') {
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('default_monthly_price')
+      .eq('profile_id', user.id)
+      .single()
+
+    if (!teacher || !teacher.default_monthly_price || Number(teacher.default_monthly_price) === 0) {
+      redirect('/dashboard/settings?first_login=true')
+    }
+
     const [data, students, paymentData, revenueTrend] = await Promise.all([
       getTeacherDashboard(),
       getTeacherStudents(),

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,6 +32,8 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const isFirstLogin = searchParams.get('first_login') === 'true'
 
   const roleLabels = {
     admin: 'مشرف',
@@ -57,6 +60,29 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
   return (
     <div className="space-y-6 max-w-2xl">
+      {isFirstLogin && (
+        <AlertCircle className="hidden" /> /* Pre-import check if needed, but we use icons below */
+      )}
+      
+      {isFirstLogin && (
+        <Card className="border-primary/20 bg-primary/5 shadow-lg animate-in slide-in-from-top duration-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xl font-bold flex items-center gap-2 text-primary">
+              <CheckCircle className="w-6 h-6" />
+              أهلاً بك يا {profile.full_name?.split(' ')[0]}!
+            </CardTitle>
+            <CardDescription className="text-primary/70 font-medium">
+              يسعدنا انضمامك إلينا. يرجى ضبط الإعدادات الافتراضية لحسابك للمتابعة.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2 text-muted-foreground">
+            <p>• قم بتحديد <strong>السعر الافتراضي</strong> للحصص الشهرية.</p>
+            <p>• أضف <strong>رابط Google Meet</strong> الخاص بك لتسهيل الانضمام للحصص.</p>
+            <p>• اختر <strong>العملة</strong> التي تفضل استلام تقاريرك بها.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Profile Info */}
       <Card>
         <CardHeader>

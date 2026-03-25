@@ -34,7 +34,6 @@ const teacherLinks = [
 
 const studentLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/sessions', label: 'حصصي', icon: BookOpen },
   { href: '/dashboard/progress', label: 'تقدمي', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },

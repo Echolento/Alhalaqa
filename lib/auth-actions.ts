@@ -46,13 +46,38 @@ export async function signIn(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
     return { error: error.message }
+  }
+
+  const user = data.user
+  if (user) {
+    // Get user profile to check role and settings
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role === 'teacher') {
+      const { data: teacher } = await supabase
+        .from('teachers')
+        .select('default_monthly_price')
+        .eq('profile_id', user.id)
+        .single()
+
+      // If it's a new teacher (price is 0 or null), redirect to settings first
+      // Use Number() to handle numeric strings or nulls safely
+      if (!teacher || !teacher.default_monthly_price || Number(teacher.default_monthly_price) === 0) {
+        revalidatePath('/', 'layout')
+        redirect('/dashboard/settings?first_login=true')
+      }
+    }
   }
 
   revalidatePath('/', 'layout')
