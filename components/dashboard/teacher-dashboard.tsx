@@ -310,27 +310,27 @@ async function WeeklySummary() {
         return (
           <Link
             key={d.date}
-            href="/dashboard/sessions"
+            href="/dashboard/calendar"
             className={`
-              p-2 min-h-[68px] flex flex-col items-center justify-center gap-0.5
-              rounded-lg border text-center
+              p-3 min-h-[80px] flex flex-col items-center justify-center gap-1
+              rounded-2xl border transition-all duration-300 active:scale-95
               ${isToday
                 ? 'border-primary bg-primary text-primary-foreground'
                 : hasSession
-                  ? 'border-primary/30 bg-primary/5'
-                  : 'border-muted bg-card hover:bg-accent/30'
+                  ? 'border-primary/30 bg-primary/5 hover:bg-primary/10'
+                  : 'border-border bg-card hover:bg-muted'
               }
             `}
           >
-            <span className={`text-xs font-medium ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
               {isToday ? 'اليوم' : dayLabel}
             </span>
-            <span className={`text-sm font-bold ${isToday ? 'text-primary-foreground' : ''}`}>
+            <span className={`text-sm font-black transition-all ${isToday ? 'text-primary-foreground' : ''}`}>
               {dayNum}
             </span>
-            <span className={`text-lg font-bold leading-none ${isToday ? 'text-primary-foreground' : hasSession ? 'text-primary' : 'text-muted-foreground'}`}>
-              {d.count}
-            </span>
+            {hasSession && (
+              <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isToday ? 'bg-primary-foreground' : 'bg-primary animate-pulse'}`} />
+            )}
           </Link>
         )
       })}

@@ -16,10 +16,24 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronRight, ChevronLeft, Plus, Video } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Plus, Video, Calendar as CalendarIcon } from 'lucide-react'
 import { createSession, updateSessionDetails, deleteSession } from '@/lib/data-actions'
 import { cn } from '@/lib/utils'
-import { FormattedDate } from '@/components/ui/formatted-date'
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths,
+  getDay,
+  isToday as isDateToday
+} from 'date-fns'
+import { arSA } from 'date-fns/locale'
 
 interface Session {
   id: string
@@ -50,18 +64,19 @@ const MONTHS = [
 ]
 
 export function CalendarView({ sessions, students }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState<Date | null>(null)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setCurrentDate(new Date())
+    setMounted(true)
   }, [])
 
-  if (!currentDate) return null // Prevent hydration mismatch by not rendering calendar until mounted
+  if (!mounted) return null
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -80,14 +95,7 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
   }
 
   const getSessionsForDate = (date: Date) => {
-    return sessions.filter((session) => {
-      const sessionDate = new Date(session.scheduled_at)
-      return (
-        sessionDate.getDate() === date.getDate() &&
-        sessionDate.getMonth() === date.getMonth() &&
-        sessionDate.getFullYear() === date.getFullYear()
-      )
-    })
+    return sessions.filter((session) => isSameDay(new Date(session.scheduled_at), date))
   }
 
   const handleCreateSession = async (formData: FormData) => {
@@ -223,41 +231,82 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
     return days
   }
 
-  const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : []
+  const selectedDateSessions = sessions.filter((session) => isSameDay(new Date(session.scheduled_at), selectedDate))
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{MONTHS[month]} {year}</CardTitle>
+    <Card className="border-none shadow-xl bg-background/50 backdrop-blur-sm overflow-hidden">
+      <CardHeader className="flex flex-col sm:flex-row items-center justify-between border-b bg-muted/30 pb-4 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-xl text-primary font-bold">
+            <CalendarIcon className="w-5 h-5" />
+          </div>
+          <CardTitle className="text-xl font-black tracking-tight">
+            {format(currentDate, 'MMMM yyyy', { locale: arSA })}
+          </CardTitle>
+        </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={nextMonth}>
+          <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="rounded-xl">
             <ChevronRight className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={prevMonth}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              setCurrentDate(new Date())
+              setSelectedDate(new Date())
+            }}
+            className="rounded-xl px-4 font-bold"
+          >
+            اليوم
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="rounded-xl">
             <ChevronLeft className="w-4 h-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-          {DAYS.map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-              <span className="hidden md:inline">{day}</span>
-              <span className="md:hidden">
-                {day === 'الأحد' ? 'ح' :
-                  day === 'الإثنين' ? 'ن' :
-                    day === 'الثلاثاء' ? 'ث' :
-                      day === 'الأربعاء' ? 'ر' :
-                        day === 'الخميس' ? 'خ' :
-                          day === 'الجمعة' ? 'ج' : 'س'}
-              </span>
+      
+      <CardContent className="p-0">
+        {/* Mobile View: Compact Grid */}
+        <div className="block md:hidden">
+          <MobileCalendar 
+            currentDate={currentDate} 
+            selectedDate={selectedDate} 
+            setSelectedDate={setSelectedDate}
+            sessions={sessions}
+          />
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-black text-lg flex items-center gap-2">
+                <div className="w-1.5 h-6 bg-primary rounded-full" />
+                {format(selectedDate, 'eeee, d MMMM', { locale: arSA })}
+                <Badge variant="secondary" className="mr-2 rounded-full font-black px-2 py-0.5 bg-primary/10 text-primary border-primary/20">
+                  {selectedDateSessions.length} حصص
+                </Badge>
+              </h3>
             </div>
-          ))}
+            
+            <MobileSessionList 
+              sessions={selectedDateSessions} 
+              onEdit={(session) => {
+                setSelectedSession(session)
+                setIsEditMode(true)
+                setIsDialogOpen(true)
+              }}
+            />
+          </div>
         </div>
 
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1 md:gap-2">{renderCalendarDays()}</div>
+        {/* Desktop View: Grid */}
+        <div className="hidden md:block p-6">
+          <div className="grid grid-cols-7 gap-px bg-muted/30 rounded-2xl overflow-hidden border border-muted/50">
+            {DAYS.map((day) => (
+              <div key={day} className="bg-muted/10 p-3 text-center text-xs font-black text-muted-foreground uppercase tracking-wider">
+                {day}
+              </div>
+            ))}
+            {renderCalendarDays()}
+          </div>
+        </div>
       </CardContent>
 
       {/* Dialog for adding/viewing sessions */}
@@ -330,108 +379,218 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
             </div>
           )}
 
-          {/* Add new session form */}
-          <form action={handleCreateSession} className="space-y-4">
-            {!isEditMode && (
-              <h4 className="font-medium flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                إضافة حصة جديدة
-              </h4>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="student_id">الطالب</Label>
-              <Select
-                name="student_id"
-                required
-                defaultValue={selectedSession?.student.id}
-                disabled={isEditMode}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر الطالب" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.profile?.full_name || 'طالب'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          {isEditMode && (
+            <form action={handleCreateSession} className="space-y-4 pt-4 border-t mt-4">
               <div className="space-y-2">
-                <Label htmlFor="time">الوقت</Label>
-                <Input
-                  id="time"
-                  name="time"
-                  type="time"
+                <Label htmlFor="student_id">الطالب</Label>
+                <Select
+                  name="student_id"
                   required
-                  dir="ltr"
-                  defaultValue={selectedSession ? new Date(selectedSession.scheduled_at).toTimeString().substring(0, 5) : ''}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="duration">المدة (دقيقة)</Label>
-                <Select name="duration" defaultValue={selectedSession?.duration_minutes.toString() || "30"}>
+                  defaultValue={selectedSession?.student.id}
+                  disabled={true}
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="اختر الطالب" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="15">15 دقيقة</SelectItem>
-                    <SelectItem value="30">30 دقيقة</SelectItem>
-                    <SelectItem value="45">45 دقيقة</SelectItem>
-                    <SelectItem value="60">60 دقيقة</SelectItem>
+                    {students.map((student) => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.profile?.full_name || 'طالب'}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="meet_link">رابط Google Meet (اختياري)</Label>
-              <Input
-                id="meet_link"
-                name="meet_link"
-                type="url"
-                placeholder="https://meet.google.com/..."
-                dir="ltr"
-                defaultValue={selectedSession?.google_meet_link || ''}
-              />
-            </div>
-            <DialogFooter className="gap-2 sm:justify-between">
-              {isEditMode ? (
-                <>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={async () => {
-                      if (!selectedSession) return;
-                      if (confirm('هل أنت متأكد من حذف هذه الحصة؟')) {
-                        setLoading(true)
-                        await deleteSession(selectedSession.id)
-                        setLoading(false)
-                        setIsDialogOpen(false)
-                        setIsEditMode(false)
-                        setSelectedSession(null)
-                      }
-                    }}
-                  >
-                    حذف الحصة
-                  </Button>
-                </>
-              ) : (
-                <Button type="submit" disabled={loading || students.length === 0} className="w-full">
-                  {loading ? 'جاري الإضافة...' : 'إضافة الحصة'}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="time">الوقت</Label>
+                  <Input
+                    id="time"
+                    name="time"
+                    type="time"
+                    required
+                    dir="ltr"
+                    defaultValue={selectedSession ? new Date(selectedSession.scheduled_at).toTimeString().substring(0, 5) : ''}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="duration">المدة (دقيقة)</Label>
+                  <Select name="duration" defaultValue={selectedSession?.duration_minutes.toString() || "30"}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 دقيقة</SelectItem>
+                      <SelectItem value="30">30 دقيقة</SelectItem>
+                      <SelectItem value="45">45 دقيقة</SelectItem>
+                      <SelectItem value="60">60 دقيقة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meet_link">رابط Google Meet (اختياري)</Label>
+                <Input
+                  id="meet_link"
+                  name="meet_link"
+                  type="url"
+                  placeholder="https://meet.google.com/..."
+                  dir="ltr"
+                  defaultValue={selectedSession?.google_meet_link || ''}
+                />
+              </div>
+              <DialogFooter className="gap-2 sm:justify-between">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
                 </Button>
-              )}
-            </DialogFooter>
-          </form>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!selectedSession) return;
+                    if (confirm('هل أنت متأكد من حذف هذه الحصة؟')) {
+                      setLoading(true)
+                      await deleteSession(selectedSession.id)
+                      setLoading(false)
+                      setIsDialogOpen(false)
+                      setIsEditMode(false)
+                      setSelectedSession(null)
+                    }
+                  }}
+                >
+                  حذف الحصة
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
+  )
+}
+
+function MobileCalendar({ currentDate, selectedDate, setSelectedDate, sessions }: { 
+  currentDate: Date, 
+  selectedDate: Date, 
+  setSelectedDate: (d: Date) => void,
+  sessions: Session[]
+}) {
+  const monthStart = startOfMonth(currentDate)
+  const monthEnd = endOfMonth(monthStart)
+  const calendarStart = startOfWeek(monthStart)
+  const calendarEnd = endOfWeek(monthEnd)
+
+  const calendarDays = eachDayOfInterval({
+    start: calendarStart,
+    end: calendarEnd,
+  })
+
+  return (
+    <div className="bg-muted/30 p-4">
+      <div className="grid grid-cols-7 mb-4">
+        {['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'].map((day, i) => (
+          <div key={i} className="text-center text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-2">
+        {calendarDays.map((day, i) => {
+          const isSelected = isSameDay(day, selectedDate)
+          const isCurrentMonth = isSameMonth(day, monthStart)
+          const daySessions = sessions.filter(s => isSameDay(new Date(s.scheduled_at), day))
+          const isToday = isDateToday(day)
+
+          return (
+            <div 
+              key={i} 
+              onClick={() => setSelectedDate(day)}
+              className={cn(
+                "relative flex flex-col items-center justify-center py-3 transition-all duration-300 rounded-2xl cursor-pointer",
+                isSelected && "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110 z-10",
+                !isSelected && isCurrentMonth && "hover:bg-muted/50",
+                !isCurrentMonth && "opacity-10",
+                isToday && !isSelected && "border border-primary/20 bg-primary/5 text-primary"
+              )}
+            >
+              <span className="text-sm font-bold">{format(day, 'd')}</span>
+              {daySessions.length > 0 && (
+                <div className={cn(
+                  "mt-0.5 flex gap-0.5",
+                  isSelected ? "opacity-100" : "opacity-60"
+                )}>
+                  {daySessions.slice(0, 3).map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      className={cn(
+                        "w-1 h-1 rounded-full",
+                        isSelected ? "bg-primary-foreground" : "bg-primary"
+                      )} 
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MobileSessionList({ sessions, onEdit }: { sessions: Session[], onEdit: (s: Session) => void }) {
+  if (sessions.length === 0) {
+    return (
+      <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-muted/50">
+        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CalendarIcon className="w-8 h-8 text-muted-foreground/50" />
+        </div>
+        <p className="text-muted-foreground font-medium">لا توجد حصص مجدولة لهذا اليوم</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {sessions.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map((session) => (
+        <div 
+          key={session.id}
+          onClick={() => onEdit(session)}
+          className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border hover:bg-muted transition-all active:scale-95 cursor-pointer group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0 border border-primary/10">
+              <span className="text-[10px] font-black text-primary/70 leading-none">
+                {format(new Date(session.scheduled_at), 'a', { locale: arSA })}
+              </span>
+              <span className="text-sm font-black text-primary">
+                {format(new Date(session.scheduled_at), 'hh:mm')}
+              </span>
+            </div>
+            <div>
+              <p className="font-black text-base group-hover:text-primary transition-colors">
+                {session.student?.profile?.full_name || 'طالب'}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">
+                المدة: {session.duration_minutes} دقيقة
+              </p>
+            </div>
+          </div>
+          <Badge 
+            variant={session.status === 'completed' ? 'secondary' : 'outline'}
+            className={cn(
+              "rounded-lg px-3 py-1 font-bold",
+              session.status === 'completed' && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+              session.status === 'scheduled' && "bg-blue-500/10 text-blue-600 border-blue-500/20"
+            )}
+          >
+            {session.status === 'completed' ? 'مكتمل' : 'مجدول'}
+          </Badge>
+        </div>
+      ))}
+    </div>
   )
 }
