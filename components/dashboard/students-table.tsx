@@ -24,8 +24,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, ArrowLeftRight, BookOpen, Users, UserMinus, Trash2, Calendar } from 'lucide-react'
-import { transferStudent, removeStudent } from '@/lib/data-actions'
+import { Search, ArrowLeftRight, BookOpen, Users, UserMinus, Trash2, Calendar, Wallet, Check, X } from 'lucide-react'
+import { transferStudent, removeStudent, toggleStudentPayment } from '@/lib/data-actions'
 import { CreateSessionDialog } from './create-session-dialog'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { StudentNotesModal } from './student-notes-modal'
@@ -36,6 +36,7 @@ interface Student {
   current_surah: string | null
   current_ayah: number | null
   profile: { full_name: string | null }
+  monthly_price: number
   teacher?: {
     id: string
     profile: { full_name: string | null }
@@ -51,14 +52,18 @@ interface StudentsTableProps {
   students: Student[]
   teachers: Teacher[]
   isAdmin: boolean
+  payments?: Array<{ student_id: string; paid: boolean }>
+  currency?: string
 }
 
-export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProps) {
+export function StudentsTable({ students, teachers, isAdmin, payments = [], currency = 'SAR' }: StudentsTableProps) {
+  const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
   const [search, setSearch] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isRemoveOpen, setIsRemoveOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
   const { toast } = useToast()
 
   const filteredStudents = students.filter((student) =>
@@ -129,6 +134,23 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
     }
   }
 
+  const getPaymentStatus = (studentId: string) => {
+    const p = payments.find(p => p.student_id === studentId)
+    return p?.paid ?? null // null = no payment data
+  }
+
+  const handlePaymentToggle = async (studentId: string) => {
+    setPaymentLoading(studentId)
+    const result = await toggleStudentPayment(studentId)
+    if (result.success) {
+      toast({ title: 'تم تحديث حالة الدفع' })
+      window.location.reload()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+    }
+    setPaymentLoading(null)
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -153,11 +175,13 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
         <div className="hidden md:block rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-right">الطالب</TableHead>
-                <TableHead className="text-right">التقدم الحالي</TableHead>
-                {isAdmin && <TableHead className="text-right">المعلم</TableHead>}
-                <TableHead className="text-right">الإجراءات</TableHead>
+              <TableRow className="hover:bg-transparent border-b-2 border-primary/5">
+                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الطالب</TableHead>
+                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">التقدم</TableHead>
+                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">السعر</TableHead>
+                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الحالة</TableHead>
+                {isAdmin && <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">المعلم</TableHead>}
+                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -168,62 +192,109 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell>
-                      <StudentNotesModal
-                        studentId={student.id}
-                        studentName={student.profile?.full_name || 'طالب'}
-                        trigger={
-                          <button className="flex items-center gap-3 text-right hover:text-primary transition-colors text-right group w-full">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                              <span className="text-sm font-medium text-primary">
-                                {student.profile?.full_name?.charAt(0) || '؟'}
-                              </span>
-                            </div>
-                            <span className="font-medium">
-                              {student.profile?.full_name || 'طالب'}
-                            </span>
-                          </button>
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {student.current_surah ? (
-                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                          <BookOpen className="w-3 h-3" />
-                          {student.current_surah} : {student.current_ayah || 1}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    {isAdmin && (
+                filteredStudents.map((student) => {
+                  const isPaid = getPaymentStatus(student.id)
+                  const s = student as any
+                  return (
+                    <TableRow 
+                      key={student.id} 
+                      className={`h-20 transition-all border-b border-primary/5 hover:bg-primary/[0.02] ${isPaid === false ? 'bg-red-50/50' : ''}`}
+                    >
                       <TableCell>
-                        {student.teacher?.profile?.full_name || '-'}
+                        <StudentNotesModal
+                          studentId={student.id}
+                          studentName={student.profile?.full_name || 'طالب'}
+                          trigger={
+                            <button className="flex items-center gap-4 text-right hover:text-primary transition-all text-right group w-full outline-none">
+                              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                                <span className="text-sm font-black">
+                                  {student.profile?.full_name?.charAt(0) || '؟'}
+                                </span>
+                              </div>
+                              <span className={`font-black group-hover:translate-x-1 transition-transform ${isPaid === false ? 'text-red-700' : 'text-slate-900'}`}>
+                                {student.profile?.full_name || 'طالب'}
+                              </span>
+                            </button>
+                          }
+                        />
                       </TableCell>
-                    )}
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {isAdmin && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedStudent(student)
-                              setIsTransferOpen(true)
-                            }}
-                          >
-                            <ArrowLeftRight className="w-4 h-4 ml-1" />
-                            نقل
-                          </Button>
+                      <TableCell>
+                        {student.current_surah ? (
+                          <Badge variant="outline" className="flex items-center gap-2 w-fit px-3 py-1 font-bold border-primary/20 bg-white/50">
+                            <BookOpen className="w-3.5 h-3.5 text-primary" />
+                            {student.current_surah} : {student.current_ayah || 1}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground font-medium">-</span>
                         )}
-                        {!isAdmin && (
-                          <div className="flex items-center gap-2">
-                            <CreateSessionDialog
-                              students={students}
-                              defaultStudentId={student.id}
-                              trigger={
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-black text-slate-700">{s.monthly_price || 0} {currencySymbol}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${
+                            isPaid === true
+                              ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                              : isPaid === false
+                              ? 'bg-red-600 text-white animate-pulse shadow-red-600/20'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {isPaid === true ? 'مدفوع ✓' : isPaid === false ? 'غير مدفوع' : 'بانتظار التحصيل'}
+                        </Badge>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell className="font-medium text-slate-500">
+                          {student.teacher?.profile?.full_name || '-'}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl font-bold h-10 border-slate-200 hover:border-primary/30"
+                              onClick={() => {
+                                setSelectedStudent(student)
+                                setIsTransferOpen(true)
+                              }}
+                            >
+                              <ArrowLeftRight className="w-4 h-4 ml-2 text-primary" />
+                              نقل
+                            </Button>
+                          )}
+                          {!isAdmin && (
+                            <div className="flex items-center gap-2">
+                              {getPaymentStatus(student.id) !== null && (
+                                <Button
+                                  size="sm"
+                                  className={`rounded-xl font-black h-10 px-4 transition-all ${
+                                    getPaymentStatus(student.id) 
+                                      ? 'bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700' 
+                                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                                  }`}
+                                  onClick={() => handlePaymentToggle(student.id)}
+                                  disabled={paymentLoading === student.id}
+                                >
+                                  {getPaymentStatus(student.id) ? (
+                                    <>
+                                      <X className="w-4 h-4 ml-2" />
+                                      إلغاء الدفع
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="w-4 h-4 ml-2" />
+                                      تحديد كمدفوع
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                              <CreateSessionDialog
+                                students={students}
+                                defaultStudentId={student.id}
+                                trigger={
                                 <Button size="sm" variant="outline" className="gap-1">
                                   <Calendar className="w-4 h-4" />
                                   جدولة حصة
@@ -247,9 +318,10 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
+                );
+              })
+            )}
+          </TableBody>
           </Table>
         </div>
 
@@ -261,7 +333,7 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
             </div>
           ) : (
             filteredStudents.map((student) => (
-              <Card key={student.id}>
+              <Card key={student.id} className={getPaymentStatus(student.id) === false ? 'border-red-200 bg-red-50/50' : ''}>
                 <CardContent className="p-4 space-y-3">
                   {/* Student Info */}
                   <StudentNotesModal
@@ -274,8 +346,8 @@ export function StudentsTable({ students, teachers, isAdmin }: StudentsTableProp
                             {student.profile?.full_name?.charAt(0) || '؟'}
                           </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-primary hover:underline">
+                        <div className="flex-1 min-w-0 text-right">
+                          <p className={`font-bold truncate hover:underline ${getPaymentStatus(student.id) === false ? 'text-red-700' : 'text-primary'}`}>
                             {student.profile?.full_name || 'طالب'}
                           </p>
                           {student.current_surah ? (

@@ -40,7 +40,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                 <div className="relative">
                     <Input
                         type={showPassword ? 'text' : 'password'}
-                        className={cn('pl-10 text-right', className)}
+                        className={cn('pl-10 pr-10 text-right', className)}
                         dir="ltr"
                         ref={ref}
                         onChange={handleChange}

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { StudentsTable } from '@/components/dashboard/students-table'
-import { getTeacherStudents, getAllStudents, getAllTeachers } from '@/lib/data-actions'
+import { getTeacherStudents, getAllStudents, getAllTeachers, getTeacherPayments } from '@/lib/data-actions'
 import { InviteStudentDialog } from '@/components/dashboard/invite-student-dialog'
 
 export default async function StudentsPage() {
@@ -28,6 +28,11 @@ export default async function StudentsPage() {
 
   const teachers = profile.role === 'admin' ? await getAllTeachers() : []
 
+  // Get payment data for teacher view
+  const paymentData = profile.role === 'teacher'
+    ? await getTeacherPayments()
+    : { students: [], payments: [], currency: 'SAR' }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -41,7 +46,13 @@ export default async function StudentsPage() {
         </div>
         {profile.role === 'teacher' && <InviteStudentDialog />}
       </div>
-      <StudentsTable students={students} teachers={teachers} isAdmin={profile.role === 'admin'} />
+      <StudentsTable
+        students={students}
+        teachers={teachers}
+        isAdmin={profile.role === 'admin'}
+        payments={paymentData.payments}
+        currency={paymentData.currency}
+      />
     </div>
   )
 }

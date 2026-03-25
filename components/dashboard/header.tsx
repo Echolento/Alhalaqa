@@ -27,6 +27,7 @@ import {
   Building,
   GraduationCap,
   LayoutDashboard,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +37,7 @@ interface HeaderProps {
 
 const teacherLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/calendar', label: 'التقويم', icon: Calendar },
   { href: '/dashboard/students', label: 'الطلاب', icon: Users },
   { href: '/dashboard/sessions', label: 'الحصص', icon: BookOpen },
@@ -45,6 +47,7 @@ const teacherLinks = [
 
 const studentLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/sessions', label: 'حصصي', icon: BookOpen },
   { href: '/dashboard/progress', label: 'تقدمي', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
@@ -85,9 +88,9 @@ export function DashboardHeader({ profile }: HeaderProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 p-0">
-            <div className="p-6 border-b border-border bg-primary/[0.03] backdrop-blur-sm shadow-sm">
+            <div className="p-6 border-b border-border">
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-primary/10 backdrop-blur-sm border border-border rounded-xl flex items-center justify-center p-2 shadow-sm">
+                <div className="w-16 h-16 bg-primary/10 border border-border rounded-xl flex items-center justify-center p-2">
                   <Image
                     src="/Logo.webp"
                     alt="Logo"
@@ -158,12 +161,6 @@ export function DashboardHeader({ profile }: HeaderProps) {
             <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
-              <User className="w-4 h-4" />
-              <span>الملف الشخصي</span>
-            </Link>
-          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
               <Settings className="w-4 h-4" />

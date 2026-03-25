@@ -102,13 +102,18 @@ export async function updateTeacherSettings(formData: FormData) {
 
   const googleMeetLink = formData.get('google_meet_link') as string
   const bio = formData.get('bio') as string
+  const currency = formData.get('currency') as string
+
+  const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
   // Update teacher record
   const { error } = await supabase
     .from('teachers')
     .update({
       google_meet_link: googleMeetLink,
-      bio: bio
+      bio: bio,
+      currency: currency,
+      default_monthly_price: defaultMonthlyPrice
     })
     .eq('profile_id', user.id)
 

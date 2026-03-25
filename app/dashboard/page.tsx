@@ -5,14 +5,12 @@ import { StudentDashboard } from '@/components/dashboard/student-dashboard'
 import { AdminDashboard } from '@/components/dashboard/admin-dashboard'
 import { PendingInvitations } from '@/components/dashboard/pending-invitations'
 import { UserPlus } from 'lucide-react'
-import { getTeacherDashboard, getStudentDashboard, getAdminDashboard, getTeacherStudents } from '@/lib/data-actions'
+import { getTeacherDashboard, getStudentDashboard, getAdminDashboard, getTeacherStudents, getTeacherPayments, getStudentPaymentStatus, getRevenueTrend } from '@/lib/data-actions'
 import { getStudentInvitations } from '@/lib/invitation-actions'
 
 export default async function DashboardPage() {
-  console.log('[DASH] start DashboardPage')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  console.log('[DASH] user', { hasUser: !!user, id: user?.id, email: user?.email })
 
   if (!user) {
     redirect('/auth/login')
@@ -23,7 +21,6 @@ export default async function DashboardPage() {
     .select('*')
     .eq('id', user.id)
     .single()
-  console.log('[DASH] profile', { exists: !!profile, role: profile?.role, org: profile?.organization_id })
 
   if (!profile) {
     redirect('/auth/login')
@@ -35,34 +32,31 @@ export default async function DashboardPage() {
   }
 
   if (profile.role === 'teacher') {
-    console.log('[DASH] role=teacher -> fetching teacher data')
-    const [data, students] = await Promise.all([
+    const [data, students, paymentData, revenueTrend] = await Promise.all([
       getTeacherDashboard(),
-      getTeacherStudents()
+      getTeacherStudents(),
+      getTeacherPayments(),
+      getRevenueTrend(6),
     ])
-    console.log('[DASH] teacher data fetched', { hasData: !!data, studentsCount: students?.length })
-    return <TeacherDashboard data={data} students={students} />
+    return <TeacherDashboard 
+      data={data} 
+      students={students} 
+      paymentData={paymentData} 
+      revenueTrend={revenueTrend} 
+    />
   }
 
   if (profile.role === 'student') {
-    console.log('[DASH] role=student -> fetching student data + invitations')
-    const [data, invitations] = await Promise.all([
+    const [data, invitations, paymentStatus] = await Promise.all([
       getStudentDashboard(),
-      getStudentInvitations()
+      getStudentInvitations(),
+      getStudentPaymentStatus(),
     ])
-
-    console.log('[DASH] student data fetched', {
-      hasData: !!data,
-      hasStudent: !!data?.student,
-      teacherId: data?.student?.teacher_id,
-      invCount: invitations?.length
-    })
 
     const hasTeacherLink = data?.student?.teacher_id !== null && data?.student?.teacher_id !== undefined
     const hasInvitations = invitations.length > 0
 
     if (!hasTeacherLink && !hasInvitations) {
-      console.log('[DASH] no teacher and no invitations -> empty state')
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center animate-in fade-in duration-500">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
@@ -78,11 +72,10 @@ export default async function DashboardPage() {
       )
     }
 
-    console.log('[DASH] rendering student view with invitations + data')
     return (
       <div className="space-y-6">
         <PendingInvitations invitations={invitations} />
-        <StudentDashboard data={data} />
+        <StudentDashboard data={data} paymentStatus={paymentStatus} />
       </div>
     )
   }

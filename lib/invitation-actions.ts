@@ -203,12 +203,20 @@ export async function acceptInvitation(invitationId: string) {
             .update({ teacher_id: invitation.teacher_id })
             .eq('id', existingStudent.id)
     } else {
+        // Get teacher's default price
+        const { data: teacher } = await supabase
+            .from('teachers')
+            .select('default_monthly_price')
+            .eq('id', invitation.teacher_id)
+            .single()
+
         // Create new student record
         await supabase
             .from('students')
             .insert({
                 profile_id: user.id,
                 teacher_id: invitation.teacher_id,
+                monthly_price: teacher?.default_monthly_price || 0
             })
     }
 
@@ -325,15 +333,25 @@ export async function autoAcceptInvitations() {
         // Check if student record exists
         const { data: student } = await supabase
             .from('students')
-            .select('id, teacher_id')
+            .select('id, teacher_id, monthly_price')
             .eq('profile_id', user.id)
             .maybeSingle()
+
+        // Get teacher's default price
+        const { data: teacher } = await supabase
+            .from('teachers')
+            .select('default_monthly_price')
+            .eq('id', invite.teacher_id)
+            .single()
 
         if (student) {
             if (!student.teacher_id) {
                 await supabase
                     .from('students')
-                    .update({ teacher_id: invite.teacher_id })
+                    .update({ 
+                        teacher_id: invite.teacher_id,
+                        monthly_price: student.monthly_price || teacher?.default_monthly_price || 0
+                    })
                     .eq('id', student.id)
             }
         } else {
@@ -343,6 +361,7 @@ export async function autoAcceptInvitations() {
                 .insert({
                     profile_id: user.id,
                     teacher_id: invite.teacher_id,
+                    monthly_price: teacher?.default_monthly_price || 0
                 })
         }
 

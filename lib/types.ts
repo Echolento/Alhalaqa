@@ -26,6 +26,8 @@ export interface Teacher {
   organization_id: string;
   google_meet_link: string | null;
   bio: string | null;
+  currency: string; // 'SAR' | 'EGP'
+  default_monthly_price: number;
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -39,6 +41,8 @@ export interface Student {
   current_surah: string | null;
   current_ayah: number | null;
   notes: string | null;
+  monthly_price: number; // The expected monthly fee
+  payment_day: number; // Day of month (1-31)
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -119,4 +123,16 @@ export interface SessionForm {
   duration_minutes: number;
   google_meet_link?: string;
   is_recurring?: boolean
+}
+
+export interface StudentPayment {
+  id: string;
+  student_id: string;
+  month: string; // date string, 1st of month
+  paid: boolean;
+  paid_at: string | null;
+  amount_paid: number; // The actual amount paid
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }

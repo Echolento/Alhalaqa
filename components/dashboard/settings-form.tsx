@@ -17,6 +17,8 @@ interface TeacherData {
   id: string
   google_meet_link: string | null
   bio: string | null
+  currency: string
+  default_monthly_price: number
 }
 
 interface SettingsFormProps {
@@ -146,6 +148,36 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 />
                 <p className="text-xs text-muted-foreground">
                   سيُستخدم هذا الرابط تلقائياً لجميع الحصص الجديدة
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currency">العملة والمنطقة</Label>
+                <select
+                  id="currency"
+                  name="currency"
+                  defaultValue={teacherData?.currency || 'EGP'}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="EGP">الجنية المصري (EGP)</option>
+                  <option value="SAR">الريال السعودي (SAR)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  اختر العملة التي تود ضهورها في تقارير المدفوعات والاشتراكات
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="default_monthly_price">السعر الافتراضي للطلاب الجدد ({teacherData?.currency === 'EGP' ? 'ج.م' : 'ر.س'})</Label>
+                <Input
+                  id="default_monthly_price"
+                  name="default_monthly_price"
+                  type="number"
+                  placeholder="0"
+                  defaultValue={teacherData?.default_monthly_price || 0}
+                />
+                <p className="text-xs text-muted-foreground">
+                  سيتم تطبيق هذا السعر تلقائياً عند إضافة طالب جديد
                 </p>
               </div>
 

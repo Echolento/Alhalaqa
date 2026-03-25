@@ -2,29 +2,23 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Calendar,
   CheckCircle,
   Clock,
-  Star,
   Video,
   ArrowLeft,
   BookOpen,
   User,
-  FileText,
   History,
   MessageSquare,
-  LayoutDashboard,
+  Wallet,
+  TrendingUp,
+  Award,
+  ChevronLeft
 } from 'lucide-react'
 import type { StudentStats } from '@/lib/types'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -32,9 +26,13 @@ import { FormattedDate } from '@/components/ui/formatted-date'
 interface StudentDashboardProps {
   data: {
     student: {
+      id: string
       current_surah: string | null
       current_ayah: number | null
+      teacher_id: string | null
+      profile: { full_name: string | null }
       teacher: {
+        id: string
         google_meet_link: string | null
         profile: { full_name: string | null }
       } | null
@@ -61,27 +59,20 @@ interface StudentDashboardProps {
       }>
     }>
   } | null
+  paymentStatus?: {
+    month: string
+    paid: boolean
+    paid_at: string | null
+  } | null
 }
 
-export function StudentDashboard({ data }: StudentDashboardProps) {
+export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps) {
   const [teacherName, setTeacherName] = useState<string | null>(null)
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
-
-  if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
-        <BookOpen className="w-16 h-16 text-muted-foreground" />
-        <p className="text-muted-foreground text-lg">لم يتم إعداد حساب الطالب بعد</p>
-        <p className="text-sm text-muted-foreground">يرجى التواصل مع المعلم لإضافتك كطالب</p>
-      </div>
-    )
-  }
+  
+  if (!data) return null
 
   const { student, stats, upcomingSessions, recentSessions } = data
-
-  console.log('[StudentDashboard] render — teacher raw:', (student as any)?.teacher)
-  console.log('[StudentDashboard] render — teacher.profile.full_name:', (student as any)?.teacher?.profile?.full_name)
-  console.log('[StudentDashboard] render — teacherName state:', teacherName)
+  const isPaid = paymentStatus?.paid ?? false
 
   useEffect(() => {
     async function fetchTeacherName() {
@@ -89,282 +80,179 @@ export function StudentDashboard({ data }: StudentDashboardProps) {
         const teacher = (student as any)?.teacher
         const haveName = teacher?.profile?.full_name
         const teacherId = teacher?.id
-        console.log('[StudentDashboard] useEffect — teacher:', { id: teacherId, haveName })
+
         if (!haveName && teacherId) {
-          console.log('[StudentDashboard] useEffect — fetching teacher name via API for id:', teacherId)
           const res = await fetch(`/api/teachers/${teacherId}/display`)
           if (res.ok) {
             const d = await res.json()
-            console.log('[StudentDashboard] useEffect — API returned:', d)
             if (d?.full_name) setTeacherName(d.full_name)
           }
         }
-      } catch (_) {
-        // ignore
-      }
+      } catch (_) {}
     }
     if (student?.teacher) fetchTeacherName()
   }, [student?.teacher])
 
-  const statCards = [
-    { label: 'الحصص المكتملة', value: stats.completedSessions, icon: CheckCircle, color: 'text-success' },
-    // { label: 'متوسط التقييم', value: stats.averageRating || '-', icon: Star, color: 'text-chart-3' },
-  ]
-
-  // Get the latest task
   const latestNote = recentSessions.length > 0 ? recentSessions[0].session_notes?.[0] : null
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">مرحباً بك</h1>
-        <p className="text-sm md:text-base text-muted-foreground">متابعة حصصك وتقدمك في حفظ القرآن الكريم</p>
+      {/* Simple Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">مرحباً {student.profile?.full_name?.split(' ')[0]}</h1>
+          <p className="text-muted-foreground font-medium">نظرة سريعة على حصصك ومدفوعاتك</p>
+        </div>
+        
+        <Link href="/dashboard/payments">
+          <Badge className={`px-4 py-2 rounded-xl text-sm font-bold border-none ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700 font-bold border border-red-200"}`}>
+            {isPaid ? "رسوم الشهر مدفوعة ✓" : "رسوم الشهر لم تدفع"}
+          </Badge>
+        </Link>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Simple Progress Card */}
+        <Card className="border shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                <Award className="w-5 h-5" />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">التقدم الحالي</p>
+            </div>
+            <h2 className="text-xl font-bold">سورة {student.current_surah || 'لم تحدد'}</h2>
+            <p className="text-sm text-muted-foreground mt-1">آية {student.current_ayah || '-'}</p>
+          </CardContent>
+        </Card>
+
+        {/* Stats Card */}
+        <Card className="border shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">الحصص المكتملة</p>
+                <p className="text-2xl font-bold">{stats.completedSessions}</p>
+              </div>
+              <div className="w-px h-10 bg-muted" />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">التقييم</p>
+                <p className="text-2xl font-bold text-amber-500">{stats.averageRating}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Next Session Card */}
+        <Card className="border shadow-sm">
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground font-medium mb-2">الحصة القادمة</p>
+            {upcomingSessions.length > 0 ? (
+              <div>
+                <p className="font-bold text-lg">
+                  <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ weekday: 'long' }} />
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  الساعة <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">لا توجد حصص مجدولة</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {/* Teacher Info */}
+          {/* Teacher Profile Card - Simplified */}
           {student.teacher && (
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <User className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium">معلمك</p>
-                    <p className="text-lg font-bold truncate">{student.teacher.profile?.full_name || teacherName || 'معلم'}</p>
-                  </div>
+            <div className="p-4 rounded-xl border bg-card flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-6 h-6 text-muted-foreground" />
                 </div>
-                {student.teacher.google_meet_link && (
-                  <Button asChild variant="outline" className="w-full sm:w-auto min-h-[44px]">
-                    <a href={student.teacher.google_meet_link} target="_blank" rel="noopener noreferrer">
-                      <Video className="w-4 h-4 ml-2" />
-                      انضم للحصة
-                    </a>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-xs text-muted-foreground">المعلم</p>
+                  <h3 className="font-bold">{student.teacher.profile?.full_name || teacherName || 'معلم'}</h3>
+                </div>
+              </div>
+              {student.teacher.google_meet_link && (
+                <Button asChild size="sm" className="w-full sm:w-auto">
+                  <Link href={student.teacher.google_meet_link} target="_blank">
+                    <Video className="w-4 h-4 ml-2" />
+                    دخول الحصة
+                  </Link>
+                </Button>
+              )}
+            </div>
           )}
 
-          {/* Stats & Notes Summary (Plan B) */}
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            {/* Completed Sessions Card */}
-            <Card className="h-[120px] md:h-[140px] flex flex-col justify-center shadow-sm">
-              <CardContent className="p-3 md:p-4 flex flex-col md:flex-row items-center md:justify-center text-center md:text-right gap-2 md:gap-4 h-full">
-                <div className="p-2 md:p-3 rounded-full bg-success/10 text-success shrink-0">
-                  <CheckCircle className="w-6 h-6 md:w-8 md:h-8" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl md:text-3xl font-bold text-success line-height-tight">{stats.completedSessions}</p>
-                  <p className="text-[10px] md:text-sm text-muted-foreground font-medium truncate">الحصص المكتملة</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Session Notes Stat Card -> Triggers Modal (Premium Aesthetic) */}
-            <Dialog open={isNotesModalOpen} onOpenChange={setIsNotesModalOpen}>
-              <DialogTrigger asChild>
-                <Card className="h-[120px] md:h-[140px] flex flex-col justify-center shadow-md cursor-pointer hover:bg-primary/5 transition-all active:scale-[0.98] border-primary/20 bg-primary/5 group">
-                  <CardContent className="p-3 md:p-4 flex flex-col items-center justify-center text-center gap-1 h-full">
-                    <div className="p-2 md:p-3 rounded-xl bg-primary text-primary-foreground shadow-sm group-hover:scale-110 transition-transform mb-1">
-                      <FileText className="w-5 h-5 md:w-6 md:h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm md:text-base font-bold text-primary">ملاحظات الحصة</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground font-medium">انقر للتفاصيل</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
-                <DialogHeader className="p-6 border-b sticky top-0 bg-background z-10">
-                  <DialogTitle className="flex items-center gap-2 text-xl">
-                    <FileText className="w-6 h-6 text-primary" />
-                    ملاحظات آخر حصة
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="p-6 space-y-6">
-                  {latestNote ? (
-                    <div className="space-y-6 md:space-y-8">
-                      {/* Session Date Header (Teacher-like) */}
-                      <div className="text-sm text-muted-foreground bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
-                        <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                          <Calendar className="w-5 h-5" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-semibold opacity-70">تاريخ الحصة الأخيرة</span>
-                          <FormattedDate
-                            date={recentSessions[0].scheduled_at}
-                            options={{ weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 md:gap-6">
-                        {latestNote.new_content && (
-                          <div className="space-y-2">
-                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
-                              <BookOpen className="w-4 h-4" />
-                              الجديد
-                            </h4>
-                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
-                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
-                                {latestNote.new_content}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {latestNote.far_past_review && (
-                          <div className="space-y-2">
-                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
-                              <History className="w-4 h-4" />
-                              الماضي البعيد
-                            </h4>
-                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
-                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
-                                {latestNote.far_past_review}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {latestNote.recent_past_review && (
-                          <div className="space-y-2">
-                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
-                              <Clock className="w-4 h-4" />
-                              الماضي القريب
-                            </h4>
-                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
-                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
-                                {latestNote.recent_past_review}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {latestNote.general_notes && (
-                          <div className="space-y-2">
-                            <h4 className="flex items-center gap-2 text-sm md:text-base font-extrabold text-primary">
-                              <MessageSquare className="w-4 h-4" />
-                              ملاحظات عامة
-                            </h4>
-                            <div className="p-4 bg-muted/40 rounded-xl border border-muted-foreground/10">
-                              <p className="text-foreground text-md md:text-lg leading-relaxed whitespace-pre-wrap font-medium">
-                                {latestNote.general_notes}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {!latestNote.new_content && !latestNote.far_past_review && !latestNote.recent_past_review && !latestNote.general_notes && (
-                        <div className="text-center py-10 bg-muted/20 rounded-xl border border-dashed">
-                          <p className="text-muted-foreground text-lg italic">لا توجد ملاحظات تفصيلية مسجلة لهذه الحصة.</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-                      <div className="bg-muted p-4 rounded-full">
-                        <FileText className="w-8 h-8 opacity-20" />
-                      </div>
-                      <p className="text-lg font-medium opacity-50 text-center">لا توجد ملاحظات مسجلة للحصة الأخيرة</p>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
+          {/* Recent Notes - Simplified */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold">ملاحظات الحصة الأخيرة</h3>
+            {latestNote ? (
+              <Card className="border shadow-sm">
+                <CardContent className="p-6 space-y-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">الواجب القادم</p>
+                    <p className="font-bold">{latestNote.next_task || 'لا يوجد واجب محدد'}</p>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-1">ملاحظات المعلم</p>
+                    <p className="text-sm italic">"{latestNote.general_notes || 'لا توجد ملاحظات'}"</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="text-muted-foreground text-center py-8 border-2 border-dashed rounded-xl">
+                لا توجد ملاحظات سابقة
+              </p>
+            )}
           </div>
-
-          {/* Upcoming Sessions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-lg">الحصص القادمة</CardTitle>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/dashboard/sessions">
-                  عرض الكل
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="px-4 md:px-6">
-              {upcomingSessions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">لا توجد حصص قادمة</p>
-              ) : (
-                <div className="space-y-3">
-                  {upcomingSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-muted/50 gap-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <Calendar className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            <FormattedDate
-                              date={session.scheduled_at}
-                              options={{ weekday: 'long' }}
-                            />
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            <FormattedDate
-                              date={session.scheduled_at}
-                              options={{
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }}
-                            />
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-2">
-                        <Badge variant="secondary" className="shrink-0">{session.duration_minutes} دقيقة</Badge>
-                        {(session.google_meet_link || student.teacher?.google_meet_link) && (
-                          <Button asChild size="sm" variant="outline" className="gap-2 min-h-[44px] w-full sm:w-auto">
-                            <a
-                              href={session.google_meet_link || student.teacher?.google_meet_link || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Video className="w-4 h-4" />
-                              <span className="sm:hidden">دخول</span>
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="space-y-6">
-          {/* Next Task Card */}
-          {latestNote?.next_task && (
-            <Card className="border-warning/20 bg-warning/5 overflow-hidden">
-              <div className="h-2 bg-warning" />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-warning" />
-                  الواجب القادم
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-bold leading-relaxed">{latestNote.next_task}</p>
-              </CardContent>
-            </Card>
-          )}
+        {/* Sidebar: Upcoming Sessions - Simplified */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold">الحصص القادمة</h3>
+          <div className="space-y-3">
+            {upcomingSessions.length > 0 ? (
+              upcomingSessions.slice(0, 3).map((session) => (
+                <Card key={session.id} className="border shadow-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold">
+                        <FormattedDate date={session.scheduled_at} options={{ weekday: 'long', day: 'numeric', month: 'short' }} />
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        الساعة <FormattedDate date={session.scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
+                      </p>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground/30" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">لا توجد حصص مجدولة</p>
+            )}
+            <Button asChild variant="ghost" size="sm" className="w-full">
+              <Link href="/dashboard/sessions">عرض الكل</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function FileText({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+      <polyline points="14.5 2 14.5 7 20 7"/>
+      <line x1="16" x2="8" y1="13" y2="13"/>
+      <line x1="16" x2="8" y1="17" y2="17"/>
+      <line x1="10" x2="8" y1="9" y2="9"/>
+    </svg>
   )
 }

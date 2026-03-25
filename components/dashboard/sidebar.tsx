@@ -15,6 +15,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   UserCog,
+  Wallet,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ interface SidebarProps {
 
 const teacherLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/calendar', label: 'التقويم', icon: Calendar },
   { href: '/dashboard/students', label: 'الطلاب', icon: Users },
   { href: '/dashboard/sessions', label: 'الحصص', icon: BookOpen },
@@ -32,6 +34,7 @@ const teacherLinks = [
 
 const studentLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/sessions', label: 'حصصي', icon: BookOpen },
   { href: '/dashboard/progress', label: 'تقدمي', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },

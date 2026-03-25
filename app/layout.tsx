@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Noto_Sans_Arabic } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { Toaster } from "@/components/ui/toaster"
 
 const notoArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${notoArabic.className} antialiased`} suppressHydrationWarning>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>

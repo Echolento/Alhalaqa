@@ -35,11 +35,15 @@ export async function getTeacherDashboard() {
   if (!user) return null
 
   // Get teacher record
-  const { data: teacher } = await supabase
+  const { data: teacher, error: teacherError } = await supabase
     .from('teachers')
     .select('*')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
+  
+  if (teacherError) {
+    console.error('[getTeacherDashboard] teacher query error:', teacherError)
+  }
 
   console.log('[getTeacherDashboard] teacher record:', { id: (teacher as any)?.id, profile_id: (teacher as any)?.profile_id })
 
@@ -54,6 +58,7 @@ export async function getTeacherDashboard() {
         totalSessions: 0,
         completedSessions: 0,
         upcomingSessions: 0,
+        overdueSessions: 0,
         averageRating: 0,
       },
       upcomingSessions: [],
@@ -201,14 +206,21 @@ export async function getTeacherStudents() {
 
   if (!user) return []
 
-  const { data: teacher } = await supabase
+  const { data: teacher, error: teacherError } = await supabase
     .from('teachers')
     .select('id')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (teacherError) {
+    console.error('[getTeacherStudents] teacher lookup error:', teacherError)
+  }
 
   console.log('[getTeacherStudents] teacher id:', (teacher as any)?.id)
-  if (!teacher) return []
+  if (!teacher) {
+    console.warn('[getTeacherStudents] no teacher record found for user:', user.id)
+    return []
+  }
 
   const { data: students, error: studentsError } = await supabase
     .from('students')
@@ -593,11 +605,15 @@ export async function deleteSession(sessionId: string) {
 
 export async function getTeacherDisplayInfo(teacherId: string): Promise<{ full_name: string | null } | null> {
   const supabase = await createClient()
-  const { data: teacher } = await supabase
+  const { data: teacher, error: teacherError } = await supabase
     .from('teachers')
     .select('profile_id')
     .eq('id', teacherId)
     .maybeSingle()
+  
+  if (teacherError) {
+    console.error('[getStudentPaymentStatus] teacher lookup error:', teacherError)
+  }
 
   if (!teacher) return null
 
@@ -776,6 +792,7 @@ export async function getStudentDashboard() {
 
   return {
     student,
+    teacherCurrency: teacher?.currency || 'SAR',
     stats: {
       totalSessions: sessions?.length || 0,
       completedSessions: completedSessions.length,
@@ -784,13 +801,13 @@ export async function getStudentDashboard() {
       currentProgress: `${student.current_surah || '-'} : ${student.current_ayah || '-'}`,
     },
     upcomingSessions: upcomingSessions.slice(0, 5),
-    recentSessions: sessions?.filter(s => {
+    recentSessions: (sessions || []).filter(s => {
       const notes = Array.isArray(s.session_notes) ? s.session_notes[0] : s.session_notes;
       return notes && (notes.new_content || notes.far_past_review || notes.recent_past_review || notes.general_notes);
     }).slice(0, 5).map(s => ({
       ...s,
       session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : [])
-    })),
+    })) as any[],
   }
 }
 
@@ -801,11 +818,15 @@ export async function getStudentSessions() {
 
   if (!user) return []
 
-  const { data: student } = await supabase
+  const { data: student, error: studentError } = await supabase
     .from('students')
     .select('id')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
+  
+  if (studentError) {
+    console.error('[getStudentSessions] student query error:', studentError)
+  }
 
   console.log('[getStudentSessions] student id:', (student as any)?.id)
   if (!student) return []
@@ -1060,4 +1081,434 @@ export async function getStudentLastSessionNotes(studentId: string) {
   }
 
   return { data: { session, notes } }
+}
+
+// ============ Payment actions ============
+
+function getCurrentMonthKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+export async function getTeacherPayments(month?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { students: [], payments: [] }
+
+  const { data: teacher, error: teacherError } = await supabase
+    .from('teachers')
+    .select('id, currency, default_monthly_price')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+  
+  if (teacherError) {
+    console.error('[getTeacherPayments] teacher lookup error:', {
+      message: teacherError.message,
+      code: teacherError.code,
+      details: teacherError.details,
+      hint: (teacherError as any).hint
+    })
+    // Fallback to SAR if query fails but we want to avoid crashing
+    return { students: [], payments: [], currency: 'SAR' }
+  }
+
+  if (!teacher) {
+    console.warn('[getTeacherPayments] no teacher record found for user:', user.id)
+    return { students: [], payments: [], currency: 'SAR' }
+  }
+
+  const monthKey = month || getCurrentMonthKey()
+
+  // Get all students for this teacher
+  const { data: students, error: studentsError } = await supabase
+    .from('students')
+    .select('*, profile:profiles(full_name), monthly_price, payment_day')
+    .eq('teacher_id', teacher.id)
+    .order('created_at', { ascending: false })
+
+  if (studentsError) {
+    console.error('[getTeacherPayments] students query error:', studentsError)
+    return { students: [], payments: [], currency: teacher.currency }
+  }
+
+  // Debug log
+  if (students && students.length > 0) {
+    console.log('[getTeacherPayments] First student raw data from DB:', students[0])
+  }
+
+  const normalizedStudents = (students || []).map((s: any) => {
+    // Robust name extraction
+    let name = 'طالب'
+    if (s.profile) {
+      name = Array.isArray(s.profile) ? s.profile[0]?.full_name : s.profile.full_name
+    }
+    
+    // Determine the relevant month key for THIS student based on their payment_day
+    let studentMonthKey = month;
+    if (!studentMonthKey) {
+      const now = new Date();
+      const day = s.payment_day || 1;
+      let pYear = now.getFullYear();
+      let pMonth = now.getMonth() + 1;
+      if (now.getDate() < day) {
+        pMonth -= 1;
+        if (pMonth === 0) {
+          pMonth = 12;
+          pYear -= 1;
+        }
+      }
+      studentMonthKey = `${pYear}-${String(pMonth).padStart(2, '0')}-01`;
+    }
+
+    return {
+      id: s.id,
+      full_name: name || 'طالب',
+      monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
+      payment_day: s.payment_day || 1,
+      currentMonthKey: studentMonthKey
+    }
+  })
+
+  // Get all potential keys we need
+  const monthKeysToFetch = month 
+    ? [month] 
+    : Array.from(new Set(normalizedStudents.map(s => s.currentMonthKey)));
+
+  // Get existing payment records
+  const { data: existingPayments, error: paymentsError } = await supabase
+    .from('student_payments')
+    .select('*')
+    .in('month', monthKeysToFetch)
+    .in('student_id', normalizedStudents.map((s: any) => s.id))
+
+  if (paymentsError) {
+    console.error('[getTeacherPayments] payments fetch error:', paymentsError)
+  }
+
+  // Create missing payment records
+  const paymentSet = new Set((existingPayments || []).map((p: any) => `${p.student_id}_${p.month}`))
+  const studentsNeedingPaymentRecord = normalizedStudents.filter((s: any) => !paymentSet.has(`${s.id}_${s.currentMonthKey}`))
+
+  if (studentsNeedingPaymentRecord.length > 0) {
+    const { error: insertError } = await supabase
+      .from('student_payments')
+      .insert(studentsNeedingPaymentRecord.map((s: any) => ({
+        student_id: s.id,
+        month: s.currentMonthKey,
+        paid: false,
+        amount_paid: 0,
+      })))
+    
+    if (insertError) {
+      console.error('[getTeacherPayments] insert missing payments error:', insertError)
+    }
+  }
+
+  // Re-fetch all relevant payments
+  const { data: finalPayments } = await supabase
+    .from('student_payments')
+    .select('*')
+    .in('month', monthKeysToFetch)
+    .in('student_id', normalizedStudents.map((s: any) => s.id))
+
+  return { students: normalizedStudents, payments: finalPayments || [], currency: teacher.currency }
+}
+
+export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {
+  const supabase = await createClient()
+  
+  // 1. Update the student's base price
+  const { error: studentError } = await supabase
+    .from('students')
+    .update({ monthly_price: price })
+    .eq('id', studentId)
+
+  if (studentError) {
+    console.error('[updateStudentMonthlyPrice] student update error:', studentError)
+    return { error: studentError.message }
+  }
+
+  // 2. If a payment record exists for the given month, update its amount_paid
+  if (month) {
+    const { data: existing } = await supabase
+      .from('student_payments')
+      .select('id, paid')
+      .eq('student_id', studentId)
+      .eq('month', month)
+      .maybeSingle()
+
+    if (existing) {
+      const { error: paymentError } = await supabase
+        .from('student_payments')
+        .update({ 
+          // If paid, update the amount. 
+          // If NOT paid, we technically could update it too if we want "amount_due" functionality,
+          // but for now let's keep it as 0 for collected revenue.
+          amount_paid: existing.paid ? price : 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+      
+      if (paymentError) {
+        console.error('[updateStudentMonthlyPrice] failed to sync payment amount:', paymentError)
+      }
+    }
+  }
+
+  revalidatePath('/dashboard/payments')
+  revalidatePath('/dashboard/students')
+  return { success: true }
+}
+
+export async function toggleStudentPayment(studentId: string, month?: string) {
+  const supabase = await createClient()
+  
+  let monthKey = month;
+  if (!monthKey) {
+    // Get student's payment_day to calculate the current billing period
+    const { data: student } = await supabase
+      .from('students')
+      .select('payment_day')
+      .eq('id', studentId)
+      .maybeSingle()
+    
+    const day = (student as any)?.payment_day || 1;
+    const now = new Date();
+    let pYear = now.getFullYear();
+    let pMonth = now.getMonth() + 1;
+    if (now.getDate() < day) {
+      pMonth -= 1;
+      if (pMonth === 0) {
+        pMonth = 12;
+        pYear -= 1;
+      }
+    }
+    monthKey = `${pYear}-${String(pMonth).padStart(2, '0')}-01`;
+  }
+
+  // Get current status and student's price
+  const { data: existing } = await supabase
+    .from('student_payments')
+    .select('id, paid')
+    .eq('student_id', studentId)
+    .eq('month', monthKey)
+    .single()
+
+  const { data: student, error: studentError } = await supabase
+    .from('students')
+    .select('monthly_price')
+    .eq('id', studentId)
+    .maybeSingle()
+  
+  if (studentError) {
+    console.error('[toggleStudentPayment] student lookup error:', studentError)
+  }
+
+  if (!existing) {
+    // Create a new record as paid
+    const { error } = await supabase
+      .from('student_payments')
+      .insert({
+        student_id: studentId,
+        month: monthKey,
+        paid: true,
+        paid_at: new Date().toISOString(),
+        amount_paid: student?.monthly_price || 0
+      })
+    if (error) {
+      console.error('[toggleStudentPayment] insert error:', error)
+      return { error: error.message }
+    }
+  } else {
+    const newPaid = !existing.paid
+    const { error } = await supabase
+      .from('student_payments')
+      .update({
+        paid: newPaid,
+        paid_at: newPaid ? new Date().toISOString() : null,
+        amount_paid: newPaid ? (student?.monthly_price || 0) : 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+    if (error) {
+      console.error('[toggleStudentPayment] update error:', error)
+      return { error: error.message }
+    }
+  }
+
+  revalidatePath('/dashboard/payments')
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function updateStudentPaymentDay(studentId: string, paymentDay: number) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('students')
+    .update({ payment_day: paymentDay })
+    .eq('id', studentId)
+
+  if (error) {
+    console.error('[updateStudentPaymentDay] error:', error)
+    return { error: error.message }
+  }
+  revalidatePath('/dashboard/payments')
+  return { success: true }
+}
+
+export async function getRevenueTrend(months: number = 6) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: teacher, error: teacherError } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+  
+  if (teacherError || !teacher) {
+    if (teacherError) console.error('[getRevenueTrend] teacher lookup error:', teacherError)
+    return []
+  }
+
+  const now = new Date()
+  const monthKeys: string[] = []
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`)
+  }
+
+  const { data: payments } = await supabase
+    .from('student_payments')
+    .select('month, amount_paid, paid')
+    .in('month', monthKeys)
+    .filter('student_id', 'in', `(${
+      supabase.from('students').select('id').eq('teacher_id', teacher.id)
+    })`)
+
+  const trend = monthKeys.map(m => {
+    const monthPayments = (payments || []).filter(p => p.month === m)
+    return {
+      month: m,
+      label: new Date(m).toLocaleDateString('ar-SA', { month: 'short' }),
+      revenue: monthPayments.reduce((sum, p) => sum + (Number(p.amount_paid) || 0), 0),
+      count: monthPayments.filter(p => p.paid).length
+    }
+  })
+
+  return trend
+}
+
+export async function getStudentPaymentStatus() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('id, teacher:teachers(currency)')
+    .eq('profile_id', user.id)
+    .single()
+  if (!student) return null
+
+  const s = student as any
+  const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
+  const currency = teacher?.currency || 'SAR'
+
+  const monthKey = getCurrentMonthKey()
+
+  const { data: payment } = await supabase
+    .from('student_payments')
+    .select('paid, paid_at')
+    .eq('student_id', student.id)
+    .eq('month', monthKey)
+    .maybeSingle()
+
+  return {
+    month: monthKey,
+    paid: payment?.paid ?? false,
+    paid_at: payment?.paid_at ?? null,
+    currency
+  }
+}
+
+export async function getPaymentHistory(months: number = 6) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { payments: [], currency: 'SAR' }
+
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('profile_id', user.id)
+    .single()
+  if (!teacher) return []
+
+  // Get student IDs for this teacher
+  const { data: students } = await supabase
+    .from('students')
+    .select('id')
+    .eq('teacher_id', teacher.id)
+  const studentIds = (students || []).map((s: any) => s.id)
+  if (studentIds.length === 0) return []
+
+  // Build month keys for last N months
+  const monthKeys: string[] = []
+  const now = new Date()
+  for (let i = 0; i < months; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`)
+  }
+
+  const { data: payments } = await supabase
+    .from('student_payments')
+    .select('month, paid')
+    .in('student_id', studentIds)
+    .in('month', monthKeys)
+
+  // Group by month
+  const history = monthKeys.map(month => {
+    const monthPayments = (payments || []).filter((p: any) => p.month === month)
+    const paid = monthPayments.filter((p: any) => p.paid).length
+    const total = monthPayments.length || studentIds.length
+    return { month, paid, total, rate: total > 0 ? Math.round((paid / total) * 100) : 0 }
+  })
+
+  return history
+}
+
+export async function getStudentPaymentHistory(months: number = 12) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('id, teacher:teachers(currency)')
+    .eq('profile_id', user.id)
+    .single()
+  if (!student) return { payments: [], currency: 'SAR' }
+
+  const s = student as any
+  const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
+  const currency = teacher?.currency || 'SAR'
+
+  // Build month keys for last N months
+  const monthKeys: string[] = []
+  const now = new Date()
+  for (let i = 0; i < months; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`)
+  }
+
+  const { data: payments } = await supabase
+    .from('student_payments')
+    .select('*')
+    .eq('student_id', student.id)
+    .in('month', monthKeys)
+    .order('month', { ascending: false })
+
+  return { payments: payments || [], currency }
 }
