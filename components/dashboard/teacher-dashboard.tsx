@@ -147,22 +147,22 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
           <span className="font-bold text-sm">المدفوعات</span>
         </Link>
         <InviteStudentDialog trigger={
-          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2 w-full">
+          <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
             <div className="p-3 bg-blue-100 text-blue-700 rounded-full mb-1">
               <UserPlus className="w-5 h-5" />
             </div>
             <span className="font-bold text-sm">دعوة طالب</span>
-          </button>
+          </div>
         } />
         <CreateSessionDialog students={students} trigger={
-          <button className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2 w-full">
+          <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
             <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full mb-1">
               <Plus className="w-5 h-5" />
             </div>
             <span className="font-bold text-sm">إضافة حصة</span>
-          </button>
+          </div>
         } />
-        <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2">
+        <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 h-full">
           <div className="p-3 bg-indigo-100 text-indigo-700 rounded-full mb-1">
             <Calendar className="w-5 h-5" />
           </div>
