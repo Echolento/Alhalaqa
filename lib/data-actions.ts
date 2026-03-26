@@ -1296,13 +1296,17 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('monthly_price')
+    .select('monthly_price, teacher:teachers(default_monthly_price)')
     .eq('id', studentId)
     .maybeSingle()
   
   if (studentError) {
     console.error('[toggleStudentPayment] student lookup error:', studentError)
   }
+
+  const s = student as any
+  const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
+  const effectivePrice = s?.monthly_price || teacher?.default_monthly_price || 0
 
   if (!existing) {
     // Create a new record as paid
@@ -1313,7 +1317,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
         month: monthKey,
         paid: true,
         paid_at: new Date().toISOString(),
-        amount_paid: student?.monthly_price || 0
+        amount_paid: effectivePrice
       })
     if (error) {
       console.error('[toggleStudentPayment] insert error:', error)
@@ -1326,7 +1330,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       .update({
         paid: newPaid,
         paid_at: newPaid ? new Date().toISOString() : null,
-        amount_paid: newPaid ? (student?.monthly_price || 0) : 0,
+        amount_paid: newPaid ? effectivePrice : 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', existing.id)
@@ -1486,14 +1490,15 @@ export async function getStudentPaymentHistory(months: number = 12) {
 
   const { data: student } = await supabase
     .from('students')
-    .select('id, teacher:teachers(currency)')
+    .select('id, monthly_price, teacher:teachers(currency, default_monthly_price)')
     .eq('profile_id', user.id)
     .single()
-  if (!student) return { payments: [], currency: 'SAR' }
+  if (!student) return { payments: [], currency: 'SAR', expectedPrice: 0 }
 
   const s = student as any
   const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
   const currency = teacher?.currency || 'SAR'
+  const expectedPrice = s.monthly_price || teacher?.default_monthly_price || 0
 
   // Build month keys for last N months
   const monthKeys: string[] = []
@@ -1510,5 +1515,5 @@ export async function getStudentPaymentHistory(months: number = 12) {
     .in('month', monthKeys)
     .order('month', { ascending: false })
 
-  return { payments: payments || [], currency }
+  return { payments: payments || [], currency, expectedPrice }
 }

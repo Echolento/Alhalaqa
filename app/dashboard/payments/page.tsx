@@ -149,6 +149,7 @@ export default async function PaymentsPage({
     const historyData = await getStudentPaymentHistory(12)
     const history = 'payments' in historyData ? (historyData.payments as any[]) : []
     const currency = 'currency' in historyData ? (historyData.currency as string) : 'SAR'
+    const expectedPrice = 'expectedPrice' in historyData ? (historyData.expectedPrice as number) : 0
     
     const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
     const currentMonthKey = new Date().toISOString().slice(0, 7) + '-01'
@@ -179,7 +180,7 @@ export default async function PaymentsPage({
                     <Badge className="bg-white/20 text-white border-white/20 backdrop-blur-md px-4 font-black">
                       {thisMonth?.paid ? "تم الدفع" : "بانتظار السداد"}
                     </Badge>
-                    <span className="text-sm font-bold opacity-80">{thisMonth?.amount_paid || 0} {currencySymbol}</span>
+                    <span className="text-sm font-bold opacity-80">{thisMonth?.paid ? (thisMonth?.amount_paid || 0) : expectedPrice} {currencySymbol}</span>
                   </div>
                 </div>
               </div>
@@ -223,7 +224,7 @@ export default async function PaymentsPage({
                     <div>
                       <p className="font-black text-lg">{new Date(p.month).toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-bold text-muted-foreground">{p.amount_paid || 0} {currencySymbol}</span>
+                        <span className="text-xs font-bold text-muted-foreground">{p.paid ? (p.amount_paid || 0) : expectedPrice} {currencySymbol}</span>
                       </div>
                     </div>
                   </div>
