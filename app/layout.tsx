@@ -12,18 +12,18 @@ const notoArabic = Noto_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: 'Itqan - إتقان',
-  description: 'منصة إتقان لإدارة حلقات تحفيظ القرآن الكريم',
+  title: 'Alhalaqa - الحلقة',
+  description: 'منصة الحلقة لإدارة حلقات تحفيظ القرآن الكريم',
   generator: 'v0.app',
   themeColor: '#4d938b',
   manifest: '/manifest.json',
   icons: {
     icon: [
       {
-        url: '/Logo.webp',
+        url: '/Logo.png',
       },
     ],
-    apple: '/Logo.webp',
+    apple: '/Logo.png',
   },
 }
 

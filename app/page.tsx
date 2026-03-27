@@ -10,7 +10,7 @@ export default function HomePage() {
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="w-14 h-14 bg-card/50 border border-border rounded-2xl flex items-center justify-center p-1.5">
             <Image
-              src="/Logo.webp"
+              src="/Logo.png"
               alt="Logo"
               width={48}
               height={48}

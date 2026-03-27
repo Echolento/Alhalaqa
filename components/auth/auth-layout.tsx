@@ -20,7 +20,7 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
                         <div className="lg:hidden flex justify-center mb-4">
                             <div className="w-32 h-32 bg-card/50 backdrop-blur-sm border border-border rounded-2xl flex items-center justify-center p-3 shadow-sm">
                                 <Image
-                                    src="/Logo.webp"
+                                    src="/Logo.png"
                                     alt="Logo"
                                     width={120}
                                     height={120}
@@ -47,7 +47,7 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
                     <div className="flex items-center gap-4 text-lg font-medium">
                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 shadow-lg">
                             <Image
-                                src="/Logo.webp"
+                                src="/Logo.png"
                                 alt="Logo"
                                 width={80}
                                 height={80}

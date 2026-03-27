@@ -71,7 +71,7 @@ export function DashboardSidebar({ profile }: SidebarProps) {
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="bg-sidebar-primary/10 backdrop-blur-sm border border-sidebar-border/50 rounded-xl p-1 shadow-sm">
             <Image
-              src="/Logo.webp"
+              src="/Logo.png"
               alt="Logo"
               width={32}
               height={32}

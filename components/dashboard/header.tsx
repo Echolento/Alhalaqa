@@ -92,7 +92,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
               <div className="flex justify-center">
                 <div className="w-16 h-16 bg-primary/10 border border-border rounded-xl flex items-center justify-center p-2">
                   <Image
-                    src="/Logo.webp"
+                    src="/Logo.png"
                     alt="Logo"
                     width={48}
                     height={48}
@@ -130,7 +130,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="bg-primary/10 backdrop-blur-sm border border-border/50 rounded-lg p-1 shadow-sm">
             <Image
-              src="/Logo.webp"
+              src="/Logo.png"
               alt="Logo"
               width={32}
               height={32}

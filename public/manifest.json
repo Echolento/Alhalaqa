@@ -1,14 +1,14 @@
 {
-  "name": "Itqan - إتقان",
-  "short_name": "Itqan",
-  "description": "منصة إتقان لإدارة حلقات تحفيظ القرآن الكريم",
+  "name": "Alhalaqa - الحلقة",
+  "short_name": "Alhalaqa",
+  "description": "منصة الحلقة لإدارة حلقات تحفيظ القرآن الكريم",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4d938b",
   "icons": [
     {
-      "src": "/Logo.webp",
+      "src": "/Logo.png",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any maskable"
