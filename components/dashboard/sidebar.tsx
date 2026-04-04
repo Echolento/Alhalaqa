@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   UserCog,
   Wallet,
+  MessageCircle,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -65,7 +66,7 @@ export function DashboardSidebar({ profile }: SidebarProps) {
   }
 
   return (
-    <aside className="w-64 bg-sidebar border-l border-sidebar-border hidden md:flex flex-col">
+    <aside className="fixed right-0 top-0 h-screen w-64 bg-sidebar border-l border-sidebar-border hidden md:flex flex-col z-40 overflow-y-auto">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <Link href="/dashboard" className="flex items-center gap-3">
@@ -123,6 +124,19 @@ export function DashboardSidebar({ profile }: SidebarProps) {
             <p className="text-xs text-sidebar-foreground/60">{roleLabels[profile.role]}</p>
           </div>
         </div>
+
+        {/* WhatsApp contact — teachers only */}
+        {profile.role === 'teacher' && (
+          <a
+            href="https://wa.me/201067372520"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50/10 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>تواصل معي عبر واتساب</span>
+          </a>
+        )}
       </div>
     </aside>
   )

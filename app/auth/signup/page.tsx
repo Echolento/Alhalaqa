@@ -16,9 +16,15 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [role, setRole] = useState<string>('student')
+  const [role, setRole] = useState<string>('')
+  const [roleError, setRoleError] = useState(false)
 
   async function handleSubmit(formData: FormData) {
+    if (!role) {
+      setRoleError(true)
+      return
+    }
+    setRoleError(false)
     setLoading(true)
     setError(null)
 
@@ -125,9 +131,9 @@ export default function SignUpPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="role">نوع الحساب</Label>
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger>
+          <Label htmlFor="role">نوع الحساب <span className="text-destructive">*</span></Label>
+          <Select value={role} onValueChange={(v) => { setRole(v); setRoleError(false) }}>
+            <SelectTrigger className={roleError ? 'border-destructive ring-destructive' : ''}>
               <SelectValue placeholder="اختر نوع الحساب" />
             </SelectTrigger>
             <SelectContent>
@@ -135,6 +141,9 @@ export default function SignUpPage() {
               <SelectItem value="teacher">معلم</SelectItem>
             </SelectContent>
           </Select>
+          {roleError && (
+            <p className="text-xs text-destructive">الرجاء اختيار نوع الحساب</p>
+          )}
         </div>
 
         <Button type="submit" className="w-full flex items-center justify-center gap-2" disabled={loading}>
