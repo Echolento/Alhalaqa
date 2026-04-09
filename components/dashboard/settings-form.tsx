@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { User, Video, FileText, CheckCircle, AlertCircle, Calendar } from 'lucide-react'
 import { FormattedDate } from '@/components/ui/formatted-date'
-import { updateTeacherSettings, signOut } from '@/lib/auth-actions'
+import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
 
 interface TeacherData {
@@ -35,10 +35,31 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const searchParams = useSearchParams()
   const isFirstLogin = searchParams.get('first_login') === 'true'
 
+  const [loadingProfile, setLoadingProfile] = useState(false)
+  const [profileSuccess, setProfileSuccess] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+
   const roleLabels = {
     admin: 'مشرف',
     teacher: 'معلم',
     student: 'طالب',
+  }
+
+  const handleProfileSettings = async (formData: FormData) => {
+    setLoadingProfile(true)
+    setProfileError(null)
+    setProfileSuccess(false)
+
+    const result = await updateUserProfile(formData)
+
+    if (result?.error) {
+      setProfileError(result.error)
+    } else {
+      setProfileSuccess(true)
+      setTimeout(() => setProfileSuccess(false), 3000)
+    }
+
+    setLoadingProfile(false)
   }
 
   const handleTeacherSettings = async (formData: FormData) => {
@@ -93,46 +114,74 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           <CardDescription>معلومات حسابك الأساسية</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary">
-                {profile.full_name?.charAt(0) || '؟'}
-              </span>
-            </div>
-            <div>
-              <p className="text-lg font-medium">{profile.full_name || 'مستخدم'}</p>
-              <Badge variant="secondary">{roleLabels[profile.role]}</Badge>
-            </div>
-          </div>
+          <form action={handleProfileSettings} className="space-y-4">
+            {profileSuccess && (
+              <div className="flex items-center gap-2 p-3 text-sm text-success bg-success/10 rounded-lg">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>تم تحديث معلومات الحساب بنجاح</span>
+              </div>
+            )}
 
-          <Separator />
+            {profileError && (
+              <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{profileError}</span>
+              </div>
+            )}
 
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label>الاسم الكامل</Label>
-              <Input value={profile.full_name || ''} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label>البريد الإلكتروني</Label>
-              <Input value={email} disabled dir="ltr" />
-            </div>
-            <div className="space-y-2">
-              <Label>تاريخ الانضمام</Label>
-              <div
-                className="flex-1 text-right"
-              >
-                <FormattedDate
-                  date={profile.created_at}
-                  options={{
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  }}
-                  className="px-3 py-2 border rounded-md bg-muted block w-full text-right"
-                />
+            <div className="flex items-center gap-4 py-2">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-2xl font-bold text-primary">
+                  {profile.full_name?.charAt(0) || '؟'}
+                </span>
+              </div>
+              <div>
+                <p className="text-lg font-medium">{profile.full_name || 'مستخدم'}</p>
+                <Badge variant="secondary">{roleLabels[profile.role]}</Badge>
               </div>
             </div>
-          </div>
+
+            <Separator />
+
+            <div className="grid gap-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">الاسم الكامل</Label>
+                <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} required />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone">رقم الهاتف (اختياري)</Label>
+                <Input id="phone" name="phone" type="tel" defaultValue={profile.phone || ''} dir="ltr" className="text-right" placeholder="+966500000000" />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>البريد الإلكتروني</Label>
+                <Input value={email} disabled dir="ltr" />
+                <p className="text-xs text-muted-foreground">لتغيير البريد الإلكتروني، يرجى التواصل مع الدعم.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>تاريخ الانضمام</Label>
+                <div className="flex-1 text-right">
+                  <FormattedDate
+                    date={profile.created_at}
+                    options={{
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }}
+                    className="px-3 py-2 border rounded-md bg-muted block w-full text-right text-muted-foreground"
+                  />
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <Button type="submit" disabled={loadingProfile}>
+                  {loadingProfile ? 'جاري الحفظ...' : 'حفظ التحديثات'}
+                </Button>
+              </div>
+            </div>
+          </form>
         </CardContent>
       </Card>
 

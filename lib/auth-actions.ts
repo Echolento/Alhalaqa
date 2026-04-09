@@ -117,6 +117,33 @@ export async function getUserRole(): Promise<UserRole | null> {
   return profile?.role || null
 }
 
+export async function updateUserProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized' }
+  }
+
+  const phone = formData.get('phone') as string
+  const fullName = formData.get('full_name') as string
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      phone: phone || null,
+      full_name: fullName,
+    })
+    .eq('id', user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard/settings')
+  return { success: true }
+}
+
 export async function updateTeacherSettings(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
