@@ -1,23 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from '@/lib/auth-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle, ArrowLeft } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { PasswordInput } from '@/components/auth/password-input'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const signupSuccess = searchParams.get('signup_success') === 'true'
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setLoading(true)
     setError(null)
+    
+    const formData = new FormData(e.currentTarget)
     const result = await signIn(formData)
+    
     if (result?.error) {
       setError(result.error)
       setLoading(false)
@@ -29,7 +38,14 @@ export default function LoginPage() {
       title="مرحباً بعودتك"
       description="أدخل بياناتك للدخول إلى حسابك"
     >
-      <form action={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {signupSuccess && !error && (
+          <div className="flex items-center gap-2 p-3 text-sm text-success bg-success/10 rounded-lg animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.</span>
+          </div>
+        )}
+
         {error && (
           <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -47,6 +63,8 @@ export default function LoginPage() {
             required
             className="text-right"
             dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -65,6 +83,8 @@ export default function LoginPage() {
             name="password"
             placeholder="••••••••"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
@@ -87,5 +107,13 @@ export default function LoginPage() {
         </p>
       </form>
     </AuthLayout>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[400px] flex items-center justify-center">جارٍ التحميل...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }

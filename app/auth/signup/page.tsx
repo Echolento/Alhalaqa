@@ -19,7 +19,13 @@ export default function SignUpPage() {
   const [role, setRole] = useState<string>('')
   const [roleError, setRoleError] = useState(false)
 
-  async function handleSubmit(formData: FormData) {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     if (!role) {
       setRoleError(true)
       return
@@ -28,6 +34,7 @@ export default function SignUpPage() {
     setLoading(true)
     setError(null)
 
+    const formData = new FormData(e.currentTarget)
     formData.set('role', role)
     const result = await signUp(formData)
 
@@ -35,34 +42,10 @@ export default function SignUpPage() {
       setError(result.error)
       setLoading(false)
     } else if (result?.success) {
-      setSuccess(true)
-      setLoading(false)
+      // If we're here, auto-login didn't trigger, possibly still needing verification
+      // Redirect to login with a success message instead of showing the screen
+      window.location.href = '/auth/login?signup_success=true'
     }
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md border-success/20 shadow-lg">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-success/10 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
-              <CheckCircle className="w-8 h-8 text-success" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-bold text-success">تم إنشاء الحساب بنجاح</CardTitle>
-              <CardDescription className="mt-2 text-base">
-                تم إرسال رسالة تأكيد إلى بريدك الإلكتروني. يرجى تفعيل حسابك للمتابعة.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardFooter>
-            <Button asChild className="w-full">
-              <Link href="/auth/login">العودة لتسجيل الدخول</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -70,7 +53,7 @@ export default function SignUpPage() {
       title="إنشاء حساب جديد"
       description="انضم إلينا وابدأ رحلتك التعليمية"
     >
-      <form action={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -86,6 +69,8 @@ export default function SignUpPage() {
             type="text"
             placeholder="أدخل اسمك الكامل"
             required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
           />
         </div>
 
@@ -99,6 +84,8 @@ export default function SignUpPage() {
             required
             className="text-right"
             dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -113,6 +100,8 @@ export default function SignUpPage() {
               required
               className="text-right pr-10"
               dir="ltr"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
             <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           </div>
@@ -127,6 +116,8 @@ export default function SignUpPage() {
             required
             minLength={6}
             showStrength
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
