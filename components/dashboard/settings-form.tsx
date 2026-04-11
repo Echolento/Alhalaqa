@@ -13,6 +13,8 @@ import { User, Video, FileText, CheckCircle, AlertCircle, Calendar } from 'lucid
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
+import { formatPhoneNumber } from '@/lib/phone-utils'
+import { PhoneInput } from '@/components/auth/phone-input'
 
 interface TeacherData {
   id: string
@@ -149,10 +151,12 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} required />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="phone">رقم الهاتف (اختياري)</Label>
-                <Input id="phone" name="phone" type="tel" defaultValue={profile.phone || ''} dir="ltr" className="text-right" placeholder="+966500000000" />
-              </div>
+              <PhoneInput 
+                id="phone" 
+                name="phone" 
+                defaultValue={profile.phone || ''}
+                label="رقم الهاتف (اختياري)"
+              />
               
               <div className="space-y-2">
                 <Label>البريد الإلكتروني</Label>

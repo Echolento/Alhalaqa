@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { UserRole } from './types'
+import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 
 export async function signUp(formData: FormData) {
   try {
@@ -12,8 +13,14 @@ export async function signUp(formData: FormData) {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
     const fullName = formData.get('fullName') as string
-    const phone = formData.get('phone') as string
+    const rawPhone = formData.get('phone') as string
     const role = formData.get('role') as UserRole
+
+    const phone = formatPhoneNumber(rawPhone)
+
+    if (!isValidPhoneNumber(phone)) {
+      return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -130,8 +137,14 @@ export async function updateUserProfile(formData: FormData) {
     return { error: 'Unauthorized' }
   }
 
-  const phone = formData.get('phone') as string
+  const rawPhone = formData.get('phone') as string
   const fullName = formData.get('full_name') as string
+
+  const phone = rawPhone ? formatPhoneNumber(rawPhone) : null
+
+  if (phone && !isValidPhoneNumber(phone)) {
+    return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
+  }
 
   const { error } = await supabase
     .from('profiles')

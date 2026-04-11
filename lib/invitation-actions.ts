@@ -2,8 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 
-export async function inviteStudent(phone: string) {
+export async function inviteStudent(rawPhone: string) {
+    const phone = formatPhoneNumber(rawPhone)
+
+    if (!isValidPhoneNumber(phone)) {
+        return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
+    }
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 

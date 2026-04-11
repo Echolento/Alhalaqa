@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserPlus, AlertCircle, CheckCircle, Phone } from 'lucide-react'
 import { inviteStudent } from '@/lib/invitation-actions'
+import { formatPhoneNumber } from '@/lib/phone-utils'
+import { PhoneInput } from '@/components/auth/phone-input'
 
 interface InviteStudentDialogProps {
     trigger?: React.ReactNode
@@ -81,21 +83,12 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
 
 
 
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">رقم هاتف الطالب</Label>
-                            <div className="relative">
-                                <Input
-                                    id="phone"
-                                    name="phone"
-                                    type="tel"
-                                    placeholder="05xxxxxxxx"
-                                    required
-                                    className="text-right pr-10"
-                                    dir="ltr"
-                                />
-                                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            </div>
-                        </div>
+                        <PhoneInput 
+                            id="phone" 
+                            name="phone" 
+                            label="رقم هاتف الطالب"
+                            required 
+                        />
 
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
