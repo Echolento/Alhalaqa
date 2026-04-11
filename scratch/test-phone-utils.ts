@@ -7,6 +7,7 @@ const testCases = [
   { input: '12345', expected: '12345', valid: false }, // Too short
   { input: '+966500000000', expected: '+966500000000', valid: false }, // Wrong country
   { input: '010 1234 5678', expected: '+201012345678', valid: true }, // With spaces
+  { input: '1012345678', expected: '+201012345678', valid: true }, // 10 digits from frontend
 ];
 
 console.log('--- Testing Phone Utilities ---');

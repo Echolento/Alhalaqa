@@ -7,49 +7,44 @@ import type { UserRole } from './types'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 
 export async function signUp(formData: FormData) {
-  try {
-    const supabase = await createClient()
+  const supabase = await createClient()
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const fullName = formData.get('fullName') as string
-    const rawPhone = formData.get('phone') as string
-    const role = formData.get('role') as UserRole
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const fullName = formData.get('fullName') as string
+  const rawPhone = formData.get('phone') as string
+  const role = formData.get('role') as UserRole
 
-    const phone = formatPhoneNumber(rawPhone)
+  const phone = formatPhoneNumber(rawPhone)
 
-    if (!isValidPhoneNumber(phone)) {
-      return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-          `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
-        data: {
-          full_name: fullName,
-          role: role,
-          phone: phone,
-        },
-      },
-    })
-
-    if (error) {
-      return { error: error.message }
-    }
-
-    if (data.session) {
-      revalidatePath('/', 'layout')
-      redirect('/dashboard')
-    }
-
-    return { success: true }
-  } catch (err: any) {
-    console.error('Signup error:', err)
-    return { error: err.message || 'حدث خطأ غير متوقع أثناء إنشاء الحساب' }
+  if (!isValidPhoneNumber(phone)) {
+    return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
   }
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+        `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      data: {
+        full_name: fullName,
+        role: role,
+        phone: phone,
+      },
+    },
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  if (data.session) {
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
+  }
+
+  return { success: true }
 }
 
 export async function signIn(formData: FormData) {

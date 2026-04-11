@@ -12,12 +12,17 @@ export function formatPhoneNumber(phone: string): string {
     return `+20${digits.slice(1)}`; // Drop the '0' and add '+20'
   }
 
-  // Case 2: User provided 12 digits starting with 20 (e.g., 201012345678)
+  // Case 2: User provided exactly 10 digits (e.g. from PhoneInput stripping the leading 0)
+  if (digits.length === 10) {
+    return `+20${digits}`;
+  }
+
+  // Case 3: User provided 12 digits starting with 20 (e.g., 201012345678)
   if (digits.length === 12 && digits.startsWith('20')) {
     return `+${digits}`;
   }
 
-  // Case 3: Already has the + and is the right length (12 digits: 20 + 10)
+  // Case 4: Already has the + and is the right length (12 digits: 20 + 10)
   if (phone.startsWith('+20') && digits.length === 12) {
     return `+${digits}`;
   }
