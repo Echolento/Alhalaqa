@@ -39,6 +39,19 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
         if (result.error) {
             setError(result.error)
         } else {
+            if (result.success && result.studentPhone) {
+                const text = `مرحباً بك!
+لقد تمت دعوتك من قبل الأستاذ ${result.teacherName || ''} للانضمام كطالب في المنصة.
+يرجى الدخول والتسجيل عبر الرابط التالي:
+${window.location.origin}/login
+
+بمجرد تسجيل الدخول سيتم إضافتك للطلاب تلقائياً.`;
+                
+                const cleanPhone = result.studentPhone.replace(/\+/g, '');
+                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+                window.open(waUrl, '_blank');
+            }
+
             setSuccess(true)
             setTimeout(() => {
                 setOpen(false)

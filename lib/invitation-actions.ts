@@ -19,17 +19,18 @@ export async function inviteStudent(rawPhone: string) {
     // Resolve teacher ID, auto-create if necessary for users with role=teacher
     const { data: teacherRow } = await supabase
         .from('teachers')
-        .select('id')
+        .select('id, profile:profiles(full_name)')
         .eq('profile_id', user.id)
         .maybeSingle()
 
     let teacherId: string | null = teacherRow?.id ?? null
+    let teacherName: string = (teacherRow?.profile as any)?.full_name || 'معلم'
 
     if (!teacherId) {
         // Verify user is actually a teacher and create the row if missing
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role, organization_id')
+            .select('role, organization_id, full_name')
             .eq('id', user.id)
             .single()
 
@@ -51,6 +52,7 @@ export async function inviteStudent(rawPhone: string) {
         }
 
         teacherId = newTeacher.id
+        teacherName = profile.full_name || 'معلم'
     }
 
     // Check if there's ALREADY a pending invitation from ANY teacher
@@ -62,8 +64,8 @@ export async function inviteStudent(rawPhone: string) {
         .maybeSingle()
 
     if (globalInvite) {
-        const teacherName = (globalInvite.teacher as any)?.profile?.full_name || 'معلم آخر'
-        return { error: `هذا الطالب لديه دعوة معلقة بالفعل من ${teacherName}` }
+        const globalTeacherName = (globalInvite.teacher as any)?.profile?.full_name || 'معلم آخر'
+        return { error: `هذا الطالب لديه دعوة معلقة بالفعل من ${globalTeacherName}` }
     }
 
     // Check if student is already linked to ANY teacher
@@ -75,8 +77,8 @@ export async function inviteStudent(rawPhone: string) {
 
     const studentRecord = (existingStudentProfile?.students as any)?.[0]
     if (studentRecord?.teacher) {
-        const teacherName = studentRecord.teacher.profile?.full_name || 'معلم آخر'
-        return { error: `هذا الطالب مسجل بالفعل مع ${teacherName}` }
+        const studentTeacherName = studentRecord.teacher.profile?.full_name || 'معلم آخر'
+        return { error: `هذا الطالب مسجل بالفعل مع ${studentTeacherName}` }
     }
 
     // Create invitation record in DB
@@ -113,7 +115,7 @@ export async function inviteStudent(rawPhone: string) {
     revalidatePath('/dashboard/students')
     revalidatePath('/dashboard')
 
-    return { success: true }
+    return { success: true, teacherName, studentPhone: phone }
 }
 
 export async function getTeacherInvitations() {

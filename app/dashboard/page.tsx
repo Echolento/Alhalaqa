@@ -6,7 +6,7 @@ import { AdminDashboard } from '@/components/dashboard/admin-dashboard'
 import { PendingInvitations } from '@/components/dashboard/pending-invitations'
 import { UserPlus } from 'lucide-react'
 import { getTeacherDashboard, getStudentDashboard, getAdminDashboard, getTeacherStudents, getTeacherPayments, getStudentPaymentStatus, getRevenueTrend } from '@/lib/data-actions'
-import { getStudentInvitations } from '@/lib/invitation-actions'
+import { getStudentInvitations, autoAcceptInvitations } from '@/lib/invitation-actions'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -57,6 +57,8 @@ export default async function DashboardPage() {
   }
 
   if (profile.role === 'student') {
+    await autoAcceptInvitations()
+
     const [data, invitations, paymentStatus] = await Promise.all([
       getStudentDashboard(),
       getStudentInvitations(),
