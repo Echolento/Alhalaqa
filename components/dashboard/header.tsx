@@ -28,6 +28,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Wallet,
+  MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -124,6 +125,22 @@ export function DashboardHeader({ profile }: HeaderProps) {
                 )
               })}
             </nav>
+
+            {/* WhatsApp contact — teachers only */}
+            {profile.role === 'teacher' && (
+              <div className="px-4 pb-4">
+                <a
+                  href="https://wa.me/201067372520"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50/10 transition-colors w-full"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>تواصل معي عبر واتساب</span>
+                </a>
+              </div>
+            )}
           </SheetContent>
         </Sheet>
 
@@ -167,6 +184,20 @@ export function DashboardHeader({ profile }: HeaderProps) {
               <span>الإعدادات</span>
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {profile.role === 'teacher' && (
+            <DropdownMenuItem asChild>
+              <a
+                href="https://wa.me/201067372520"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 cursor-pointer text-green-600"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>تواصل عبر واتساب</span>
+              </a>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => signOut()}
