@@ -42,7 +42,7 @@ export default function HomePage() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="text-lg px-8">
-              <Link href="/auth/signup">ابدأ الآن مجاناً</Link>
+              <Link href="/auth/signup">إنشاء حساب جديد</Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-lg px-8 bg-transparent">
               <Link href="/auth/login">تسجيل الدخول</Link>

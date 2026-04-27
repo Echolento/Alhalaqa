@@ -6,8 +6,7 @@ import { signUp } from '@/lib/auth-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, ArrowLeft, CheckCircle, Phone } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { PasswordInput } from '@/components/auth/password-input'
 import { PhoneInput } from '@/components/auth/phone-input'
@@ -114,16 +113,26 @@ export default function SignUpPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="role">نوع الحساب <span className="text-destructive">*</span></Label>
-          <Select value={role} onValueChange={(v) => { setRole(v); setRoleError(false) }}>
-            <SelectTrigger className={roleError ? 'border-destructive ring-destructive' : ''}>
-              <SelectValue placeholder="اختر نوع الحساب" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="student">طالب</SelectItem>
-              <SelectItem value="teacher">معلم</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>نوع الحساب <span className="text-destructive">*</span></Label>
+          <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl border bg-muted/40 ${roleError ? 'border-destructive' : 'border-border'}`}>
+            {[
+              { value: 'student', label: 'طالب' },
+              { value: 'teacher', label: 'معلم' },
+            ].map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => { setRole(value); setRoleError(false) }}
+                className={`py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  role === value
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {roleError && (
             <p className="text-xs text-destructive">الرجاء اختيار نوع الحساب</p>
           )}
