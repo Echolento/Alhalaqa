@@ -30,18 +30,18 @@ export function PhoneInput({
   required = false,
   label = 'رقم الهاتف',
   className,
-  placeholder = '01xxxxxxxxx',
+  placeholder = '1xxxxxxxxx',
 }: PhoneInputProps) {
   // Handle both controlled and uncontrolled
   const initialValue = (controlledValue !== undefined ? controlledValue : defaultValue) || ''
   // Strip +20 if it was passed in the initial value to show only the local digits
   const cleanInitialValue = initialValue.startsWith('+20') ? initialValue.slice(3) : initialValue
-  
+
   const [internalValue, setInternalValue] = useState(cleanInitialValue)
   const [error, setError] = useState<string | null>(null)
   const [isFocused, setIsFocused] = useState(false)
 
-  const displayValue = controlledValue !== undefined 
+  const displayValue = controlledValue !== undefined
     ? (controlledValue.startsWith('+20') ? controlledValue.slice(3) : controlledValue)
     : internalValue
 
@@ -61,20 +61,20 @@ export function PhoneInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow digits
     let newValue = e.target.value.replace(/\D/g, '')
-    
+
     // Auto-strip leading 0 if they type it (e.g. 010 -> 10)
     if (newValue.startsWith('0')) {
       newValue = newValue.slice(1)
     }
-    
+
     newValue = newValue.slice(0, 10)
-    
+
     if (controlledValue === undefined) {
       setInternalValue(newValue)
     }
-    
+
     validate(newValue)
-    
+
     if (onChange) {
       // Pass back the raw 10 digits (the server will handle the +20)
       onChange(newValue)
@@ -84,7 +84,7 @@ export function PhoneInput({
   return (
     <div className={cn('space-y-1.5', className)}>
       {label && <Label htmlFor={id}>{label}</Label>}
-      
+
       <div className="relative group">
         <div className={cn(
           "absolute left-0 top-0 bottom-0 flex items-center pl-3 pr-2 border-r bg-muted/50 rounded-l-md text-muted-foreground font-medium transition-colors",
@@ -92,7 +92,7 @@ export function PhoneInput({
         )}>
           +20
         </div>
-        
+
         <Input
           id={id}
           name={name}
@@ -113,7 +113,7 @@ export function PhoneInput({
           placeholder={placeholder}
           dir="ltr"
         />
-        
+
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           {displayValue.length === 10 && !error ? (
             <CheckCircle2 className="w-4 h-4 text-success animate-in zoom-in duration-300" />

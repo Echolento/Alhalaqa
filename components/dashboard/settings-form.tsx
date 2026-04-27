@@ -1,15 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { User, Video, FileText, CheckCircle, AlertCircle, Calendar } from 'lucide-react'
+import { User, Video, CheckCircle, AlertCircle } from 'lucide-react'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
@@ -36,6 +35,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [error, setError] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const isFirstLogin = searchParams.get('first_login') === 'true'
+  const router = useRouter()
 
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
@@ -75,7 +75,11 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
       setError(result.error)
     } else {
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      if (isFirstLogin) {
+        router.push('/dashboard')
+      } else {
+        setTimeout(() => setSuccess(false), 3000)
+      }
     }
 
     setLoading(false)
@@ -216,7 +220,10 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="google_meet_link">رابط Google Meet الافتراضي</Label>
+                <Label htmlFor="google_meet_link">
+                  رابط Google Meet الافتراضي
+                  <span className="mr-1 text-xs font-normal text-muted-foreground">(اختياري)</span>
+                </Label>
                 <Input
                   id="google_meet_link"
                   name="google_meet_link"
@@ -260,19 +267,8 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="bio">نبذة عنك</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  placeholder="اكتب نبذة مختصرة عن خبرتك في التدريس..."
-                  defaultValue={teacherData?.bio || ''}
-                  rows={4}
-                />
-              </div>
-
               <Button type="submit" disabled={loading}>
-                {loading ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
+                {loading ? 'جاري الحفظ...' : (isFirstLogin ? 'حفظ والمتابعة للوحة التحكم' : 'حفظ الإعدادات')}
               </Button>
             </form>
           </CardContent>
