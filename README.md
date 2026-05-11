@@ -57,9 +57,4 @@ Invite new students via a dedicated WhatsApp-integrated flow, making onboarding 
 The platform is built with native RTL (Right-to-Left) support and is primarily localized in **Arabic**, catering to the specific needs of Quranic education settings.
 
 ---
-
-## 📄 License
-This project is licensed under the MIT License.
-
----
 <p align="center">Made with ❤️ for the Quran Teaching Community</p>
