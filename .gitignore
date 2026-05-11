@@ -28,3 +28,10 @@ next-env.d.ts
 
 # AntiCrow ローカルデータ
 .anticrow/
+
+# Temporary and debug files
+/tmp/
+/scratch/
+test-update.js
+diagnose_db.js
+diagnose_db.cjs
