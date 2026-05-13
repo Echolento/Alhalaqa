@@ -14,6 +14,7 @@ import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-ac
 import type { Profile } from '@/lib/types'
 import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
+import { Switch } from '@/components/ui/switch'
 
 interface TeacherData {
   id: string
@@ -40,6 +41,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [teachesOnline, setTeachesOnline] = useState(!!teacherData?.google_meet_link)
 
   const roleLabels = {
     admin: 'مشرف',
@@ -90,7 +92,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
       {isFirstLogin && (
         <AlertCircle className="hidden" /> /* Pre-import check if needed, but we use icons below */
       )}
-      
+
       {isFirstLogin && (
         <Card className="border-primary/20 bg-primary/5 shadow-lg animate-in slide-in-from-top duration-500">
           <CardHeader className="pb-3">
@@ -154,20 +156,20 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 <Label htmlFor="full_name">الاسم الكامل</Label>
                 <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} required />
               </div>
-              
-              <PhoneInput 
-                id="phone" 
-                name="phone" 
+
+              <PhoneInput
+                id="phone"
+                name="phone"
                 defaultValue={profile.phone || ''}
                 label="رقم الهاتف (اختياري)"
               />
-              
+
               <div className="space-y-2">
                 <Label>البريد الإلكتروني</Label>
                 <Input value={email} disabled dir="ltr" />
                 <p className="text-xs text-muted-foreground">لتغيير البريد الإلكتروني، يرجى التواصل مع الدعم.</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>تاريخ الانضمام</Label>
                 <div className="flex-1 text-right">
@@ -182,7 +184,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   />
                 </div>
               </div>
-              
+
               <div className="pt-2">
                 <Button type="submit" disabled={loadingProfile}>
                   {loadingProfile ? 'جاري الحفظ...' : 'حفظ التحديثات'}
@@ -219,23 +221,37 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="google_meet_link">
-                  رابط Google Meet الافتراضي
-                  <span className="mr-1 text-xs font-normal text-muted-foreground">(اختياري)</span>
-                </Label>
-                <Input
-                  id="google_meet_link"
-                  name="google_meet_link"
-                  type="url"
-                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                  defaultValue={teacherData?.google_meet_link || ''}
-                  dir="ltr"
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label htmlFor="teaches_online" className="text-base font-semibold">هل تعطي دروسك عبر الإنترنت؟</Label>
+                  <p className="text-sm text-muted-foreground">عبر الانترنت (Online)</p>
+                </div>
+                <Switch
+                  id="teaches_online"
+                  checked={teachesOnline}
+                  onCheckedChange={setTeachesOnline}
                 />
-                <p className="text-xs text-muted-foreground">
-                  سيُستخدم هذا الرابط تلقائياً لجميع الحصص الجديدة
-                </p>
               </div>
+
+              {teachesOnline && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label htmlFor="google_meet_link">
+                    رابط Google Meet الافتراضي
+                    <span className="mr-1 text-xs font-normal text-muted-foreground">(اختياري)</span>
+                  </Label>
+                  <Input
+                    id="google_meet_link"
+                    name="google_meet_link"
+                    type="url"
+                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                    defaultValue={teacherData?.google_meet_link || ''}
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    سيُستخدم هذا الرابط تلقائياً لجميع الحصص الجديدة
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="currency">العملة والمنطقة</Label>
