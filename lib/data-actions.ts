@@ -807,13 +807,13 @@ export async function getStudentDashboard() {
       currentProgress: `${student.current_surah || '-'} : ${student.current_ayah || '-'}`,
     },
     upcomingSessions: upcomingSessions.slice(0, 5),
-    recentSessions: (sessions || []).filter(s => {
-      const notes = Array.isArray(s.session_notes) ? s.session_notes[0] : s.session_notes;
-      return notes && (notes.new_content || notes.far_past_review || notes.recent_past_review || notes.general_notes || notes.next_task);
-    }).slice(0, 5).map(s => ({
-      ...s,
-      session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : [])
-    })) as any[],
+    recentSessions: (sessions || [])
+      .filter(s => s.status === 'completed')
+      .slice(0, 5)
+      .map(s => ({
+        ...s,
+        session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : [])
+      })) as any[],
   }
 }
 

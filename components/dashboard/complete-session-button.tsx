@@ -128,27 +128,6 @@ export function CompleteSessionButton({ session }: { session: Session }) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="current_surah">آخر سورة وصل إليها</Label>
-                <input
-                  id="current_surah"
-                  name="current_surah"
-                  className="w-full p-2 border rounded-md text-sm"
-                  placeholder="مثال: البقرة"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="current_ayah">رقم الآية</Label>
-                <input
-                  id="current_ayah"
-                  name="current_ayah"
-                  type="number"
-                  className="w-full p-2 border rounded-md text-sm"
-                  placeholder="1"
-                />
-              </div>
-            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

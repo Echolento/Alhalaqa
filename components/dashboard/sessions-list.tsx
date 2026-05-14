@@ -84,19 +84,27 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
   })
 
   // Show ALL scheduled sessions regardless of date — past-due sessions should still be completable
-  const upcomingSessions = filteredSessions.filter(s => {
-    if (s.status !== 'scheduled') return false
-    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
-    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
-    return graceEndTime > new Date(now)
-  })
-  const completedSessions = filteredSessions.filter(s => s.status === 'completed')
-  const overdueSessions = filteredSessions.filter(s => {
-    if (s.status !== 'scheduled') return false
-    const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
-    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
-    return graceEndTime <= new Date(now)
-  })
+  const upcomingSessions = filteredSessions
+    .filter(s => {
+      if (s.status !== 'scheduled') return false
+      const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+      const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
+      return graceEndTime > new Date(now)
+    })
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
+  const completedSessions = filteredSessions
+    .filter(s => s.status === 'completed')
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
+  const overdueSessions = filteredSessions
+    .filter(s => {
+      if (s.status !== 'scheduled') return false
+      const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
+      const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
+      return graceEndTime <= new Date(now)
+    })
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
 
   const handleStatusChange = async (session: Session, status: 'completed') => {
     setLoading(true)
@@ -253,7 +261,7 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
             </div>
 
             <div className="flex flex-row sm:flex-col gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 mt-2 sm:mt-0">
-              {meetLink && (
+              {meetLink && session.status === 'scheduled' && (
                 <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none min-h-[44px]">
                   <a href={meetLink} target="_blank" rel="noopener noreferrer">
                     <Video className="w-4 h-4 ml-1" />
@@ -277,7 +285,9 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                 </>
               )}
 
-              {role === 'teacher' && session.status === 'completed' && (
+              {role === 'teacher' && 
+               session.status === 'completed' && 
+               session.id === completedSessions[0]?.id && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -426,6 +436,7 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                 rows={2}
               />
             </div>
+
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsNotesOpen(false)}>

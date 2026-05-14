@@ -97,194 +97,180 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
 
   return (
     <div className="space-y-6">
-      {/* Simple Header */}
+      {/* Header Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">مرحباً {student.profile?.full_name?.split(' ')[0]}</h1>
-          <p className="text-muted-foreground font-medium">نظرة سريعة على حصصك ومدفوعاتك</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">مرحباً {student.profile?.full_name?.split(' ')[0]}!</h1>
+          <p className="text-slate-500 font-medium mt-1">نظرة سريعة على حصصك ومدفوعاتك</p>
         </div>
 
-        <Link href="/dashboard/payments">
-          <Badge className={`px-4 py-2 rounded-xl text-sm font-bold border-none ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700 font-bold border border-red-200"}`}>
-            {isPaid ? "رسوم الشهر مدفوعة ✓" : "رسوم الشهر لم تدفع"}
-          </Badge>
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/payments">
+            <Badge className={`px-4 py-2 rounded-xl text-sm font-bold border-none ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700 font-bold border border-red-200"}`}>
+              {isPaid ? "رسوم الشهر مدفوعة ✓" : "رسوم الشهر لم تدفع"}
+            </Badge>
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Stats Card */}
-        <Card className="border shadow-sm bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between gap-4">
+
+      <div className="space-y-8">
+        {student.teacher && (
+          <div className="p-5 rounded-3xl border bg-card/50 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <User className="w-7 h-7 text-primary" />
+              </div>
               <div>
-                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">الحصص المكتملة</p>
-                <p className="text-3xl font-black">{stats.completedSessions}</p>
-              </div>
-              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
-                <Award className="w-6 h-6" />
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">معلمك الحالي</p>
+                <h3 className="text-xl font-black text-slate-800">{student.teacher.profile?.full_name || teacherName || 'معلم'}</h3>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Next Session Card */}
-        <Card className="border shadow-sm bg-primary/5 border-primary/10">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">الحصة القادمة</p>
-              {upcomingSessions.length > 0 && (
-                <div className="flex items-center gap-1 text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
-                  مجدولة
-                </div>
-              )}
-            </div>
-            {upcomingSessions.length > 0 ? (
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="font-black text-xl text-primary">
-                    <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ weekday: 'long' }} />
-                  </p>
-                  <p className="text-sm font-bold text-muted-foreground mt-1">
-                    الساعة <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
-                  </p>
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-muted-foreground/60 uppercase">المدة</p>
-                  <p className="text-sm font-black">{upcomingSessions[0].duration_minutes || 30} دقيقة</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-2 text-center">
-                <Calendar className="w-5 h-5 text-muted-foreground/30 mb-2" />
-                <p className="text-sm text-muted-foreground font-medium">لا توجد حصص مجدولة حالياً</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Teacher Profile Card - Simplified */}
-          {student.teacher && (
-            <div className="p-4 rounded-xl border bg-card flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                  <User className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">المعلم</p>
-                  <h3 className="font-bold">{student.teacher.profile?.full_name || teacherName || 'معلم'}</h3>
-                </div>
-              </div>
-              {student.teacher.google_meet_link && (
-                <Button asChild size="sm" className="w-full sm:w-auto">
-                  <Link href={student.teacher.google_meet_link} target="_blank">
-                    <Video className="w-4 h-4 ml-2" />
-                    دخول الحصة
-                  </Link>
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Recent Notes - More Detailed */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              ملاحظات الحصة الأخيرة
-            </h3>
-            {latestNote ? (
-              <Card className="border shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
-                <div className="bg-primary/5 px-6 py-3 border-b border-primary/10">
-                  <p className="text-xs font-bold text-primary uppercase tracking-wider">الخطة الدراسية والحفظ</p>
-                </div>
-                <CardContent className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      {latestNote.new_content && (
-                        <div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">الجديد</p>
-                          <p className="font-bold text-slate-800 bg-emerald-50 p-2 rounded-lg border border-emerald-100">{latestNote.new_content}</p>
-                        </div>
-                      )}
-                      {latestNote.next_task && (
-                        <div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">الواجب القادم</p>
-                          <p className="font-black text-primary bg-primary/5 p-2 rounded-lg border border-primary/10">{latestNote.next_task}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {(latestNote.recent_past_review || latestNote.far_past_review) && (
-                        <div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">المراجعة</p>
-                          <div className="space-y-2">
-                            {latestNote.recent_past_review && (
-                              <p className="text-sm font-bold bg-blue-50 p-2 rounded-lg border border-blue-100">
-                                <span className="text-[10px] text-blue-600 block mb-0.5">القريب:</span>
-                                {latestNote.recent_past_review}
-                              </p>
-                            )}
-                            {latestNote.far_past_review && (
-                              <p className="text-sm font-bold bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                                <span className="text-[10px] text-indigo-600 block mb-0.5">البعيد:</span>
-                                {latestNote.far_past_review}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {latestNote.general_notes && (
-                    <div className="pt-4 border-t border-dashed">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">ملاحظات إضافية</p>
-                      <p className="text-sm italic text-muted-foreground bg-muted/30 p-3 rounded-xl border border-muted/50">
-                        "{latestNote.general_notes}"
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-muted/50">
-                <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground font-medium">لا توجد ملاحظات من الحصص السابقة</p>
-              </div>
+            {student.teacher.google_meet_link && (
+              <Button asChild className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
+                <Link href={student.teacher.google_meet_link} target="_blank">
+                  <Video className="w-5 h-5 ml-2" />
+                  دخول الحصة الآن
+                </Link>
+              </Button>
             )}
           </div>
+        )}
+
+        {/* Last Session Notes */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-black flex items-center gap-2">
+            <FileText className="w-7 h-7 text-primary" />
+            ملاحظات الحصة الأخيرة
+          </h2>
+          {latestNote ? (
+            <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden bg-white">
+              <div className="bg-primary/5 px-6 py-4 border-b border-primary/5">
+                <p className="text-xs font-black text-primary uppercase tracking-widest">ملخص الأداء والحفظ</p>
+              </div>
+              <CardContent className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    {latestNote.new_content && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الجديد</p>
+                        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
+                          <p className="text-lg font-bold text-emerald-900 leading-relaxed">{latestNote.new_content}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {(latestNote.recent_past_review || latestNote.far_past_review) && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المراجعة</p>
+                        <div className="grid gap-3">
+                          {latestNote.recent_past_review && (
+                            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
+                              <span className="text-[10px] font-black text-blue-600 block mb-1 uppercase tracking-tighter">القريب:</span>
+                              <p className="font-bold text-blue-900">{latestNote.recent_past_review}</p>
+                            </div>
+                          )}
+                          {latestNote.far_past_review && (
+                            <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+                              <span className="text-[10px] font-black text-indigo-600 block mb-1 uppercase tracking-tighter">البعيد:</span>
+                              <p className="font-bold text-indigo-900">{latestNote.far_past_review}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {latestNote.general_notes && (
+                  <div className="pt-6 border-t border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">ملاحظات المعلم</p>
+                    <p className="text-lg italic text-slate-600 bg-slate-50/50 p-5 rounded-2xl border border-slate-100 leading-relaxed">
+                      "{latestNote.general_notes}"
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="text-center py-16 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 font-bold text-lg">لا توجد ملاحظات من الحصص السابقة حتى الآن</p>
+            </div>
+          )}
         </div>
 
-        {/* Sidebar: Upcoming Sessions - Simplified */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold">الحصص القادمة</h3>
-          <div className="space-y-3">
-            {upcomingSessions.length > 0 ? (
-              upcomingSessions.slice(0, 3).map((session) => (
-                <Card key={session.id} className="border shadow-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Schedule Section */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-2xl font-black flex items-center gap-2">
+              <Calendar className="w-7 h-7 text-primary" />
+              جدول الحصص القادمة
+            </h2>
+            <div className="grid gap-3">
+              {upcomingSessions.length > 0 ? (
+                upcomingSessions.slice(0, 3).map((session) => (
+                  <Card key={session.id} className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex flex-col items-center justify-center">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">
+                            <FormattedDate date={session.scheduled_at} options={{ month: 'short' }} />
+                          </span>
+                          <span className="text-lg font-black text-slate-800 leading-none">
+                            <FormattedDate date={session.scheduled_at} options={{ day: 'numeric' }} />
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-800">
+                            <FormattedDate date={session.scheduled_at} options={{ weekday: 'long' }} />
+                          </p>
+                          <p className="text-sm font-bold text-primary">
+                            الساعة <FormattedDate date={session.scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronLeft className="w-5 h-5 text-slate-300" />
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="p-8 text-center bg-slate-50 rounded-3xl border border-slate-200">
+                  <p className="text-slate-500 font-bold">لا توجد حصص مجدولة حالياً</p>
+                </div>
+              )}
+              <Button asChild variant="ghost" className="w-full text-slate-500 font-bold hover:bg-slate-100 rounded-xl">
+                <Link href="/dashboard/sessions">عرض كل المواعيد</Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick History Section */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-black text-slate-400">آخر الحصص المنتهية</h2>
+            <div className="space-y-3">
+              {recentSessions.length > 0 ? (
+                recentSessions.slice(1, 4).map((session) => (
+                  <div key={session.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                     <div>
-                      <p className="font-bold">
-                        <FormattedDate date={session.scheduled_at} options={{ weekday: 'long', day: 'numeric', month: 'short' }} />
+                      <p className="text-sm font-bold text-slate-600">
+                        <FormattedDate date={session.scheduled_at} options={{ day: 'numeric', month: 'long' }} />
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        الساعة <FormattedDate date={session.scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
+                      <p className="text-xs text-slate-400">
+                        حصة مكتملة ✓
                       </p>
                     </div>
-                    <ChevronLeft className="w-4 h-4 text-muted-foreground/30" />
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">لا توجد حصص مجدولة</p>
-            )}
-            <Button asChild variant="ghost" size="sm" className="w-full">
-              <Link href="/dashboard/sessions">عرض الكل</Link>
-            </Button>
+                    <Badge variant="outline" className="bg-emerald-100/50 text-emerald-600 border-none">
+                      مكتمل
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-8">لا يوجد تاريخ حصص بعد</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

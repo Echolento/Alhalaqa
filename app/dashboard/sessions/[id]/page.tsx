@@ -237,7 +237,6 @@ export default function SessionDetailPage() {
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   rows={3}
-                  disabled={session.status === "completed"}
                 />
               </div>
 
@@ -249,7 +248,6 @@ export default function SessionDetailPage() {
                   value={recentReview}
                   onChange={(e) => setRecentReview(e.target.value)}
                   rows={3}
-                  disabled={session.status === "completed"}
                 />
               </div>
 
@@ -261,7 +259,6 @@ export default function SessionDetailPage() {
                   value={distantReview}
                   onChange={(e) => setDistantReview(e.target.value)}
                   rows={3}
-                  disabled={session.status === "completed"}
                 />
               </div>
 
@@ -273,21 +270,9 @@ export default function SessionDetailPage() {
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
                   rows={3}
-                  disabled={session.status === "completed"}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="next_task">الواجب القادم</Label>
-                <Textarea
-                  id="next_task"
-                  placeholder="ما يجب حفظه للحصة القادمة..."
-                  value={nextTask}
-                  onChange={(e) => setNextTask(e.target.value)}
-                  rows={3}
-                  disabled={session.status === "completed"}
-                />
-              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 pt-4 border-t">
@@ -296,7 +281,6 @@ export default function SessionDetailPage() {
                 <Select
                   value={ratingNew}
                   onValueChange={setRatingNew}
-                  disabled={session.status === "completed"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر التقييم" />
@@ -316,7 +300,6 @@ export default function SessionDetailPage() {
                 <Select
                   value={ratingRecentPast}
                   onValueChange={setRatingRecentPast}
-                  disabled={session.status === "completed"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر التقييم" />
@@ -336,7 +319,6 @@ export default function SessionDetailPage() {
                 <Select
                   value={ratingFarPast}
                   onValueChange={setRatingFarPast}
-                  disabled={session.status === "completed"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="اختر التقييم" />
@@ -352,17 +334,17 @@ export default function SessionDetailPage() {
               </div>
             </div>
 
-            {session.status !== "completed" && (
               <div className="flex gap-3 pt-4 border-t">
                 <Button onClick={handleSave} disabled={saving} variant="outline">
                   <Save className="h-4 w-4 ml-2" />
-                  {saving ? "جاري الحفظ..." : "حفظ"}
+                  {saving ? "جاري الحفظ..." : "حفظ الملاحظات"}
                 </Button>
-                <Button onClick={handleComplete} disabled={saving}>
-                  إنهاء الجلسة
-                </Button>
+                {session.status !== "completed" && (
+                  <Button onClick={handleComplete} disabled={saving}>
+                    إنهاء الجلسة
+                  </Button>
+                )}
               </div>
-            )}
           </CardContent>
         </Card>
       </div>
