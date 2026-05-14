@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { TeacherDashboard } from '@/components/dashboard/teacher-dashboard'
 import { StudentDashboard } from '@/components/dashboard/student-dashboard'

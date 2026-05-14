@@ -147,8 +147,9 @@ export async function getTeacherDashboard() {
     const startTime = new Date(s.scheduled_at)
     const durationMs = (s.duration_minutes || 60) * 60 * 1000
     const endTime = new Date(startTime.getTime() + durationMs)
+    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000) // 1 hour buffer
 
-    return endTime > nowDate
+    return graceEndTime > nowDate
   })
 
   const overdueSessions = normalizedSessions.filter(s => {
@@ -157,8 +158,9 @@ export async function getTeacherDashboard() {
     const startTime = new Date(s.scheduled_at)
     const durationMs = (s.duration_minutes || 60) * 60 * 1000
     const endTime = new Date(startTime.getTime() + durationMs)
+    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000) // 1 hour buffer
 
-    return endTime <= nowDate
+    return graceEndTime <= nowDate
   })
 
   // Sort completed sessions by date descending (most recent first)
@@ -807,7 +809,7 @@ export async function getStudentDashboard() {
     upcomingSessions: upcomingSessions.slice(0, 5),
     recentSessions: (sessions || []).filter(s => {
       const notes = Array.isArray(s.session_notes) ? s.session_notes[0] : s.session_notes;
-      return notes && (notes.new_content || notes.far_past_review || notes.recent_past_review || notes.general_notes);
+      return notes && (notes.new_content || notes.far_past_review || notes.recent_past_review || notes.general_notes || notes.next_task);
     }).slice(0, 5).map(s => ({
       ...s,
       session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : [])

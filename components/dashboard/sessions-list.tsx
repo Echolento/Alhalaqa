@@ -87,13 +87,15 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
   const upcomingSessions = filteredSessions.filter(s => {
     if (s.status !== 'scheduled') return false
     const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
-    return endTime > new Date(now)
+    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
+    return graceEndTime > new Date(now)
   })
   const completedSessions = filteredSessions.filter(s => s.status === 'completed')
   const overdueSessions = filteredSessions.filter(s => {
     if (s.status !== 'scheduled') return false
     const endTime = new Date(new Date(s.scheduled_at).getTime() + (s.duration_minutes || 60) * 60 * 1000)
-    return endTime <= new Date(now)
+    const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
+    return graceEndTime <= new Date(now)
   })
 
   const handleStatusChange = async (session: Session, status: 'completed') => {
@@ -194,14 +196,14 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                       : 'secondary'
                   }
                   className={
-                    (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date(now))
+                    (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000 + 60 * 60 * 1000) <= new Date(now))
                       ? 'bg-warning text-warning-foreground'
                       : ''
                   }
                 >
                   {session.status === 'completed' && 'مكتمل'}
                   {session.status === 'scheduled' && (
-                    new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) > new Date(now)
+                    new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000 + 60 * 60 * 1000) > new Date(now)
                       ? 'مجدول'
                       : 'متأخر'
                   )}

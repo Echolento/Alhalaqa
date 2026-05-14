@@ -201,8 +201,8 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                 className={cn(
                   'text-[10px] md:text-xs p-0.5 md:p-1 rounded truncate leading-tight',
                   session.status === 'completed' && 'bg-success/20 text-success',
-                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) > new Date()) && 'bg-primary/20 text-primary',
-                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date()) && 'bg-warning/20 text-warning'
+                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000 + 60 * 60 * 1000) > new Date()) && 'bg-primary/20 text-primary',
+                  (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000 + 60 * 60 * 1000) <= new Date()) && 'bg-warning/20 text-warning'
                 )}
               >
                 {new Date(session.scheduled_at).toLocaleTimeString('ar-SA', {
@@ -361,7 +361,7 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                           : 'secondary'
                       }
                       className={
-                        (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000) <= new Date())
+                        (session.status === 'scheduled' && new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000 + 60 * 60 * 1000) <= new Date())
                           ? 'bg-warning text-warning-foreground'
                           : ''
                       }
