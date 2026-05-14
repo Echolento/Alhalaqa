@@ -68,7 +68,7 @@ interface StudentDashboardProps {
 
 export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps) {
   const [teacherName, setTeacherName] = useState<string | null>(null)
-  
+
   if (!data) return null
 
   const { student, stats, upcomingSessions, recentSessions } = data
@@ -88,7 +88,7 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
             if (d?.full_name) setTeacherName(d.full_name)
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     if (student?.teacher) fetchTeacherName()
   }, [student?.teacher])
@@ -103,7 +103,7 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
           <h1 className="text-3xl font-bold">مرحباً {student.profile?.full_name?.split(' ')[0]}</h1>
           <p className="text-muted-foreground font-medium">نظرة سريعة على حصصك ومدفوعاتك</p>
         </div>
-        
+
         <Link href="/dashboard/payments">
           <Badge className={`px-4 py-2 rounded-xl text-sm font-bold border-none ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700 font-bold border border-red-200"}`}>
             {isPaid ? "رسوم الشهر مدفوعة ✓" : "رسوم الشهر لم تدفع"}
@@ -111,53 +111,54 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Simple Progress Card */}
-        <Card className="border shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                <Award className="w-5 h-5" />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium">التقدم الحالي</p>
-            </div>
-            <h2 className="text-xl font-bold">سورة {student.current_surah || 'لم تحدد'}</h2>
-            <p className="text-sm text-muted-foreground mt-1">آية {student.current_ayah || '-'}</p>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Stats Card */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm bg-card/50 backdrop-blur-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">الحصص المكتملة</p>
-                <p className="text-2xl font-bold">{stats.completedSessions}</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">الحصص المكتملة</p>
+                <p className="text-3xl font-black">{stats.completedSessions}</p>
               </div>
-              <div className="w-px h-10 bg-muted" />
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">التقييم</p>
-                <p className="text-2xl font-bold text-amber-500">{stats.averageRating}</p>
+              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
+                <Award className="w-6 h-6" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Next Session Card */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm bg-primary/5 border-primary/10">
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground font-medium mb-2">الحصة القادمة</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">الحصة القادمة</p>
+              {upcomingSessions.length > 0 && (
+                <div className="flex items-center gap-1 text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
+                  مجدولة
+                </div>
+              )}
+            </div>
             {upcomingSessions.length > 0 ? (
-              <div>
-                <p className="font-bold text-lg">
-                  <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ weekday: 'long' }} />
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  الساعة <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
-                </p>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="font-black text-xl text-primary">
+                    <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ weekday: 'long' }} />
+                  </p>
+                  <p className="text-sm font-bold text-muted-foreground mt-1">
+                    الساعة <FormattedDate date={upcomingSessions[0].scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
+                  </p>
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-muted-foreground/60 uppercase">المدة</p>
+                  <p className="text-sm font-black">{upcomingSessions[0].duration_minutes || 30} دقيقة</p>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">لا توجد حصص مجدولة</p>
+              <div className="flex flex-col items-center justify-center py-2 text-center">
+                <Calendar className="w-5 h-5 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground font-medium">لا توجد حصص مجدولة حالياً</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -188,26 +189,72 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
             </div>
           )}
 
-          {/* Recent Notes - Simplified */}
+          {/* Recent Notes - More Detailed */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold">ملاحظات الحصة الأخيرة</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              ملاحظات الحصة الأخيرة
+            </h3>
             {latestNote ? (
-              <Card className="border shadow-sm">
-                <CardContent className="p-6 space-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">الواجب القادم</p>
-                    <p className="font-bold">{latestNote.next_task || 'لا يوجد واجب محدد'}</p>
+              <Card className="border shadow-sm overflow-hidden bg-card/50 backdrop-blur-sm">
+                <div className="bg-primary/5 px-6 py-3 border-b border-primary/10">
+                  <p className="text-xs font-bold text-primary uppercase tracking-wider">الخطة الدراسية والحفظ</p>
+                </div>
+                <CardContent className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      {latestNote.new_content && (
+                        <div>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">الجديد</p>
+                          <p className="font-bold text-slate-800 bg-emerald-50 p-2 rounded-lg border border-emerald-100">{latestNote.new_content}</p>
+                        </div>
+                      )}
+                      {latestNote.next_task && (
+                        <div>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">الواجب القادم</p>
+                          <p className="font-black text-primary bg-primary/5 p-2 rounded-lg border border-primary/10">{latestNote.next_task}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {(latestNote.recent_past_review || latestNote.far_past_review) && (
+                        <div>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">المراجعة</p>
+                          <div className="space-y-2">
+                            {latestNote.recent_past_review && (
+                              <p className="text-sm font-bold bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                <span className="text-[10px] text-blue-600 block mb-0.5">القريب:</span>
+                                {latestNote.recent_past_review}
+                              </p>
+                            )}
+                            {latestNote.far_past_review && (
+                              <p className="text-sm font-bold bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                                <span className="text-[10px] text-indigo-600 block mb-0.5">البعيد:</span>
+                                {latestNote.far_past_review}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">ملاحظات المعلم</p>
-                    <p className="text-sm italic">"{latestNote.general_notes || 'لا توجد ملاحظات'}"</p>
-                  </div>
+
+                  {latestNote.general_notes && (
+                    <div className="pt-4 border-t border-dashed">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-2">ملاحظات إضافية</p>
+                      <p className="text-sm italic text-muted-foreground bg-muted/30 p-3 rounded-xl border border-muted/50">
+                        "{latestNote.general_notes}"
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
-              <p className="text-muted-foreground text-center py-8 border-2 border-dashed rounded-xl">
-                لا توجد ملاحظات سابقة
-              </p>
+              <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-muted/50">
+                <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground font-medium">لا توجد ملاحظات من الحصص السابقة</p>
+              </div>
             )}
           </div>
         </div>
@@ -248,11 +295,11 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
 function FileText({ className }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-      <polyline points="14.5 2 14.5 7 20 7"/>
-      <line x1="16" x2="8" y1="13" y2="13"/>
-      <line x1="16" x2="8" y1="17" y2="17"/>
-      <line x1="10" x2="8" y1="9" y2="9"/>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14.5 2 14.5 7 20 7" />
+      <line x1="16" x2="8" y1="13" y2="13" />
+      <line x1="16" x2="8" y1="17" y2="17" />
+      <line x1="10" x2="8" y1="9" y2="9" />
     </svg>
   )
 }

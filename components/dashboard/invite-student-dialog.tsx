@@ -76,7 +76,7 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
                 <DialogHeader>
                     <DialogTitle>دعوة طالب جديد</DialogTitle>
                     <DialogDescription>
-                        أدخل رقم هاتف الطالب الذي ترغب بإضافته
+                        أدخل رقم هاتف الطالب. سيتم إنشاء رابط دعوة ورسالة واتساب جاهزة للإرسال.
                     </DialogDescription>
                 </DialogHeader>
 

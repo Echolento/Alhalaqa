@@ -764,11 +764,15 @@ export async function getStudentDashboard() {
     .eq('student_id', student.id)
     .order('scheduled_at', { ascending: false })
 
-  const now = new Date().toISOString()
-
-  // Upcoming: sort ascending (closest first)
+  const nowDate = new Date()
   const upcomingSessions = sessions
-    ?.filter(s => s.scheduled_at > now && s.status === 'scheduled')
+    ?.filter(s => {
+      if (s.status !== 'scheduled') return false
+      const startTime = new Date(s.scheduled_at)
+      const durationMs = (s.duration_minutes || 60) * 60 * 1000
+      const endTime = new Date(startTime.getTime() + durationMs)
+      return endTime > nowDate
+    })
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()) || []
 
   // Completed: sort descending (recent first) - already sorted by query but good to be explicit or if query changes
@@ -1200,7 +1204,17 @@ export async function getTeacherPayments(month?: string) {
       })))
     
     if (insertError) {
-      console.error('[getTeacherPayments] insert missing payments error:', insertError)
+      // 23505 is the PostgreSQL code for unique_violation
+      if (insertError.code === '23505') {
+        console.log('[getTeacherPayments] Some payment records were already created by a parallel request. Ignoring.')
+      } else {
+        console.error('[getTeacherPayments] insert missing payments error:', {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint
+        })
+      }
     }
   }
 

@@ -106,8 +106,8 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           </CardHeader>
           <CardContent className="text-sm space-y-2 text-muted-foreground">
             <p>• قم بتحديد <strong>السعر الافتراضي</strong> للحصص الشهرية.</p>
-            <p>• أضف <strong>رابط Google Meet</strong> الخاص بك لتسهيل الانضمام للحصص.</p>
             <p>• اختر <strong>العملة</strong> التي تفضل استلام تقاريرك بها.</p>
+            <p className="pt-2 text-primary/80 font-medium">✨ عند دعوة طالب، سنقوم بتجهيز رسالة واتساب جاهزة للإرسال تحتوي على رابط الانضمام.</p>
           </CardContent>
         </Card>
       )}

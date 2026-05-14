@@ -386,7 +386,7 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                 <Select
                   name="student_id"
                   required
-                  defaultValue={selectedSession?.student.id}
+                  defaultValue={selectedSession?.student?.id}
                   disabled={true}
                 >
                   <SelectTrigger>
@@ -415,7 +415,7 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="duration">المدة (دقيقة)</Label>
-                  <Select name="duration" defaultValue={selectedSession?.duration_minutes.toString() || "30"}>
+                  <Select name="duration" defaultValue={selectedSession?.duration_minutes?.toString() || "30"}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

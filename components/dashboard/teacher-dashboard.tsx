@@ -20,6 +20,7 @@ import { InviteStudentDialog } from './invite-student-dialog'
 import { CreateSessionDialog } from './create-session-dialog'
 import { getTeacherWeeklySessionCounts } from '@/lib/data-actions'
 import { StudentNotesModal } from './student-notes-modal'
+import { CompleteSessionButton } from './complete-session-button'
 
 interface TeacherDashboardProps {
   data: {
@@ -93,81 +94,57 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
               <AlertCircle className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1 text-center sm:text-right">
-              <h3 className="text-xl font-black text-primary mb-1">إعداد الحساب مطلوب</h3>
-              <p className="font-medium text-muted-foreground">ابدأ بدعوة أول طالب لك أو إضافة حصة جديدة لتتمكن من استخدام كافة المميزات.</p>
+              <h3 className="text-xl font-black text-primary mb-1">دعوة طلابك</h3>
+              <p className="font-medium text-muted-foreground">ابدأ بدعوة طلابك الآن. سيتلقى كل طالب دعوة عبر الواتساب فور إرسال الرابط.</p>
             </div>
             <InviteStudentDialog />
           </CardContent>
         </Card>
       )}
 
-      {/* Simplified Payment Stats Banner */}
-      {totalStudents > 0 && (
-        <Link href="/dashboard/payments">
-          <Card className={`border shadow-sm ${unpaidCount > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${unpaidCount > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                    <Wallet className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold">ملخص المدفوعات</h3>
-                    <p className={`text-sm font-medium ${unpaidCount > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                      {unpaidCount > 0
-                        ? `يوجد ${unpaidCount} طلاب لم يدفعوا هذا الشهر`
-                        : 'تم استلام جميع المدفوعات ✓'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground font-medium mb-1">المبلغ المستلم</p>
-                    <p className="text-2xl font-bold">{totalCollected} {currencySymbol}</p>
-                  </div>
-                  <div className="w-px h-10 bg-muted" />
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground font-medium mb-1">المبلغ المتبقي</p>
-                    <p className="text-2xl font-bold text-red-600">{Math.max(0, totalExpected - totalCollected)} {currencySymbol}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      {/* Quick Tips for new users */}
+      {students.length === 0 && (
+        <div className="flex items-center gap-2 p-4 text-sm bg-blue-50 text-blue-800 rounded-2xl border border-blue-100 animate-in fade-in slide-in-from-top-4 duration-1000">
+          <span className="text-xl">💡</span>
+          <p className="font-medium">نصيحة: ابدأ بدعوة طلابك لتتمكن من إدارة حصصهم ومتابعة مدفوعاتهم في مكان واحد.</p>
+        </div>
       )}
 
       {/* Simplified Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-        <Link href="/dashboard/payments" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2">
-          <div className="p-3 bg-amber-100 text-amber-700 rounded-full mb-1">
-            <Wallet className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-sm">المدفوعات</span>
-        </Link>
+      <div className={`grid gap-4 mt-6 ${students.length === 0 ? 'grid-cols-1 max-w-sm mx-auto' : 'grid-cols-2 sm:grid-cols-4'}`}>
         <InviteStudentDialog trigger={
-          <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
+          <div role="button" tabIndex={0} className={`p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full ${students.length === 0 ? 'border-primary/20 shadow-sm' : ''}`}>
             <div className="p-3 bg-blue-100 text-blue-700 rounded-full mb-1">
               <UserPlus className="w-5 h-5" />
             </div>
             <span className="font-bold text-sm">دعوة طالب</span>
           </div>
         } />
-        <CreateSessionDialog students={students} trigger={
-          <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
-            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full mb-1">
-              <Plus className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-sm">إضافة حصة</span>
-          </div>
-        } />
-        <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 h-full">
-          <div className="p-3 bg-indigo-100 text-indigo-700 rounded-full mb-1">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <span className="font-bold text-sm">الجدول</span>
-        </Link>
+        
+        {students.length > 0 && (
+          <>
+            <Link href="/dashboard/payments" className="p-4 rounded-xl border bg-card hover:bg-muted transition-colors flex flex-col items-center text-center justify-center gap-2">
+              <div className="p-3 bg-amber-100 text-amber-700 rounded-full mb-1">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-sm">المدفوعات</span>
+            </Link>
+            <CreateSessionDialog students={students} trigger={
+              <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
+                <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full mb-1">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <span className="font-bold text-sm">إضافة حصة</span>
+              </div>
+            } />
+            <Link href="/dashboard/calendar" className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 h-full">
+              <div className="p-3 bg-indigo-100 text-indigo-700 rounded-full mb-1">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-sm">الجدول</span>
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Weekly Summary */}
@@ -193,7 +170,11 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
               {upcomingSessions.length === 0 ? (
                 <div className="text-center py-10">
                   <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">لا توجد حصص مجدولة حالياً</p>
+                  <p className="text-muted-foreground">
+                    {students.length === 0 
+                      ? 'لا توجد حصص مجدولة. جرب دعوة طالب جديد للبدء!' 
+                      : 'لا توجد حصص مجدولة حالياً'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -228,18 +209,21 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                           </div>
                         </div>
                       </div>
-                      {(session.google_meet_link || teacher.google_meet_link) && (
-                        <Button asChild size="sm" className="w-full sm:w-auto gap-2">
-                          <a
-                            href={session.google_meet_link || teacher.google_meet_link || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Video className="w-4 h-4" />
-                            دخول الحصة
-                          </a>
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {(session.google_meet_link || teacher.google_meet_link) && (
+                          <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none gap-2">
+                            <a
+                              href={session.google_meet_link || teacher.google_meet_link || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Video className="w-4 h-4" />
+                              <span className="hidden sm:inline">دخول الحصة</span>
+                            </a>
+                          </Button>
+                        )}
+                        <CompleteSessionButton session={session as any} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -256,7 +240,7 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
             </CardHeader>
             <CardContent>
               {recentSessions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8 text-sm">لا توجد حصص مكتملة بعد</p>
+                <p className="text-muted-foreground text-center py-8 text-sm">لا توجد حصص مكتملة. بمجرد بدء التدريس ستظهر حصصك هنا.</p>
               ) : (
                 <div className="space-y-3">
                   {recentSessions.map((session) => (
