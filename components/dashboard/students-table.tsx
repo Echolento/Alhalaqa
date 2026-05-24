@@ -344,19 +344,19 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                             {student.profile?.full_name?.charAt(0) || '؟'}
                           </span>
                         </div>
-                        {/* <div className="flex-1 min-w-0 text-right">
+                        <div className="flex-1 min-w-0 text-right">
                           <p className={`font-bold truncate hover:underline ${getPaymentStatus(student.id) === false ? 'text-red-700' : 'text-primary'}`}>
                             {student.profile?.full_name || 'طالب'}
                           </p>
-                          {student.current_surah ? (
+                          {/* {student.current_surah ? (
                             <Badge variant="secondary" className="flex items-center gap-1 w-fit mt-1">
                               <BookOpen className="w-3 h-3" />
                               {student.current_surah} : {student.current_ayah || 1}
                             </Badge>
                           ) : (
                             <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
-                          )}
-                        </div> */}
+                          )} */}
+                        </div>
                       </div>
                     }
                   />

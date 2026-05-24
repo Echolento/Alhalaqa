@@ -6,7 +6,7 @@ OK so
 
 
 UX bugs
-the "you've been invited" modal doesn't show up for the student (Application error: a server-side exception has occurred while loading www.alhalaqa.com (see the server logs for more information). Digest: 373263573@E7)
+the "you've been invited" modal doesn't show up for the student (it auto accepts without any error or modal showing)
 remove the google meet invite link field if the teacher didn't say he teaches online - but keep a toggle that asks is this session online? (in the create session modal) if it was ticked on then make it show that link field - if not then nothing happens
 add the ratings to the add student notes page after clicking end session - and stop it from closing randomly 
 after clicking save in the edit student notes section add a green checkmark that says saved (which disappears after 2 seconds)
