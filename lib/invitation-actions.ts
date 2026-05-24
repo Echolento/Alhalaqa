@@ -154,7 +154,7 @@ export async function getStudentInvitations() {
         .from('profiles')
         .select('phone')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     const phone = profile?.phone
     console.log('[INV] getStudentInvitations: user phone', phone)
@@ -324,7 +324,7 @@ export async function autoAcceptInvitations() {
         .from('profiles')
         .select('phone')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profileRow?.phone) return { success: true }
 
@@ -351,7 +351,7 @@ export async function autoAcceptInvitations() {
             .from('teachers')
             .select('default_monthly_price')
             .eq('id', invite.teacher_id)
-            .single()
+            .maybeSingle()
 
         if (student) {
             if (!student.teacher_id) {

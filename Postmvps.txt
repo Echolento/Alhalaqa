@@ -3,3 +3,20 @@ OK so
 2. IPHONE FIXES
 3. App store and SEO maxxing
 4. now academy and parent stuff
+
+
+UX bugs
+the "you've been invited" modal doesn't show up for the student (Application error: a server-side exception has occurred while loading www.alhalaqa.com (see the server logs for more information). Digest: 373263573@E7)
+remove the google meet invite link field if the teacher didn't say he teaches online - but keep a toggle that asks is this session online? (in the create session modal) if it was ticked on then make it show that link field - if not then nothing happens
+add the ratings to the add student notes page after clicking end session - and stop it from closing randomly 
+after clicking save in the edit student notes section add a green checkmark that says saved (which disappears after 2 seconds)
+on the student dashboard add the ratings 
+make a better looking more obvious are u sure u want to delete this session modal
+disable the confirm session button untill all the session is set up - make the "next" button green while the confirm is disabled
+remove the account info area from the settings upon first sign up
+add session button disappears???? Idk the conditions but it happens we gotta check that out
+session should only have the finish button from it's start time to the end of an hour after it's duration is done.
+upcoming sessions should only display today's upcoming sessions. rename "Upcoming sessions" to "Today's sessions"
+and past sessions should only display 4 sessions past - with a button to show all
+payment day dropdown should be a text field that shows an error when given a number higher than 31 or lower than 1
+if a session is done I can only edit the notes of that session untill another session of that same student comes up

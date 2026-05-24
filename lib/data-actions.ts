@@ -697,7 +697,7 @@ export async function getStudentDashboard() {
       )
     `)
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
 
   console.log('[getStudentDashboard] student query error:', studentError)
   console.log('[getStudentDashboard] raw student:', {
@@ -1430,7 +1430,7 @@ export async function getStudentPaymentStatus() {
     .from('students')
     .select('id, teacher:teachers(currency)')
     .eq('profile_id', user.id)
-    .single()
+    .maybeSingle()
   if (!student) return null
 
   const s = student as any

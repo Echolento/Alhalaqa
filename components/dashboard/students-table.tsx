@@ -196,8 +196,8 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                   const isPaid = getPaymentStatus(student.id)
                   const s = student as any
                   return (
-                    <TableRow 
-                      key={student.id} 
+                    <TableRow
+                      key={student.id}
                       className={`h-20 transition-all border-b border-primary/5 hover:bg-primary/[0.02] ${isPaid === false ? 'bg-red-50/50' : ''}`}
                     >
                       <TableCell>
@@ -233,13 +233,12 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                       </TableCell>
                       <TableCell>
                         <Badge
-                          className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${
-                            isPaid === true
-                              ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                              : isPaid === false
+                          className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${isPaid === true
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                            : isPaid === false
                               ? 'bg-red-600 text-white animate-pulse shadow-red-600/20'
                               : 'bg-slate-100 text-slate-500'
-                          }`}
+                            }`}
                         >
                           {isPaid === true ? 'مدفوع ✓' : isPaid === false ? 'غير مدفوع' : 'بانتظار التحصيل'}
                         </Badge>
@@ -270,11 +269,10 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                               {getPaymentStatus(student.id) !== null && (
                                 <Button
                                   size="sm"
-                                  className={`rounded-xl font-black h-10 px-4 transition-all ${
-                                    getPaymentStatus(student.id) 
-                                      ? 'bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700' 
-                                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                                  }`}
+                                  className={`rounded-xl font-black h-10 px-4 transition-all ${getPaymentStatus(student.id)
+                                    ? 'bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700'
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                                    }`}
                                   onClick={() => handlePaymentToggle(student.id)}
                                   disabled={paymentLoading === student.id}
                                 >
@@ -295,33 +293,33 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                                 students={students}
                                 defaultStudentId={student.id}
                                 trigger={
-                                <Button size="sm" variant="outline" className="gap-1">
-                                  <Calendar className="w-4 h-4" />
-                                  جدولة حصة
-                                </Button>
-                              }
-                            />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:bg-destructive/10"
-                              onClick={() => {
-                                setSelectedStudent(student)
-                                setIsRemoveOpen(true)
-                              }}
-                            >
-                              <UserMinus className="w-4 h-4 ml-1" />
-                              إزالة
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
+                                  <Button size="sm" variant="outline" className="gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    جدولة حصة
+                                  </Button>
+                                }
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => {
+                                  setSelectedStudent(student)
+                                  setIsRemoveOpen(true)
+                                }}
+                              >
+                                <UserMinus className="w-4 h-4 ml-1" />
+                                إزالة
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
           </Table>
         </div>
 
@@ -346,7 +344,7 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                             {student.profile?.full_name?.charAt(0) || '؟'}
                           </span>
                         </div>
-                        <div className="flex-1 min-w-0 text-right">
+                        {/* <div className="flex-1 min-w-0 text-right">
                           <p className={`font-bold truncate hover:underline ${getPaymentStatus(student.id) === false ? 'text-red-700' : 'text-primary'}`}>
                             {student.profile?.full_name || 'طالب'}
                           </p>
@@ -358,7 +356,7 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
                           ) : (
                             <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
                           )}
-                        </div>
+                        </div> */}
                       </div>
                     }
                   />
