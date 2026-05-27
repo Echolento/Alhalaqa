@@ -459,6 +459,8 @@ export async function updateSessionStatus(sessionId: string, status: 'completed'
 export async function createSessionNote(sessionId: string, data: SessionNoteForm) {
   const supabase = await createClient()
 
+  const clamp = (v: number) => Math.min(5, Math.max(1, v))
+
   const { error } = await supabase
     .from('session_notes')
     .upsert({
@@ -468,9 +470,9 @@ export async function createSessionNote(sessionId: string, data: SessionNoteForm
       recent_past_review: data.recent_past_review,
       general_notes: data.general_notes,
       next_task: data.next_task,
-      rating_new: data.rating_new,
-      rating_far_past: data.rating_far_past,
-      rating_recent_past: data.rating_recent_past,
+      rating_new: clamp(data.rating_new),
+      rating_far_past: clamp(data.rating_far_past),
+      rating_recent_past: clamp(data.rating_recent_past),
     }, {
       onConflict: 'session_id'
     })
@@ -486,11 +488,16 @@ export async function createSessionNote(sessionId: string, data: SessionNoteForm
 export async function updateSessionNotes(sessionId: string, data: Partial<SessionNoteForm>) {
   const supabase = await createClient()
 
+  const clamp = (v?: number) => v !== undefined ? Math.min(5, Math.max(1, v)) : undefined
+
   const { data: result, error } = await supabase
     .from('session_notes')
     .upsert({
       session_id: sessionId,
       ...data,
+      rating_new: clamp(data.rating_new),
+      rating_far_past: clamp(data.rating_far_past),
+      rating_recent_past: clamp(data.rating_recent_past),
     }, {
       onConflict: 'session_id'
     })
@@ -812,6 +819,23 @@ export async function getStudentDashboard() {
   })
 
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
+
+  console.log('[DEBUG-studentRating] avgRating:', avgRating)
+  console.log('[DEBUG-studentRating] recentSessions first note ratings:', 
+    (sessions || [])
+      .filter(s => s.status === 'completed')
+      .slice(0, 1)
+      .map(s => ({
+        sessionId: s.id,
+        session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : []),
+      }))
+      .flatMap(s => s.session_notes.map((n: any) => ({ 
+        rating_new: n.rating_new, 
+        rating_far_past: n.rating_far_past, 
+        rating_recent_past: n.rating_recent_past,
+        rating_new_type: typeof n.rating_new,
+      })))
+  )
 
   return {
     student,

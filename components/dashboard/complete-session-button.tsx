@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, BookOpen, Star } from 'lucide-react'
-import { updateSessionStatus, createSessionNote, updateStudentProgress } from '@/lib/data-actions'
+import { completeSession, createSessionNote, updateStudentProgress } from '@/lib/data-actions'
 import {
   Dialog,
   DialogContent,
@@ -49,26 +49,36 @@ export function CompleteSessionButton({ session }: { session: Session }) {
   const graceEnd = new Date(sessionEnd.getTime() + 60 * 60 * 1000)
   const canFinish = now >= sessionStart && now <= graceEnd
 
-  const handleComplete = async () => {
-    setLoading(true)
-    await updateSessionStatus(session.id, 'completed')
-    setLoading(false)
+  const handleComplete = () => {
     setIsOpen(true)
   }
 
   const handleSaveNotes = async (formData: FormData) => {
     setLoading(true)
     try {
-      await createSessionNote(session.id, {
+      const clamp = (v: number) => Math.min(5, Math.max(1, v))
+
+      const noteResult = await createSessionNote(session.id, {
         new_content: formData.get('new_content') as string,
         far_past_review: formData.get('far_past_review') as string,
         recent_past_review: formData.get('recent_past_review') as string,
         general_notes: formData.get('general_notes') as string,
         next_task: formData.get('next_task') as string,
-        rating_new: parseInt(ratingNew),
-        rating_far_past: parseInt(ratingFarPast),
-        rating_recent_past: parseInt(ratingRecentPast),
+        rating_new: clamp(parseInt(ratingNew)),
+        rating_far_past: clamp(parseInt(ratingFarPast)),
+        rating_recent_past: clamp(parseInt(ratingRecentPast)),
       })
+
+      if (noteResult.error) {
+        toast.error('حدث خطأ أثناء حفظ الملاحظات: ' + noteResult.error)
+        return
+      }
+
+      const completeResult = await completeSession(session.id)
+      if (completeResult.error) {
+        toast.error('حدث خطأ أثناء إنهاء الحصة: ' + completeResult.error)
+        return
+      }
 
       const surah = formData.get('current_surah') as string
       const ayah = parseInt(formData.get('current_ayah') as string)
@@ -94,7 +104,7 @@ export function CompleteSessionButton({ session }: { session: Session }) {
     <>
       <Button
         size="sm"
-        className="w-full sm:w-auto gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+        className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
         onClick={handleComplete}
         disabled={loading}
       >

@@ -109,18 +109,22 @@ export default function SessionDetailPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    const clamp = (v: number) => Math.min(5, Math.max(1, v))
+
     const result = await updateSessionNotes(params.id as string, {
       new_content: newContent,
       recent_past_review: recentReview,
       far_past_review: distantReview,
       general_notes: observations,
       next_task: nextTask,
-      rating_new: parseInt(ratingNew),
-      rating_far_past: parseInt(ratingFarPast),
-      rating_recent_past: parseInt(ratingRecentPast),
+      rating_new: clamp(parseInt(ratingNew)),
+      rating_far_past: clamp(parseInt(ratingFarPast)),
+      rating_recent_past: clamp(parseInt(ratingRecentPast)),
     });
 
-    if (result.success) {
+    if (result.error) {
+      toast.error('حدث خطأ أثناء الحفظ: ' + result.error)
+    } else {
       toast.success('تم الحفظ', { duration: 2000 })
     }
     setSaving(false);

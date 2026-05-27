@@ -173,9 +173,9 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
         recent_past_review: formData.get('recent_past_review') as string,
         general_notes: formData.get('general_notes') as string,
         next_task: formData.get('next_task') as string,
-        rating_new: parseInt(formData.get('rating_new') as string) || 0,
-        rating_far_past: parseInt(formData.get('rating_far_past') as string) || 0,
-        rating_recent_past: parseInt(formData.get('rating_recent_past') as string) || 0,
+        rating_new: Math.min(5, Math.max(1, parseInt(formData.get('rating_new') as string) || 5)),
+        rating_far_past: Math.min(5, Math.max(1, parseInt(formData.get('rating_far_past') as string) || 5)),
+        rating_recent_past: Math.min(5, Math.max(1, parseInt(formData.get('rating_recent_past') as string) || 5)),
       })
 
       if (result.error) {

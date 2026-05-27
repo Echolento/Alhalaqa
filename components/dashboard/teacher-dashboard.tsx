@@ -86,6 +86,14 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
       d.getDate() === t.getDate()
   }
 
+  function canFinishSession(session: { scheduled_at: string; duration_minutes: number }) {
+    const now = new Date()
+    const sessionStart = new Date(session.scheduled_at)
+    const sessionEnd = new Date(sessionStart.getTime() + (session.duration_minutes || 60) * 60000)
+    const graceEnd = new Date(sessionEnd.getTime() + 60 * 60 * 1000)
+    return now >= sessionStart && now <= graceEnd
+  }
+
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
       {/* Welcome Section */}
@@ -219,9 +227,9 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        {(session.google_meet_link || teacher.google_meet_link) && (
-                          <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none gap-2">
+                      <div className="flex items-center gap-2 w-full">
+                        {(session.google_meet_link || teacher.google_meet_link) && canFinishSession(session) && (
+                          <Button asChild size="sm" variant="outline" className="flex-1 gap-2">
                             <a
                               href={session.google_meet_link || teacher.google_meet_link || '#'}
                               target="_blank"
@@ -232,7 +240,9 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                             </a>
                           </Button>
                         )}
-                        <CompleteSessionButton session={session as any} />
+                        <div className={session.google_meet_link || teacher.google_meet_link ? 'flex-1' : 'w-full'}>
+                          <CompleteSessionButton session={session as any} />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -256,23 +266,18 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                   {recentSessions.slice(0, 4).map((session) => (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
                     >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                        <div>
-                          <p className="font-medium text-sm">{session.student?.profile?.full_name || 'طالب'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            <FormattedDate
-                              date={session.scheduled_at}
-                              options={{ month: 'short', day: 'numeric' }}
-                            />
-                          </p>
-                        </div>
+                      <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{session.student?.profile?.full_name || 'طالب'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <FormattedDate
+                            date={session.scheduled_at}
+                            options={{ month: 'short', day: 'numeric' }}
+                          />
+                        </p>
                       </div>
-                      <Button asChild size="sm" variant="ghost" className="h-8">
-                        <Link href={`/dashboard/sessions/${session.id}`}>التفاصيل</Link>
-                      </Button>
                     </div>
                   ))}
                   {recentSessions.length > 4 && (
