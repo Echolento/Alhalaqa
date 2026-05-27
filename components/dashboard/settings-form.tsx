@@ -113,7 +113,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
       )}
 
       {/* Profile Info */}
-      <Card>
+      {!isFirstLogin && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -193,7 +193,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
             </div>
           </form>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Teacher Settings */}
       {profile.role === 'teacher' && (

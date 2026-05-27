@@ -419,7 +419,7 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
 
       {/* Transfer Dialog */}
       <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>نقل الطالب</DialogTitle>
             <DialogDescription>
@@ -459,7 +459,7 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
       </Dialog>
       {/* Remove Confirmation Dialog */}
       <Dialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>إزالة الطالب</DialogTitle>
             <DialogDescription>

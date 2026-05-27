@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,8 +29,20 @@ import {
   Clock,
   FileText,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react'
-import { updateSessionStatus, createSessionNote, updateStudentProgress } from '@/lib/data-actions'
+import { updateSessionStatus, createSessionNote, updateStudentProgress, deleteSession } from '@/lib/data-actions'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import type { UserRole } from '@/lib/types'
 import { FormattedDate } from '@/components/ui/formatted-date'
 
@@ -72,9 +85,28 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showAllCompleted, setShowAllCompleted] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Session | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Use state for 'now' to avoid server/client mismatch (hydration error)
   const [now] = useState<string>(() => new Date().toISOString())
+
+  function isToday(dateStr: string) {
+    const d = new Date(dateStr)
+    const t = new Date()
+    return d.getFullYear() === t.getFullYear() &&
+      d.getMonth() === t.getMonth() &&
+      d.getDate() === t.getDate()
+  }
+
+  function canFinishSession(session: Session) {
+    const nowDate = new Date(now)
+    const sessionStart = new Date(session.scheduled_at)
+    const sessionEnd = new Date(sessionStart.getTime() + (session.duration_minutes || 60) * 60000)
+    const graceEnd = new Date(sessionEnd.getTime() + 60 * 60 * 1000)
+    return nowDate >= sessionStart && nowDate <= graceEnd
+  }
 
   const filteredSessions = sessions.filter((session) => {
     const name = role === 'teacher'
@@ -91,11 +123,22 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
       const graceEndTime = new Date(endTime.getTime() + 60 * 60 * 1000)
       return graceEndTime > new Date(now)
     })
-    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
 
   const completedSessions = filteredSessions
     .filter(s => s.status === 'completed')
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
+  const displayedCompleted = showAllCompleted ? completedSessions : completedSessions.slice(0, 4)
+
+  // Per-student: track which completed session is the latest for each student
+  const latestCompletedByStudent = new Map<string, string>()
+  for (const s of completedSessions) {
+    const studentId = (s as any).student?.id
+    if (studentId && !latestCompletedByStudent.has(studentId)) {
+      latestCompletedByStudent.set(studentId, s.id)
+    }
+  }
 
   const overdueSessions = filteredSessions
     .filter(s => {
@@ -137,7 +180,7 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
 
       if (result.error) {
         console.error('Error saving notes:', result.error)
-        alert('حدث خطأ أثناء حفظ الملاحظات: ' + result.error)
+        toast.error('حدث خطأ أثناء حفظ الملاحظات: ' + result.error)
       } else {
         // Update student progress if provided
         const surah = formData.get('current_surah') as string
@@ -148,6 +191,7 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
         }
 
         setIsNotesOpen(false)
+        toast.success('تم الحفظ', { duration: 2000 })
         router.refresh()
       }
     } catch (e) {
@@ -220,6 +264,11 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                   <Clock className="w-3 h-3" />
                   {session.duration_minutes} دقيقة
                 </Badge>
+                {isToday(session.scheduled_at) && (
+                  <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                    اليوم
+                  </Badge>
+                )}
                 {(note?.rating_new || note?.rating_far_past || note?.rating_recent_past) && (
                   <div className="flex items-center gap-1">
                     {note?.rating_new && (
@@ -270,7 +319,7 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                 </Button>
               )}
 
-              {role === 'teacher' && session.status === 'scheduled' && (
+              {role === 'teacher' && session.status === 'scheduled' && canFinishSession(session) && (
                 <>
                   <Button
                     size="sm"
@@ -285,9 +334,21 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
                 </>
               )}
 
+              {role === 'teacher' && session.status === 'scheduled' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex-1 sm:flex-none min-h-[44px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setDeleteTarget(session)}
+                >
+                  <Trash2 className="w-4 h-4 ml-1" />
+                  حذف
+                </Button>
+              )}
+
               {role === 'teacher' && 
                session.status === 'completed' && 
-               session.id === completedSessions[0]?.id && (
+               latestCompletedByStudent.get((session as any).student?.id) === session.id && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -370,14 +431,65 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
               </CardContent>
             </Card>
           ) : (
-            completedSessions.map(renderSessionCard)
+            <>
+              {displayedCompleted.map(renderSessionCard)}
+              {completedSessions.length > 4 && !showAllCompleted && (
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setShowAllCompleted(true)}
+                >
+                  عرض الكل ({completedSessions.length})
+                </Button>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من حذف هذه الحصة؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <div className="space-y-1 mt-2">
+                  <p>الطالب: {(deleteTarget as any).student?.profile?.full_name || 'غير محدد'}</p>
+                  <p><FormattedDate date={deleteTarget.scheduled_at} options={{ weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} /></p>
+                </div>
+              )}
+              <p className="mt-2">هذا الإجراء لا يمكن التراجع عنه.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={async () => {
+                if (!deleteTarget) return
+                setDeleting(true)
+                try {
+                  await deleteSession(deleteTarget.id)
+                  router.refresh()
+                  toast.success('تم حذف الحصة بنجاح', { duration: 2000 })
+                } catch {
+                  toast.error('حدث خطأ أثناء الحذف')
+                }
+                setDeleting(false)
+                setDeleteTarget(null)
+              }}
+            >
+              {deleting ? 'جاري الحذف...' : 'حذف'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Notes Dialog */}
       <Dialog open={isNotesOpen} onOpenChange={setIsNotesOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
@@ -437,12 +549,56 @@ export function SessionsList({ sessions, role }: SessionsListProps) {
               />
             </div>
 
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم الجديد
+                </Label>
+                <select
+                  name="rating_new"
+                  defaultValue={selectedSession?.session_notes?.[0]?.rating_new || 5}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background"
+                >
+                  {[5, 4, 3, 2, 1].map(r => (
+                    <option key={r} value={r}>{r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم البعيد
+                </Label>
+                <select
+                  name="rating_far_past"
+                  defaultValue={selectedSession?.session_notes?.[0]?.rating_far_past || 5}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background"
+                >
+                  {[5, 4, 3, 2, 1].map(r => (
+                    <option key={r} value={r}>{r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم القريب
+                </Label>
+                <select
+                  name="rating_recent_past"
+                  defaultValue={selectedSession?.session_notes?.[0]?.rating_recent_past || 5}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background"
+                >
+                  {[5, 4, 3, 2, 1].map(r => (
+                    <option key={r} value={r}>{r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsNotesOpen(false)}>
-                إلغاء
-              </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="w-full">
                 {loading ? 'جاري الحفظ...' : 'حفظ الملاحظات'}
               </Button>
             </DialogFooter>

@@ -311,7 +311,7 @@ export function CalendarView({ sessions, students }: CalendarViewProps) {
 
       {/* Dialog for adding/viewing sessions */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {selectedDate?.toLocaleDateString('ar-SA', {

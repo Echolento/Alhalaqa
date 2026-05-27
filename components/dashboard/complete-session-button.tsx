@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, BookOpen } from 'lucide-react'
+import { CheckCircle, BookOpen, Star } from 'lucide-react'
 import { updateSessionStatus, createSessionNote, updateStudentProgress } from '@/lib/data-actions'
 import {
   Dialog,
@@ -13,13 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { FormattedDate } from '@/components/ui/formatted-date'
+import { toast } from 'sonner'
 
 interface Session {
   id: string
   scheduled_at: string
+  duration_minutes: number
   student: {
     id: string
     profile: { full_name: string | null }
@@ -30,12 +39,21 @@ export function CompleteSessionButton({ session }: { session: Session }) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [ratingNew, setRatingNew] = useState('5')
+  const [ratingFarPast, setRatingFarPast] = useState('5')
+  const [ratingRecentPast, setRatingRecentPast] = useState('5')
+
+  const now = new Date()
+  const sessionStart = new Date(session.scheduled_at)
+  const sessionEnd = new Date(sessionStart.getTime() + (session.duration_minutes || 60) * 60000)
+  const graceEnd = new Date(sessionEnd.getTime() + 60 * 60 * 1000)
+  const canFinish = now >= sessionStart && now <= graceEnd
 
   const handleComplete = async () => {
     setLoading(true)
     await updateSessionStatus(session.id, 'completed')
     setLoading(false)
-    setIsOpen(true) // Open notes dialog after marking as complete
+    setIsOpen(true)
   }
 
   const handleSaveNotes = async (formData: FormData) => {
@@ -47,12 +65,11 @@ export function CompleteSessionButton({ session }: { session: Session }) {
         recent_past_review: formData.get('recent_past_review') as string,
         general_notes: formData.get('general_notes') as string,
         next_task: formData.get('next_task') as string,
-        rating_new: 0,
-        rating_far_past: 0,
-        rating_recent_past: 0,
+        rating_new: parseInt(ratingNew),
+        rating_far_past: parseInt(ratingFarPast),
+        rating_recent_past: parseInt(ratingRecentPast),
       })
 
-      // Update student progress if provided
       const surah = formData.get('current_surah') as string
       const ayah = parseInt(formData.get('current_ayah') as string)
 
@@ -61,13 +78,17 @@ export function CompleteSessionButton({ session }: { session: Session }) {
       }
 
       setIsOpen(false)
+      toast.success('تم الحفظ', { duration: 2000 })
       router.refresh()
     } catch (e) {
       console.error(e)
+      toast.error('حدث خطأ أثناء الحفظ')
     } finally {
       setLoading(false)
     }
   }
+
+  if (!canFinish) return null
 
   return (
     <>
@@ -82,7 +103,7 @@ export function CompleteSessionButton({ session }: { session: Session }) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
@@ -128,12 +149,65 @@ export function CompleteSessionButton({ session }: { session: Session }) {
               />
             </div>
 
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم الجديد
+                </Label>
+                <Select value={ratingNew} onValueChange={setRatingNew}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 4, 3, 2, 1].map(r => (
+                      <SelectItem key={r} value={r.toString()} className="text-xs">
+                        {r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم البعيد
+                </Label>
+                <Select value={ratingFarPast} onValueChange={setRatingFarPast}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 4, 3, 2, 1].map(r => (
+                      <SelectItem key={r} value={r.toString()} className="text-xs">
+                        {r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500" />
+                  تقييم القريب
+                </Label>
+                <Select value={ratingRecentPast} onValueChange={setRatingRecentPast}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 4, 3, 2, 1].map(r => (
+                      <SelectItem key={r} value={r.toString()} className="text-xs">
+                        {r === 5 ? 'ممتاز' : r === 4 ? 'جيد جداً' : r === 3 ? 'جيد' : r === 2 ? 'مقبول' : 'ضعيف'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                لاحقاً
-              </Button>
-              <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground">
+              <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground w-full">
                 {loading ? 'جاري الحفظ...' : 'حفظ الملاحظات'}
               </Button>
             </DialogFooter>

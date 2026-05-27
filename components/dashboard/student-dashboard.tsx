@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
 import {
   Calendar,
   CheckCircle,
@@ -18,7 +19,8 @@ import {
   Wallet,
   TrendingUp,
   Award,
-  ChevronLeft
+  ChevronLeft,
+  Star
 } from 'lucide-react'
 import type { StudentStats } from '@/lib/types'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -64,10 +66,25 @@ interface StudentDashboardProps {
     paid: boolean
     paid_at: string | null
   } | null
+  autoAccepted?: boolean
 }
 
-export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps) {
+export function StudentDashboard({ data, paymentStatus, autoAccepted }: StudentDashboardProps) {
   const [teacherName, setTeacherName] = useState<string | null>(null)
+
+  function isToday(dateStr: string) {
+    const d = new Date(dateStr)
+    const t = new Date()
+    return d.getFullYear() === t.getFullYear() &&
+      d.getMonth() === t.getMonth() &&
+      d.getDate() === t.getDate()
+  }
+
+  useEffect(() => {
+    if (autoAccepted) {
+      toast.success('تم قبول دعوة المعلم تلقائياً', { duration: 3000 })
+    }
+  }, [autoAccepted])
 
   if (!data) return null
 
@@ -153,7 +170,15 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
                   <div className="space-y-6">
                     {latestNote.new_content && (
                       <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الجديد</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الجديد</p>
+                          {latestNote.rating_new != null && latestNote.rating_new > 0 && (
+                            <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
+                              <Star className="w-3 h-3 text-amber-500" />
+                              {latestNote.rating_new === 5 ? 'ممتاز' : latestNote.rating_new === 4 ? 'جيد جداً' : latestNote.rating_new === 3 ? 'جيد' : latestNote.rating_new === 2 ? 'مقبول' : 'ضعيف'}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
                           <p className="text-lg font-bold text-emerald-900 leading-relaxed">{latestNote.new_content}</p>
                         </div>
@@ -168,13 +193,29 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
                         <div className="grid gap-3">
                           {latestNote.recent_past_review && (
                             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
-                              <span className="text-[10px] font-black text-blue-600 block mb-1 uppercase tracking-tighter">القريب:</span>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">القريب:</span>
+                                {latestNote.rating_recent_past != null && latestNote.rating_recent_past > 0 && (
+                                  <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
+                                    <Star className="w-3 h-3 text-amber-500" />
+                                    {latestNote.rating_recent_past === 5 ? 'ممتاز' : latestNote.rating_recent_past === 4 ? 'جيد جداً' : latestNote.rating_recent_past === 3 ? 'جيد' : latestNote.rating_recent_past === 2 ? 'مقبول' : 'ضعيف'}
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="font-bold text-blue-900">{latestNote.recent_past_review}</p>
                             </div>
                           )}
                           {latestNote.far_past_review && (
                             <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
-                              <span className="text-[10px] font-black text-indigo-600 block mb-1 uppercase tracking-tighter">البعيد:</span>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">البعيد:</span>
+                                {latestNote.rating_far_past != null && latestNote.rating_far_past > 0 && (
+                                  <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
+                                    <Star className="w-3 h-3 text-amber-500" />
+                                    {latestNote.rating_far_past === 5 ? 'ممتاز' : latestNote.rating_far_past === 4 ? 'جيد جداً' : latestNote.rating_far_past === 3 ? 'جيد' : latestNote.rating_far_past === 2 ? 'مقبول' : 'ضعيف'}
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="font-bold text-indigo-900">{latestNote.far_past_review}</p>
                             </div>
                           )}
@@ -224,8 +265,13 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
                           </span>
                         </div>
                         <div>
-                          <p className="font-black text-slate-800">
+                          <p className="font-black text-slate-800 flex items-center gap-2">
                             <FormattedDate date={session.scheduled_at} options={{ weekday: 'long' }} />
+                            {isToday(session.scheduled_at) && (
+                              <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 text-[10px] py-0">
+                                اليوم
+                              </Badge>
+                            )}
                           </p>
                           <p className="text-sm font-bold text-primary">
                             الساعة <FormattedDate date={session.scheduled_at} options={{ hour: 'numeric', minute: 'numeric' }} />
@@ -269,6 +315,11 @@ export function StudentDashboard({ data, paymentStatus }: StudentDashboardProps)
                 ))
               ) : (
                 <p className="text-sm text-slate-400 text-center py-8">لا يوجد تاريخ حصص بعد</p>
+              )}
+              {recentSessions.length > 4 && (
+                <Button asChild variant="link" className="w-full text-slate-500 font-bold">
+                  <Link href="/dashboard/sessions">عرض الكل</Link>
+                </Button>
               )}
             </div>
           </div>

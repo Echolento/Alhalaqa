@@ -9,10 +9,10 @@ import {
   Clock,
   Video,
   ArrowLeft,
-  Plus,
   UserPlus,
   AlertCircle,
   Wallet,
+  CalendarPlus,
 } from 'lucide-react'
 import type { TeacherStats } from '@/lib/types'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -78,6 +78,14 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
   const totalExpected = paymentData?.students.reduce((sum, s) => sum + (Number(s.monthly_price) || 0), 0) || 0
   const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0
 
+  function isToday(dateStr: string) {
+    const d = new Date(dateStr)
+    const t = new Date()
+    return d.getFullYear() === t.getFullYear() &&
+      d.getMonth() === t.getMonth() &&
+      d.getDate() === t.getDate()
+  }
+
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
       {/* Welcome Section */}
@@ -132,7 +140,7 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
             <CreateSessionDialog students={students} trigger={
               <div role="button" tabIndex={0} className="p-4 rounded-xl border bg-card hover:bg-muted active:bg-muted/80 transition-colors flex flex-col items-center text-center justify-center gap-2 w-full cursor-pointer h-full">
                 <div className="p-3 bg-emerald-100 text-emerald-700 rounded-full mb-1">
-                  <Plus className="w-5 h-5" />
+                  <CalendarPlus className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-sm">إضافة حصة</span>
               </div>
@@ -203,9 +211,11 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                               date={session.scheduled_at}
                               options={{ weekday: 'long', hour: '2-digit', minute: '2-digit' }}
                             />
-                            <Badge variant="outline" className="text-xs py-0">
-                              {session.duration_minutes} دقيقة
-                            </Badge>
+                            {isToday(session.scheduled_at) && (
+                              <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 text-[10px] py-0">
+                                اليوم
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -243,7 +253,7 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                 <p className="text-muted-foreground text-center py-8 text-sm">لا توجد حصص مكتملة. بمجرد بدء التدريس ستظهر حصصك هنا.</p>
               ) : (
                 <div className="space-y-3">
-                  {recentSessions.map((session) => (
+                  {recentSessions.slice(0, 4).map((session) => (
                     <div
                       key={session.id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
@@ -265,6 +275,11 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                       </Button>
                     </div>
                   ))}
+                  {recentSessions.length > 4 && (
+                    <Button asChild variant="link" className="w-full text-sm">
+                      <Link href="/dashboard/sessions">عرض الكل</Link>
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>

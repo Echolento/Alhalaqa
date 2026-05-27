@@ -376,6 +376,23 @@ async function checkSessionOverlap(
   return false
 }
 
+export async function getTeacherDefaultOnline() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { isOnline: true, defaultMeetLink: null }
+
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('google_meet_link')
+    .eq('profile_id', user.id)
+    .single()
+
+  return {
+    isOnline: !!teacher?.google_meet_link,
+    defaultMeetLink: teacher?.google_meet_link || null
+  }
+}
+
 export async function createSession(data: SessionForm) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

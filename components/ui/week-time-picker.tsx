@@ -100,39 +100,39 @@ export function WeekTimePicker({
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 border rounded-2xl p-3 sm:p-6 bg-card shadow-sm border-primary/10">
+    <div className="space-y-3 border rounded-xl p-3 bg-card shadow-sm border-primary/10">
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-primary" />
-          <span className="text-md font-bold">
+        <div className="flex items-center gap-1.5">
+          <CalendarIcon className="w-4 h-4 text-primary" />
+          <span className="text-sm font-bold">
             {ARABIC_MONTHS[currentWeekStart.getMonth()]} {currentWeekStart.getFullYear()}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="outline"
             size="icon"
-            className="h-9 w-9 rounded-full"
+            className="h-7 w-7 rounded-full"
             onClick={() => navigateWeek('prev')}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           <Button
             type="button"
             variant="outline"
             size="icon"
-            className="h-9 w-9 rounded-full"
+            className="h-7 w-7 rounded-full"
             onClick={() => navigateWeek('next')}
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 px-4 rounded-full text-xs font-bold"
+            className="h-7 px-2.5 rounded-full text-[10px] font-bold"
             onClick={() => {
               const today = new Date();
               setCurrentWeekStart(getWeekStart(today));
@@ -146,7 +146,7 @@ export function WeekTimePicker({
       </div>
 
       {/* Day Selection Row */}
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+      <div className="grid grid-cols-7 gap-1">
         {days.map((d, idx) => {
           const isSelected = isSameDay(d, selectedDate)
           const isPast = d < new Date() && !isToday(d)
@@ -158,39 +158,34 @@ export function WeekTimePicker({
               disabled={isPast}
               onClick={() => setSelectedDate(d)}
               className={cn(
-                "flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border transition-all gap-1",
+                "flex flex-col items-center justify-center p-1.5 rounded-lg border transition-all gap-0.5",
                 isSelected
-                  ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105 z-10"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm z-10"
                   : "bg-muted/20 hover:bg-muted/40 border-transparent",
                 isToday(d) && !isSelected ? "border-primary/30 text-primary" : "",
                 isPast ? "opacity-20 cursor-not-allowed" : "cursor-pointer"
               )}
             >
-              <span className="text-[10px] font-medium opacity-70">{ARABIC_DAYS[idx]}</span>
-              <span className="text-lg font-bold">{d.getDate()}</span>
+              <span className="text-[9px] font-medium opacity-70">{ARABIC_DAYS[idx]}</span>
+              <span className="text-sm font-bold">{d.getDate()}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Alarm Style Time Picker */}
-      <div className="space-y-4 pt-4 border-t border-primary/5">
-        <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground pb-2">
-          <Clock className="w-4 h-4" />
-          تحديد الوقت
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 bg-muted/30 p-4 sm:p-6 rounded-2xl border border-dashed border-primary/20">
+      {/* Time Picker */}
+      <div className="pt-3 border-t border-primary/5">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 bg-muted/30 p-3 rounded-xl border border-dashed border-primary/20">
           {/* Hour */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">الساعة</span>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[9px] font-bold text-muted-foreground">الساعة</span>
             <Select value={hour} onValueChange={setHour}>
-              <SelectTrigger className="w-20 h-16 text-2xl font-bold rounded-xl border-2 focus:ring-primary">
+              <SelectTrigger className="w-20 h-10 text-lg font-bold rounded-lg border-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((h) => (
-                  <SelectItem key={h} value={h} className="text-lg font-bold">
+                  <SelectItem key={h} value={h} className="text-sm font-bold">
                     {h.padStart(2, '0')}
                   </SelectItem>
                 ))}
@@ -198,11 +193,11 @@ export function WeekTimePicker({
             </Select>
           </div>
 
-          <span className="text-3xl font-bold text-primary mt-6">:</span>
+          <span className="text-xl font-bold text-primary mt-5">:</span>
 
           {/* Minute */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">الدقيقة</span>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[9px] font-bold text-muted-foreground">الدقيقة</span>
             <input
               type="text"
               inputMode="numeric"
@@ -221,33 +216,33 @@ export function WeekTimePicker({
                 const n = Math.max(0, Math.min(59, parseInt(e.target.value) || 0))
                 setMinute(String(n).padStart(2, '0'))
               }}
-              className="w-20 h-16 text-2xl font-bold rounded-xl border-2 text-center bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              className="w-20 h-10 text-lg font-bold rounded-lg border-2 text-center bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               placeholder="00"
             />
           </div>
 
           {/* AM/PM */}
-          <div className="flex flex-col gap-2 mt-6">
-            <div className="flex flex-col border-2 rounded-xl overflow-hidden">
+          <div className="flex flex-col mt-5">
+            <div className="flex border-2 rounded-lg overflow-hidden">
               <button
                 type="button"
                 onClick={() => setPeriod('AM')}
                 className={cn(
-                  "px-4 py-2 text-sm font-bold transition-colors",
+                  "px-2.5 py-1.5 text-[11px] font-bold transition-colors",
                   period === 'AM' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 )}
               >
-                صباحاً
+                ص
               </button>
               <button
                 type="button"
                 onClick={() => setPeriod('PM')}
                 className={cn(
-                  "px-4 py-2 text-sm font-bold transition-colors border-t",
+                  "px-2.5 py-1.5 text-[11px] font-bold transition-colors border-r",
                   period === 'PM' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 )}
               >
-                مساءً
+                م
               </button>
             </div>
           </div>
@@ -255,21 +250,21 @@ export function WeekTimePicker({
       </div>
 
       {/* Selected Result Summary */}
-      <div className="p-3 sm:p-4 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <CalendarIcon className="w-5 h-5" />
+      <div className="p-2 bg-primary/5 rounded-lg border border-primary/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <CalendarIcon className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="text-[10px] text-muted-foreground font-bold">الموعد الذي تم اختياره</div>
-            <div className="text-sm font-bold text-primary">
+            <div className="text-[9px] text-muted-foreground font-bold">الموعد</div>
+            <div className="text-xs font-bold text-primary">
               {ARABIC_DAYS[selectedDate.getDay()]} {selectedDate.getDate()} {ARABIC_MONTHS[selectedDate.getMonth()]}
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] text-muted-foreground font-bold">التوقيت</div>
-          <div className="text-xl font-black text-primary tracking-tighter">
+        <div className="text-left">
+          <div className="text-[9px] text-muted-foreground font-bold">التوقيت</div>
+          <div className="text-base font-black text-primary tracking-tighter">
             {hour.padStart(2, '0')}:{minute} {period === 'AM' ? 'ص' : 'م'}
           </div>
         </div>

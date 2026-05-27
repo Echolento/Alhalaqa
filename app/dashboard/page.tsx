@@ -59,7 +59,11 @@ export default async function DashboardPage() {
 
   if (profile.role === 'student') {
     // Auto-accept any pending invitations (best-effort, don't crash on failure)
-    try { await autoAcceptInvitations() } catch (e) { console.error('[dashboard] autoAcceptInvitations failed:', e) }
+    let autoAccepted = false
+    try {
+      const result = await autoAcceptInvitations()
+      autoAccepted = (result?.acceptedCount ?? 0) > 0
+    } catch (e) { console.error('[dashboard] autoAcceptInvitations failed:', e) }
 
     const [data, invitations, paymentStatus] = await Promise.all([
       getStudentDashboard(),
@@ -89,7 +93,7 @@ export default async function DashboardPage() {
     return (
       <div className="space-y-6">
         <PendingInvitations invitations={invitations} />
-        <StudentDashboard data={data} paymentStatus={paymentStatus} />
+        <StudentDashboard data={data} paymentStatus={paymentStatus} autoAccepted={autoAccepted} />
       </div>
     )
   }

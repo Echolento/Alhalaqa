@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Plus, AlertCircle, CheckCircle, Calendar, Users, Video, Clock, Settings2 } from 'lucide-react'
-import { createSession } from '@/lib/data-actions'
+import { createSession, getTeacherDefaultOnline } from '@/lib/data-actions'
 import WeekTimePicker from '@/components/ui/week-time-picker'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -49,6 +49,17 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
     const [activeTab, setActiveTab] = useState("info")
     const [studentId, setStudentId] = useState(defaultStudentId || "")
     const [nextSessions, setNextSessions] = useState<Date[]>([])
+    const [isOnline, setIsOnline] = useState(true)
+    const [defaultMeetLink, setDefaultMeetLink] = useState('')
+    const defaultOnlineRef = useRef(true)
+
+    useEffect(() => {
+        getTeacherDefaultOnline().then(({ isOnline, defaultMeetLink }) => {
+            defaultOnlineRef.current = isOnline
+            setIsOnline(isOnline)
+            setDefaultMeetLink(defaultMeetLink || '')
+        })
+    }, [])
 
     // Generate next 4 sessions based on selected date
     const generateNext4Dates = (startDate: Date) => {
@@ -69,7 +80,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
 
         const formData = new FormData(e.currentTarget)
         const duration = parseInt(formData.get('duration') as string)
-        const meetLink = formData.get('meet_link') as string
+        const meetLink = isOnline ? (formData.get('meet_link') as string) : ''
         const scheduledAt = selectedDate ? selectedDate.toISOString() : null
 
         if (!studentId) {
@@ -149,8 +160,19 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
         setLoading(false)
     }
 
+    function resetForm() {
+        setStudentId(defaultStudentId || "")
+        setSelectedDate(null)
+        setActiveTab("info")
+        setIsRecurring(false)
+        setIsOnline(defaultOnlineRef.current)
+        setError(null)
+        setSuccess(false)
+        setNextSessions([])
+    }
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(open) => { if (open) resetForm(); setOpen(open) }}>
             <DialogTrigger asChild>
                 {trigger || (
                     <Button className="gap-2">
@@ -202,7 +224,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                                 </TabsList>
                             </div>
 
-                            <div className="p-4 sm:p-6 min-h-[350px] sm:min-h-[400px]">
+                            <div className="p-4 sm:p-6">
                                 {error && (
                                     <div className="mb-4 flex items-start gap-2 p-3 text-sm text-destructive bg-destructive/5 border border-destructive/10 rounded-lg animate-in fade-in">
                                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -256,11 +278,10 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                                     <div className="pt-4">
                                         <Button
                                             type="button"
-                                            variant="secondary"
-                                            className="w-full"
+                                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                                             onClick={() => setActiveTab("schedule")}
                                         >
-                                            التالي: اختيار الموعد
+                                            التالي
                                         </Button>
                                     </div>
                                 </TabsContent>
@@ -286,7 +307,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                                         </Button>
                                         <Button
                                             type="button"
-                                            className="flex-1"
+                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                                             onClick={() => setActiveTab("settings")}
                                         >
                                             التالي
@@ -294,24 +315,42 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="settings" className="space-y-6 mt-0 border-none p-0 outline-none">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="meet_link" className="text-sm font-bold flex items-center gap-2">
-                                            <Video className="w-4 h-4 text-primary" />
-                                            رابط الاجتماع (اختياري)
-                                        </Label>
-                                        <Input
-                                            id="meet_link"
-                                            name="meet_link"
-                                            type="url"
-                                            placeholder="https://meet.google.com/..."
-                                            dir="ltr"
-                                            className="h-12"
-                                        />
-                                        <p className="text-[10px] text-muted-foreground pr-1">
-                                            سيتم استخدام الرابط الخاص بك تلقائياً إذا تركت هذا الحقل فارغاً
-                                        </p>
-                                    </div>
+                                <TabsContent value="settings" className="space-y-4 mt-0 border-none p-0 outline-none">
+                                    {isOnline ? (
+                                        <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                                            <Input
+                                                name="meet_link"
+                                                type="url"
+                                                dir="ltr"
+                                                defaultValue={defaultMeetLink}
+                                                key={`meet_link_${open}`}
+                                                placeholder="https://meet.google.com/..."
+                                                className="h-9 text-sm bg-background border-0 focus-visible:ring-1"
+                                            />
+                                            <Switch
+                                                id="online_toggle"
+                                                checked={isOnline}
+                                                onCheckedChange={setIsOnline}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
+                                            <div className="space-y-0.5">
+                                                <Label htmlFor="online_toggle" className="font-bold flex items-center gap-2">
+                                                    <Video className="w-4 h-4 text-primary" />
+                                                    هذه الحصة عبر الإنترنت
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    سيتم إضافة رابط الاجتماع للحصة
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="online_toggle"
+                                                checked={isOnline}
+                                                onCheckedChange={setIsOnline}
+                                            />
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
                                         <div className="space-y-0.5">
@@ -344,6 +383,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                             </div>
                         </Tabs>
 
+                        {activeTab === "settings" && (
                         <DialogFooter className="p-6 bg-muted/30 border-t items-center sm:justify-between flex-row gap-4">
                             <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="hidden sm:inline-flex">
                                 إلغاء
@@ -352,6 +392,7 @@ export function CreateSessionDialog({ students, trigger, defaultStudentId }: Cre
                                 {loading ? 'جاري الحفظ...' : isRecurring ? 'إنشاء حصص دورية' : 'تأكيد المعاد'}
                             </Button>
                         </DialogFooter>
+                        )}
                     </form>
                 )}
             </DialogContent>

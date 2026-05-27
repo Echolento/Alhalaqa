@@ -61,7 +61,7 @@ export function StudentNotesModal({ studentId, studentName, trigger, children }:
             )}
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="w-5 h-5" />

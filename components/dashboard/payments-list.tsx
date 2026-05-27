@@ -24,6 +24,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
   const [tempPrice, setTempPrice] = useState('')
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [tempDay, setTempDay] = useState('')
+  const [dayError, setDayError] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -87,6 +88,12 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
     setLoading(studentId)
     try {
       const day = parseInt(tempDay)
+      if (isNaN(day) || day < 1 || day > 31) {
+        setDayError('يجب أن يكون اليوم بين 1 و 31')
+        setLoading(null)
+        return
+      }
+      setDayError(null)
       const result = await updateStudentPaymentDay(studentId, day)
       if (result.success) {
         setEditingDay(null)
@@ -182,20 +189,24 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                         <CalendarIcon className="w-3.5 h-3.5" />
                         <span>يوم الدفع:</span>
                         {editingDay === student.id ? (
-                          <div className="flex items-center gap-1">
-                            <select
-                              value={tempDay}
-                              onChange={(e) => setTempDay(e.target.value)}
-                              className="h-6 w-12 text-[10px] px-0.5 text-center bg-white rounded border border-input"
-                              autoFocus
-                            >
-                              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                <option key={d} value={d}>{d}</option>
-                              ))}
-                            </select>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveDay(student.id)} disabled={loading === student.id}>
-                              <Save className="w-3 h-3" />
-                            </Button>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                value={tempDay}
+                                onChange={(e) => { setTempDay(e.target.value); setDayError(null) }}
+                                className="h-6 w-14 text-[10px] px-1 text-center bg-white rounded border border-input"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveDay(student.id)} disabled={loading === student.id}>
+                                <Save className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            {dayError && (
+                              <p className="text-[10px] text-destructive">{dayError}</p>
+                            )}
                           </div>
                         ) : (
                           <button 

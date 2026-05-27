@@ -22,10 +22,23 @@ import {
   Video,
   Save,
   BookOpen,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Session, SessionNote } from "@/lib/types";
-import { updateSessionNotes, completeSession } from "@/lib/data-actions";
+import { updateSessionNotes, completeSession, deleteSession } from "@/lib/data-actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -43,6 +56,8 @@ export default function SessionDetailPage() {
   const [ratingNew, setRatingNew] = useState<string>("5");
   const [ratingFarPast, setRatingFarPast] = useState<string>("5");
   const [ratingRecentPast, setRatingRecentPast] = useState<string>("5");
+  const [deleteTarget, setDeleteTarget] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchSession() {
@@ -106,7 +121,7 @@ export default function SessionDetailPage() {
     });
 
     if (result.success) {
-      // Refresh local state if needed
+      toast.success('تم الحفظ', { duration: 2000 })
     }
     setSaving(false);
   };
@@ -132,6 +147,12 @@ export default function SessionDetailPage() {
       </div>
     );
   }
+
+  const now = new Date();
+  const sessionStart = new Date(session.scheduled_at);
+  const sessionEnd = new Date(sessionStart.getTime() + (session.duration_minutes || 60) * 60000);
+  const graceEnd = new Date(sessionEnd.getTime() + 60 * 60 * 1000);
+  const canFinish = now >= sessionStart && now <= graceEnd;
 
   const statusColors = {
     scheduled: "bg-blue-100 text-blue-800",
@@ -339,12 +360,54 @@ export default function SessionDetailPage() {
                   <Save className="h-4 w-4 ml-2" />
                   {saving ? "جاري الحفظ..." : "حفظ الملاحظات"}
                 </Button>
-                {session.status !== "completed" && (
+                {session.status !== "completed" && canFinish && (
                   <Button onClick={handleComplete} disabled={saving}>
                     إنهاء الجلسة
                   </Button>
                 )}
+                {session.status !== "completed" && (
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeleteTarget(true)}
+                  >
+                    <Trash2 className="h-4 w-4 ml-2" />
+                    حذف
+                  </Button>
+                )}
               </div>
+
+              <AlertDialog open={deleteTarget} onOpenChange={setDeleteTarget}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>هل أنت متأكد من حذف هذه الحصة؟</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <p>الطالب: {(session.student as any)?.profile?.full_name || 'غير محدد'}</p>
+                      <p className="mt-2">هذا الإجراء لا يمكن التراجع عنه.</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleting}
+                      onClick={async () => {
+                        setDeleting(true)
+                        try {
+                          await deleteSession(session.id)
+                          toast.success('تم حذف الحصة بنجاح', { duration: 2000 })
+                          router.push('/dashboard/sessions')
+                        } catch {
+                          toast.error('حدث خطأ أثناء الحذف')
+                        }
+                        setDeleting(false)
+                      }}
+                    >
+                      {deleting ? 'جاري الحذف...' : 'حذف'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
           </CardContent>
         </Card>
       </div>

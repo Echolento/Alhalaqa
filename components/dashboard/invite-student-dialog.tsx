@@ -72,7 +72,7 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>دعوة طالب جديد</DialogTitle>
                     <DialogDescription>

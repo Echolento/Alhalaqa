@@ -318,7 +318,7 @@ export async function autoAcceptInvitations() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return { success: false }
+    if (!user) return { success: false, acceptedCount: 0 }
 
     const { data: profileRow } = await supabase
         .from('profiles')
@@ -326,7 +326,7 @@ export async function autoAcceptInvitations() {
         .eq('id', user.id)
         .maybeSingle()
 
-    if (!profileRow?.phone) return { success: true }
+    if (!profileRow?.phone) return { success: true, acceptedCount: 0 }
 
     // Get all pending invitations for this user's phone
     const { data: invitations } = await supabase
@@ -335,7 +335,19 @@ export async function autoAcceptInvitations() {
         .eq('student_phone', profileRow.phone)
         .eq('status', 'pending')
 
-    if (!invitations || invitations.length === 0) return { success: true }
+    if (!invitations || invitations.length === 0) return { success: true, acceptedCount: 0 }
+
+    // Only auto-accept if there's exactly 1 invitation
+    if (invitations.length > 1) return { success: true, acceptedCount: 0 }
+
+    // Check if student already has a teacher link
+    const { data: existingStudent } = await supabase
+        .from('students')
+        .select('id, teacher_id')
+        .eq('profile_id', user.id)
+        .maybeSingle()
+
+    if (existingStudent?.teacher_id) return { success: true, acceptedCount: 0 }
 
     // For each invitation, accept it
     for (const invite of invitations) {

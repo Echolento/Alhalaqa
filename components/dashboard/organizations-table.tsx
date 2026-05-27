@@ -125,7 +125,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>إضافة مؤسسة جديدة</DialogTitle>
             <DialogDescription>
