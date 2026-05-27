@@ -39,7 +39,7 @@ export function InviteStudentDialog({ trigger }: InviteStudentDialogProps) {
         if (result.error) {
             setError(result.error)
         } else if (result.success && result.studentPhone) {
-            const loginUrl = `${window.location.origin}/login`
+            const loginUrl = `${window.location.origin}/auth/signup`
             const teacherName = result.teacherName || ''
             const text = [
                 `مرحباً بك! 👋`,
