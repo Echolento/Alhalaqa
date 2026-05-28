@@ -195,7 +195,26 @@ export async function getTeacherDashboard() {
       overdueSessions: overdueSessions.length,
       averageRating: Math.round(avgRating * 10) / 10,
     },
-    upcomingSessions: upcomingSessions.slice(0, 5),
+    upcomingSessions: (() => {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const todays = upcomingSessions.filter(s => {
+        const d = new Date(s.scheduled_at)
+        return d >= todayStart && d <= todayEnd
+      })
+      const afterToday = upcomingSessions.filter(s => {
+        const d = new Date(s.scheduled_at)
+        return d > todayEnd
+      })
+
+      if (todays.length < 5) {
+        return [...todays, ...afterToday.slice(0, 5 - todays.length)]
+      }
+      return [...todays, ...afterToday.slice(0, 1)]
+    })(),
     recentSessions: completedSessions.slice(0, 5),
     needsSetup: false
   }
