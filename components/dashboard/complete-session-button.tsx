@@ -75,6 +75,7 @@ export function CompleteSessionButton({ session }: { session: Session }) {
       }
 
       const completeResult = await completeSession(session.id)
+
       if (completeResult.error) {
         toast.error('حدث خطأ أثناء إنهاء الحصة: ' + completeResult.error)
         return

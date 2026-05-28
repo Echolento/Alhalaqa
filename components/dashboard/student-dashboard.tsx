@@ -172,10 +172,10 @@ export function StudentDashboard({ data, paymentStatus, autoAccepted }: StudentD
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الجديد</p>
-                          {latestNote.rating_new != null && latestNote.rating_new > 0 && (
+                          {latestNote.rating_new != null && Number(latestNote.rating_new) > 0 && (
                             <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
                               <Star className="w-3 h-3 text-amber-500" />
-                              {latestNote.rating_new === 5 ? 'ممتاز' : latestNote.rating_new === 4 ? 'جيد جداً' : latestNote.rating_new === 3 ? 'جيد' : latestNote.rating_new === 2 ? 'مقبول' : 'ضعيف'}
+                              {Number(latestNote.rating_new) === 5 ? 'ممتاز' : Number(latestNote.rating_new) === 4 ? 'جيد جداً' : Number(latestNote.rating_new) === 3 ? 'جيد' : Number(latestNote.rating_new) === 2 ? 'مقبول' : 'ضعيف'}
                             </Badge>
                           )}
                         </div>
@@ -195,26 +195,26 @@ export function StudentDashboard({ data, paymentStatus, autoAccepted }: StudentD
                             <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">القريب:</span>
-                                {latestNote.rating_recent_past != null && latestNote.rating_recent_past > 0 && (
-                                  <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
-                                    <Star className="w-3 h-3 text-amber-500" />
-                                    {latestNote.rating_recent_past === 5 ? 'ممتاز' : latestNote.rating_recent_past === 4 ? 'جيد جداً' : latestNote.rating_recent_past === 3 ? 'جيد' : latestNote.rating_recent_past === 2 ? 'مقبول' : 'ضعيف'}
-                                  </Badge>
-                                )}
+                                  {latestNote.rating_recent_past != null && Number(latestNote.rating_recent_past) > 0 && (
+                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
+                                      <Star className="w-3 h-3 text-amber-500" />
+                                      {Number(latestNote.rating_recent_past) === 5 ? 'ممتاز' : Number(latestNote.rating_recent_past) === 4 ? 'جيد جداً' : Number(latestNote.rating_recent_past) === 3 ? 'جيد' : Number(latestNote.rating_recent_past) === 2 ? 'مقبول' : 'ضعيف'}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="font-bold text-blue-900">{latestNote.recent_past_review}</p>
                               </div>
-                              <p className="font-bold text-blue-900">{latestNote.recent_past_review}</p>
-                            </div>
-                          )}
-                          {latestNote.far_past_review && (
-                            <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">البعيد:</span>
-                                {latestNote.rating_far_past != null && latestNote.rating_far_past > 0 && (
-                                  <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
-                                    <Star className="w-3 h-3 text-amber-500" />
-                                    {latestNote.rating_far_past === 5 ? 'ممتاز' : latestNote.rating_far_past === 4 ? 'جيد جداً' : latestNote.rating_far_past === 3 ? 'جيد' : latestNote.rating_far_past === 2 ? 'مقبول' : 'ضعيف'}
-                                  </Badge>
-                                )}
+                            )}
+                            {latestNote.far_past_review && (
+                              <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">البعيد:</span>
+                                  {latestNote.rating_far_past != null && Number(latestNote.rating_far_past) > 0 && (
+                                    <Badge variant="outline" className="flex items-center gap-1 text-xs px-2 py-0.5">
+                                      <Star className="w-3 h-3 text-amber-500" />
+                                      {Number(latestNote.rating_far_past) === 5 ? 'ممتاز' : Number(latestNote.rating_far_past) === 4 ? 'جيد جداً' : Number(latestNote.rating_far_past) === 3 ? 'جيد' : Number(latestNote.rating_far_past) === 2 ? 'مقبول' : 'ضعيف'}
+                                    </Badge>
+                                  )}
                               </div>
                               <p className="font-bold text-indigo-900">{latestNote.far_past_review}</p>
                             </div>

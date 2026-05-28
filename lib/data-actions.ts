@@ -820,23 +820,6 @@ export async function getStudentDashboard() {
 
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
 
-  console.log('[DEBUG-studentRating] avgRating:', avgRating)
-  console.log('[DEBUG-studentRating] recentSessions first note ratings:', 
-    (sessions || [])
-      .filter(s => s.status === 'completed')
-      .slice(0, 1)
-      .map(s => ({
-        sessionId: s.id,
-        session_notes: Array.isArray(s.session_notes) ? s.session_notes : (s.session_notes ? [s.session_notes] : []),
-      }))
-      .flatMap(s => s.session_notes.map((n: any) => ({ 
-        rating_new: n.rating_new, 
-        rating_far_past: n.rating_far_past, 
-        rating_recent_past: n.rating_recent_past,
-        rating_new_type: typeof n.rating_new,
-      })))
-  )
-
   return {
     student,
     teacherCurrency: teacher?.currency || 'SAR',
