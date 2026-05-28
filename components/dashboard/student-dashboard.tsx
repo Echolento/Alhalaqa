@@ -111,6 +111,7 @@ export function StudentDashboard({ data, paymentStatus, autoAccepted }: StudentD
   }, [student?.teacher])
 
   const latestNote = recentSessions.length > 0 ? recentSessions[0].session_notes?.[0] : null
+  console.log('[DEBUG-rating] recentSessions[0]:', recentSessions[0]?.id, 'latestNote:', latestNote, 'rating_new:', latestNote?.rating_new, 'type:', typeof latestNote?.rating_new, 'rating_far_past:', latestNote?.rating_far_past, 'rating_recent_past:', latestNote?.rating_recent_past)
 
   return (
     <div className="space-y-6">
