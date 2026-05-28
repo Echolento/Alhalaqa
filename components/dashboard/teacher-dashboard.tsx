@@ -217,7 +217,7 @@ export async function TeacherDashboard({ data, students, paymentData, revenueTre
                             <Clock className="w-3.5 h-3.5" />
                             <FormattedDate
                               date={session.scheduled_at}
-                              options={{ weekday: 'long', hour: '2-digit', minute: '2-digit' }}
+                              options={{ weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }}
                             />
                             {isToday(session.scheduled_at) && (
                               <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 text-[10px] py-0">

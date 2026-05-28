@@ -13,7 +13,7 @@ export function FormattedDate({ date, options, className }: FormattedDateProps) 
 
     useEffect(() => {
         setFormatted(
-            new Date(date).toLocaleDateString('ar-SA', options || {
+            new Date(date).toLocaleDateString('ar-SA-u-ca-gregory', options || {
                 weekday: 'long',
                 month: 'short',
                 day: 'numeric',
