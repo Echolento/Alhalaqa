@@ -1,0 +1,8 @@
+{
+  "framework": "nextjs",
+  "appDir": "app",
+  "port": 3000,
+  "pageFiles": ["app/page.tsx", "app/layout.tsx"],
+  "insertBefore": "</body>",
+  "commentSyntax": "html"
+}
