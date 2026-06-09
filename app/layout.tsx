@@ -4,6 +4,7 @@ import { Noto_Sans_Arabic } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from "@/components/ui/toaster"
+import LivePicker from '@/components/live-picker'
 
 const notoArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
@@ -38,6 +39,7 @@ export default function RootLayout({
         {children}
         <Toaster />
         <Analytics />
+        <LivePicker />
       </body>
     </html>
   )
