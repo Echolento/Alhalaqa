@@ -20,16 +20,11 @@ export default async function SettingsPage() {
     redirect('/auth/login')
   }
 
-  // Get teacher data if applicable
-  let teacherData = null
-  if (profile.role === 'teacher') {
-    const { data } = await supabase
-      .from('teachers')
-      .select('*')
-      .eq('profile_id', user.id)
-      .single()
-    teacherData = data
-  }
+  const { data: teacherData } = await supabase
+    .from('teachers')
+    .select('*')
+    .eq('profile_id', user.id)
+    .single()
 
   return (
     <div className="space-y-6">

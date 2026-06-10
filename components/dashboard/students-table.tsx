@@ -1,10 +1,8 @@
 'use client'
-// Force rebuild to resolve ReferenceError
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -21,146 +19,155 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, ArrowLeftRight, BookOpen, Users, UserMinus, Trash2, Calendar, Wallet, Check, X } from 'lucide-react'
-import { transferStudent, removeStudent, toggleStudentPayment } from '@/lib/data-actions'
-import { CreateSessionDialog } from './create-session-dialog'
-import { FormattedDate } from '@/components/ui/formatted-date'
-import { StudentNotesModal } from './student-notes-modal'
+import { Search, Users, Plus, Pencil, Trash2, Settings2 } from 'lucide-react'
+import { addStudent, updateStudent, deleteStudent, updateStudentPaymentDay } from '@/lib/data-actions'
 import { useToast } from '@/components/ui/use-toast'
+import { PhoneInput } from '@/components/auth/phone-input'
 
 interface Student {
   id: string
-  current_surah: string | null
-  current_ayah: number | null
-  profile: { full_name: string | null }
+  name: string | null
+  phone: string | null
   monthly_price: number
-  teacher?: {
-    id: string
-    profile: { full_name: string | null }
-  }
-}
-
-interface Teacher {
-  id: string
-  profile: { full_name: string | null }
+  payment_day: number
 }
 
 interface StudentsTableProps {
   students: Student[]
-  teachers: Teacher[]
-  isAdmin: boolean
-  payments?: Array<{ student_id: string; paid: boolean }>
   currency?: string
 }
 
-export function StudentsTable({ students, teachers, isAdmin, payments = [], currency = 'SAR' }: StudentsTableProps) {
+export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps) {
   const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
   const [search, setSearch] = useState('')
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [isRemoveOpen, setIsRemoveOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
+  const [phoneValue, setPhoneValue] = useState('')
+  const [editPhoneValue, setEditPhoneValue] = useState('')
+  const [dayPickerOpen, setDayPickerOpen] = useState<string | null>(null)
+  const [dayLoading, setDayLoading] = useState(false)
   const { toast } = useToast()
 
   const filteredStudents = students.filter((student) =>
-    student.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || !search
+    student.name?.toLowerCase().includes(search.toLowerCase()) || !search
   )
 
-  const handleTransfer = async (formData: FormData) => {
-    if (!selectedStudent) return
+  const handleAddStudent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
-
-    try {
-      const newTeacherId = formData.get('teacher_id') as string
-      const result = await transferStudent(selectedStudent.id, newTeacherId)
-
-      if (result.success) {
-        toast({
-          title: "تم النقل بنجاح",
-          description: `تم نقل ${selectedStudent.profile?.full_name} إلى المعلم الجديد.`,
-        })
-        setIsTransferOpen(false)
-      } else {
-        toast({
-          variant: "destructive",
-          title: "فشل النقل",
-          description: result.error || "حدث خطأ غير متوقع",
-        })
-      }
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في النظام",
-        description: err.message || "فشل الاتصال بالخادم",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRemove = async () => {
-    if (!selectedStudent) return
-    setLoading(true)
-
-    try {
-      const result = await removeStudent(selectedStudent.id)
-
-      if (result.success) {
-        toast({
-          title: "تمت الإزالة",
-          description: `تمت إزالة ${selectedStudent.profile?.full_name} من قائمة طلابك.`,
-        })
-        setIsRemoveOpen(false)
-        setSelectedStudent(null)
-      } else {
-        toast({
-          variant: "destructive",
-          title: "فشل الإزالة",
-          description: result.error || "حدث خطأ غير متوقع",
-        })
-      }
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في النظام",
-        description: err.message || "فشل الاتصال بالخادم",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getPaymentStatus = (studentId: string) => {
-    const p = payments.find(p => p.student_id === studentId)
-    return p?.paid ?? null // null = no payment data
-  }
-
-  const handlePaymentToggle = async (studentId: string) => {
-    setPaymentLoading(studentId)
-    const result = await toggleStudentPayment(studentId)
+    const form = e.currentTarget
+    const formData = new FormData(form)
+    const name = formData.get('name') as string
+    const phone = phoneValue ? `+20${phoneValue}` : undefined
+    const result = await addStudent(name, phone)
     if (result.success) {
-      toast({ title: 'تم تحديث حالة الدفع' })
+      toast({ title: 'تمت الإضافة', description: `تم إضافة ${name}` })
+      setAddDialogOpen(false)
+      setPhoneValue('')
       window.location.reload()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
-    setPaymentLoading(null)
+    setLoading(false)
+  }
+
+  const handleEditStudent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedStudent) return
+    setLoading(true)
+    const form = e.currentTarget
+    const formData = new FormData(form)
+    const name = formData.get('name') as string
+    const phone = editPhoneValue ? `+20${editPhoneValue}` : undefined
+    const result = await updateStudent(selectedStudent.id, name, phone)
+    if (result.success) {
+      toast({ title: 'تم التحديث' })
+      setEditDialogOpen(false)
+      window.location.reload()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return
+    setLoading(true)
+    const result = await deleteStudent(selectedStudent.id)
+    if (result.success) {
+      toast({ title: 'تم الحذف', description: `تم حذف ${selectedStudent.name}` })
+      setDeleteDialogOpen(false)
+      window.location.reload()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
+    }
+    setLoading(false)
+  }
+
+  const handleSaveDay = async (studentId: string, day: number) => {
+    setDayLoading(true)
+    const result = await updateStudentPaymentDay(studentId, day)
+    if (result.success) {
+      toast({ title: 'تم الحفظ' })
+      setDayPickerOpen(null)
+      window.location.reload()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
+    }
+    setDayLoading(false)
   }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between px-4 md:px-6 py-4 md:py-6">
         <CardTitle className="flex items-center gap-2">
           <Users className="w-5 h-5" />
           قائمة الطلاب ({filteredStudents.length})
         </CardTitle>
+        <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (open) setPhoneValue('') }}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              إضافة طالب
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>إضافة طالب جديد</DialogTitle>
+              <DialogDescription>أدخل اسم الطالب ورقم الهاتف (اختياري)</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddStudent} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">الاسم <span className="text-destructive">*</span></Label>
+                <Input id="name" name="name" required placeholder="أدخل اسم الطالب" />
+              </div>
+              <PhoneInput
+                id="phone"
+                name="phone"
+                value={phoneValue}
+                onChange={setPhoneValue}
+                required={false}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>إلغاء</Button>
+                <Button type="submit" disabled={loading}>{loading ? 'جاري...' : 'إضافة'}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Search */}
+      <CardContent className="px-4 md:px-6 pb-4 md:pb-6 space-y-4">
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -171,314 +178,235 @@ export function StudentsTable({ students, teachers, isAdmin, payments = [], curr
           />
         </div>
 
-        {/* Desktop Table */}
-        <div className="hidden md:block rounded-lg border overflow-hidden">
-          <Table>
+        {/* Mobile list */}
+        <div className="md:hidden rounded-lg border divide-y divide-primary/5">
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">لا يوجد طلاب</div>
+          ) : (
+            filteredStudents.map((student) => (
+              <div key={student.id} className="flex items-center gap-2 px-3 py-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black">{student.name?.charAt(0) || '؟'}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm truncate">{student.name || 'بدون اسم'}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="p-1.5 h-7 w-7"
+                        onClick={() => {
+                          setSelectedStudent(student)
+                          setEditDialogOpen(true)
+                          const phone = student.phone || ''
+                          setEditPhoneValue(phone.startsWith('+20') ? phone.slice(3) : phone)
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="p-1.5 h-7 w-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => { setSelectedStudent(student); setDeleteDialogOpen(true) }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                    {student.phone && (
+                      <>
+                        <span className="font-mono" dir="ltr">{student.phone}</span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span className="font-semibold text-foreground">{student.monthly_price || 0} {currencySymbol}</span>
+                    <span>·</span>
+                    <Popover open={dayPickerOpen === student.id} onOpenChange={(open) => { if (!open) setDayPickerOpen(null) }}>
+                      <PopoverTrigger asChild>
+                        <button onClick={() => setDayPickerOpen(student.id)} className="hover:text-primary transition-colors">
+                          يوم {student.payment_day || 1}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-fit p-3" align="start">
+                        <div className="grid grid-cols-7 gap-1">
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                            const isSelected = d === (student.payment_day || 1)
+                            return (
+                              <button
+                                key={d}
+                                onClick={() => handleSaveDay(student.id, d)}
+                                disabled={dayLoading}
+                                className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                {d}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block rounded-lg border overflow-x-auto">
+          <Table className="text-xs md:text-sm">
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b-2 border-primary/5">
-                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الطالب</TableHead>
-                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">التقدم</TableHead>
-                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">السعر</TableHead>
-                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الحالة</TableHead>
-                {isAdmin && <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">المعلم</TableHead>}
-                <TableHead className="text-right font-black text-xs uppercase tracking-widest text-muted-foreground/50">الإجراءات</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الطالب</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الهاتف</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">السعر</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">يوم الدفع</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     لا يوجد طلاب
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStudents.map((student) => {
-                  const isPaid = getPaymentStatus(student.id)
-                  const s = student as any
-                  return (
-                    <TableRow
-                      key={student.id}
-                      className={`h-20 transition-all border-b border-primary/5 hover:bg-primary/[0.02] ${isPaid === false ? 'bg-red-50/50' : ''}`}
-                    >
-                      <TableCell>
-                        <StudentNotesModal
-                          studentId={student.id}
-                          studentName={student.profile?.full_name || 'طالب'}
-                          trigger={
-                            <button className="flex items-center gap-4 text-right hover:text-primary transition-all text-right group w-full outline-none">
-                              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                                <span className="text-sm font-black">
-                                  {student.profile?.full_name?.charAt(0) || '؟'}
-                                </span>
-                              </div>
-                              <span className={`font-black group-hover:translate-x-1 transition-transform ${isPaid === false ? 'text-red-700' : 'text-slate-900'}`}>
-                                {student.profile?.full_name || 'طالب'}
-                              </span>
-                            </button>
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {student.current_surah ? (
-                          <Badge variant="outline" className="flex items-center gap-2 w-fit px-3 py-1 font-bold border-primary/20 bg-white/50">
-                            <BookOpen className="w-3.5 h-3.5 text-primary" />
-                            {student.current_surah} : {student.current_ayah || 1}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground font-medium">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-black text-slate-700">{s.monthly_price || 0} {currencySymbol}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm transition-all ${isPaid === true
-                            ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                            : isPaid === false
-                              ? 'bg-red-600 text-white animate-pulse shadow-red-600/20'
-                              : 'bg-slate-100 text-slate-500'
-                            }`}
-                        >
-                          {isPaid === true ? 'مدفوع ✓' : isPaid === false ? 'غير مدفوع' : 'بانتظار التحصيل'}
-                        </Badge>
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell className="font-medium text-slate-500">
-                          {student.teacher?.profile?.full_name || '-'}
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {isAdmin && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="rounded-xl font-bold h-10 border-slate-200 hover:border-primary/30"
-                              onClick={() => {
-                                setSelectedStudent(student)
-                                setIsTransferOpen(true)
-                              }}
-                            >
-                              <ArrowLeftRight className="w-4 h-4 ml-2 text-primary" />
-                              نقل
-                            </Button>
-                          )}
-                          {!isAdmin && (
-                            <div className="flex items-center gap-2">
-                              {getPaymentStatus(student.id) !== null && (
-                                <Button
-                                  size="sm"
-                                  className={`rounded-xl font-black h-10 px-4 transition-all ${getPaymentStatus(student.id)
-                                    ? 'bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700'
-                                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                                    }`}
-                                  onClick={() => handlePaymentToggle(student.id)}
-                                  disabled={paymentLoading === student.id}
-                                >
-                                  {getPaymentStatus(student.id) ? (
-                                    <>
-                                      <X className="w-4 h-4 ml-2" />
-                                      إلغاء الدفع
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Check className="w-4 h-4 ml-2" />
-                                      تحديد كمدفوع
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                              <CreateSessionDialog
-                                students={students}
-                                defaultStudentId={student.id}
-                                trigger={
-                                  <Button size="sm" variant="outline" className="gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    جدولة حصة
-                                  </Button>
-                                }
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  setSelectedStudent(student)
-                                  setIsRemoveOpen(true)
-                                }}
-                              >
-                                <UserMinus className="w-4 h-4 ml-1" />
-                                إزالة
-                              </Button>
-                            </div>
-                          )}
+                filteredStudents.map((student) => (
+                  <TableRow key={student.id} className="transition-all border-b border-primary/5">
+                    <TableCell>
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <span className="text-xs md:text-sm font-black">{student.name?.charAt(0) || '؟'}</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                        <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-none">{student.name || 'بدون اسم'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-muted-foreground" dir="ltr">
+                      {student.phone || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-black">{student.monthly_price || 0} {currencySymbol}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Popover open={dayPickerOpen === student.id} onOpenChange={(open) => { if (!open) setDayPickerOpen(null) }}>
+                        <PopoverTrigger asChild>
+                          <button
+                            onClick={() => setDayPickerOpen(student.id)}
+                            className="flex items-center gap-1 hover:text-primary transition-colors py-1"
+                          >
+                            <span className="font-medium">يوم {student.payment_day || 1}</span>
+                            <Settings2 className="w-3 h-3 opacity-60" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-fit p-3" align="start">
+                          <div className="grid grid-cols-7 gap-1">
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                              const isSelected = d === (student.payment_day || 1)
+                              return (
+                                <button
+                                  key={d}
+                                  onClick={() => handleSaveDay(student.id, d)}
+                                  disabled={dayLoading}
+                                  className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                                    isSelected
+                                      ? 'bg-primary text-primary-foreground shadow-sm'
+                                      : 'hover:bg-muted text-foreground'
+                                  }`}
+                                >
+                                  {d}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedStudent(student)
+                              setEditDialogOpen(true)
+                              const phone = student.phone || ''
+                              setEditPhoneValue(phone.startsWith('+20') ? phone.slice(3) : phone)
+                            }}
+                            className="p-2 md:px-3"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            <span className="hidden md:inline mr-1">تعديل</span>
+                          </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10 p-2 md:px-3"
+                          onClick={() => { setSelectedStudent(student); setDeleteDialogOpen(true) }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden md:inline mr-1">حذف</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
         </div>
-
-        {/* Mobile Card Layout */}
-        <div className="md:hidden space-y-3">
-          {filteredStudents.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              لا يوجد طلاب
-            </div>
-          ) : (
-            filteredStudents.map((student) => (
-              <Card key={student.id} className={getPaymentStatus(student.id) === false ? 'border-red-200 bg-red-50/50' : ''}>
-                <CardContent className="p-4 space-y-3">
-                  {/* Student Info */}
-                  <StudentNotesModal
-                    studentId={student.id}
-                    studentName={student.profile?.full_name || 'طالب'}
-                    trigger={
-                      <div className="flex items-center gap-3 w-full text-right hover:bg-muted/50 p-1 -m-1 rounded-lg transition-colors cursor-pointer">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-lg font-medium text-primary">
-                            {student.profile?.full_name?.charAt(0) || '؟'}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0 text-right">
-                          <p className={`font-bold truncate hover:underline ${getPaymentStatus(student.id) === false ? 'text-red-700' : 'text-primary'}`}>
-                            {student.profile?.full_name || 'طالب'}
-                          </p>
-                          {/* {student.current_surah ? (
-                            <Badge variant="secondary" className="flex items-center gap-1 w-fit mt-1">
-                              <BookOpen className="w-3 h-3" />
-                              {student.current_surah} : {student.current_ayah || 1}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">لم يبدأ بعد</span>
-                          )} */}
-                        </div>
-                      </div>
-                    }
-                  />
-
-                  {/* Admin: Teacher Info */}
-                  {isAdmin && student.teacher && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">المعلم:</span>
-                      <span className="font-medium">{student.teacher.profile?.full_name || '-'}</span>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2 border-t">
-                    {isAdmin ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 min-h-[44px]"
-                        onClick={() => {
-                          setSelectedStudent(student)
-                          setIsTransferOpen(true)
-                        }}
-                      >
-                        <ArrowLeftRight className="w-4 h-4 ml-1" />
-                        نقل
-                      </Button>
-                    ) : (
-                      <>
-                        <CreateSessionDialog
-                          students={students}
-                          defaultStudentId={student.id}
-                          trigger={
-                            <Button size="sm" variant="outline" className="flex-1 min-h-[44px] gap-1">
-                              <Calendar className="w-4 h-4" />
-                              جدولة حصة
-                            </Button>
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="min-h-[44px] min-w-[44px] text-destructive hover:bg-destructive/10 shrink-0"
-                          onClick={() => {
-                            setSelectedStudent(student)
-                            setIsRemoveOpen(true)
-                          }}
-                        >
-                          <UserMinus className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
       </CardContent>
 
-      {/* Transfer Dialog */}
-      <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditPhoneValue('') }}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>نقل الطالب</DialogTitle>
-            <DialogDescription>
-              نقل {selectedStudent?.profile?.full_name} إلى معلم آخر
-            </DialogDescription>
+            <DialogTitle>تعديل الطالب</DialogTitle>
+            <DialogDescription>تعديل بيانات {selectedStudent?.name}</DialogDescription>
           </DialogHeader>
-
-          <form action={handleTransfer} className="space-y-4">
+          <form onSubmit={handleEditStudent} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="teacher_id">المعلم الجديد</Label>
-              <Select name="teacher_id" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر المعلم" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teachers
-                    .filter(t => t.id !== selectedStudent?.teacher?.id)
-                    .map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.profile?.full_name || 'معلم'}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="edit-name">الاسم <span className="text-destructive">*</span></Label>
+              <Input id="edit-name" name="name" defaultValue={selectedStudent?.name || ''} required />
             </div>
-
+            <PhoneInput
+              id="edit-phone"
+              name="phone"
+              value={editPhoneValue}
+              onChange={setEditPhoneValue}
+              required={false}
+              label="رقم الهاتف (اختياري)"
+            />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsTransferOpen(false)}>
-                إلغاء
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'جاري النقل...' : 'نقل الطالب'}
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>إلغاء</Button>
+              <Button type="submit" disabled={loading}>{loading ? 'جاري...' : 'حفظ'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-      {/* Remove Confirmation Dialog */}
-      <Dialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
-        <DialogContent className="sm:max-w-lg">
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>إزالة الطالب</DialogTitle>
+            <DialogTitle>حذف الطالب</DialogTitle>
             <DialogDescription>
-              هل أنت متأكد من رغبتك في إزالة {selectedStudent?.profile?.full_name} من قائمة طلابك؟
-              سيتمكن الطالب من الانضمام لمعلم آخر بعد الإزالة.
+              هل أنت متأكد من حذف {selectedStudent?.name}؟ سيتم حذف جميع سجلات الدفع المرتبطة به.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRemoveOpen(false)}>
-              إلغاء
-            </Button>
-            <Button variant="destructive" onClick={handleRemove} disabled={loading}>
-              {loading ? 'جاري الإزالة...' : 'تأكيد الإزالة'}
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDeleteStudent} disabled={loading}>
+              {loading ? 'جاري...' : 'تأكيد الحذف'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
     </Card>
   )
 }

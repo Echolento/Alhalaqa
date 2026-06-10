@@ -8,18 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { User, Video, CheckCircle, AlertCircle } from 'lucide-react'
+import { User, CheckCircle, AlertCircle } from 'lucide-react'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
 import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
-import { Switch } from '@/components/ui/switch'
 
 interface TeacherData {
   id: string
-  google_meet_link: string | null
-  bio: string | null
   currency: string
   default_monthly_price: number
 }
@@ -41,7 +38,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
-  const [teachesOnline, setTeachesOnline] = useState(!!teacherData?.google_meet_link)
 
   const roleLabels = {
     admin: 'مشرف',
@@ -95,7 +91,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
       {isFirstLogin && (
         <Card className="border-primary/20 bg-primary/5 shadow-lg animate-in slide-in-from-top duration-500">
-          <CardHeader className="pb-3">
+          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3">
             <CardTitle className="text-xl font-bold flex items-center gap-2 text-primary">
               <CheckCircle className="w-6 h-6" />
               أهلاً بك يا {profile.full_name?.split(' ')[0]}!
@@ -104,24 +100,23 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               يسعدنا انضمامك إلينا. يرجى ضبط الإعدادات الافتراضية لحسابك للمتابعة.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-sm space-y-2 text-muted-foreground">
+          <CardContent className="px-4 md:px-6 pb-4 md:pb-6 text-sm space-y-2 text-muted-foreground">
             <p>• قم بتحديد <strong>السعر الافتراضي</strong> للحصص الشهرية.</p>
             <p>• اختر <strong>العملة</strong> التي تفضل استلام تقاريرك بها.</p>
-            <p className="pt-2 text-primary/80 font-medium">✨ عند دعوة طالب، سنقوم بتجهيز رسالة واتساب جاهزة للإرسال تحتوي على رابط الانضمام.</p>
           </CardContent>
         </Card>
       )}
 
       {/* Profile Info */}
       {!isFirstLogin && <Card>
-        <CardHeader>
+        <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
             معلومات الحساب
           </CardTitle>
           <CardDescription>معلومات حسابك الأساسية</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="px-4 md:px-6 pb-4 md:pb-6 space-y-4">
           <form action={handleProfileSettings} className="space-y-4">
             {profileSuccess && (
               <div className="flex items-center gap-2 p-3 text-sm text-success bg-success/10 rounded-lg">
@@ -198,14 +193,14 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
       {/* Teacher Settings */}
       {profile.role === 'teacher' && (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
             <CardTitle className="flex items-center gap-2">
-              <Video className="w-5 h-5" />
+              <User className="w-5 h-5" />
               إعدادات المعلم
             </CardTitle>
             <CardDescription>إعدادات خاصة بحساب المعلم</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
             <form action={handleTeacherSettings} className="space-y-4">
               {success && (
                 <div className="flex items-center gap-2 p-3 text-sm text-success bg-success/10 rounded-lg">
@@ -221,40 +216,8 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                 </div>
               )}
 
-              <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-                <div className="space-y-0.5">
-                  <Label htmlFor="teaches_online" className="text-base font-semibold">هل تعطي دروسك عبر الإنترنت؟</Label>
-                  <p className="text-sm text-muted-foreground">عبر الانترنت (Online)</p>
-                </div>
-                <Switch
-                  id="teaches_online"
-                  checked={teachesOnline}
-                  onCheckedChange={setTeachesOnline}
-                />
-              </div>
-
-              {teachesOnline && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <Label htmlFor="google_meet_link">
-                    رابط Google Meet الافتراضي
-                    <span className="mr-1 text-xs font-normal text-muted-foreground">(اختياري)</span>
-                  </Label>
-                  <Input
-                    id="google_meet_link"
-                    name="google_meet_link"
-                    type="url"
-                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                    defaultValue={teacherData?.google_meet_link || ''}
-                    dir="ltr"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    سيُستخدم هذا الرابط تلقائياً لجميع الحصص الجديدة
-                  </p>
-                </div>
-              )}
-
               <div className="space-y-2">
-                <Label htmlFor="currency">العملة والمنطقة</Label>
+                <Label htmlFor="currency">العملة</Label>
                 <select
                   id="currency"
                   name="currency"
@@ -264,13 +227,10 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   <option value="EGP">الجنية المصري (EGP)</option>
                   <option value="SAR">الريال السعودي (SAR)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">
-                  اختر العملة التي تود ضهورها في تقارير المدفوعات والاشتراكات
-                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="default_monthly_price">السعر الافتراضي للطلاب الجدد ({teacherData?.currency === 'EGP' ? 'ج.م' : 'ر.س'})</Label>
+                <Label htmlFor="default_monthly_price">السعر الافتراضي للطلاب الجدد</Label>
                 <Input
                   id="default_monthly_price"
                   name="default_monthly_price"
@@ -278,9 +238,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   placeholder="0"
                   defaultValue={teacherData?.default_monthly_price || 0}
                 />
-                <p className="text-xs text-muted-foreground">
-                  سيتم تطبيق هذا السعر تلقائياً عند إضافة طالب جديد
-                </p>
               </div>
 
               <Button type="submit" disabled={loading}>
@@ -293,13 +250,13 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
       {/* Logout */}
       <Card className="border-destructive/20">
-        <CardHeader>
+        <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
           <CardTitle className="text-destructive">تسجيل الخروج</CardTitle>
           <CardDescription>
             قم بتسجيل الخروج من حسابك على هذا الجهاز
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
           <Button variant="destructive" onClick={() => signOut()}>
             تسجيل الخروج
           </Button>

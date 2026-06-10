@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { StudentsTable } from '@/components/dashboard/students-table'
-import { getTeacherStudents, getAllStudents, getAllTeachers, getTeacherPayments } from '@/lib/data-actions'
-import { InviteStudentDialog } from '@/components/dashboard/invite-student-dialog'
+import { getTeacherStudents, getTeacherPayments } from '@/lib/data-actions'
 
 export default async function StudentsPage() {
   const supabase = await createClient()
@@ -12,45 +11,19 @@ export default async function StudentsPage() {
     redirect('/auth/login')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.role === 'student') {
-    redirect('/dashboard')
-  }
-
-  const students = profile.role === 'admin'
-    ? await getAllStudents()
-    : await getTeacherStudents()
-
-  const teachers = profile.role === 'admin' ? await getAllTeachers() : []
-
-  // Get payment data for teacher view
-  const paymentData = profile.role === 'teacher'
-    ? await getTeacherPayments()
-    : { students: [], payments: [], currency: 'SAR' }
+  const [students, paymentData] = await Promise.all([
+    getTeacherStudents(),
+    getTeacherPayments(),
+  ])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">الطلاب</h1>
-          <p className="text-muted-foreground">
-            {profile.role === 'admin'
-              ? 'إدارة جميع الطلاب ونقلهم بين المعلمين'
-              : 'عرض وإدارة طلابك'}
-          </p>
-        </div>
-        {profile.role === 'teacher' && <InviteStudentDialog />}
+      <div>
+        <h1 className="text-2xl font-bold">الطلاب</h1>
+        <p className="text-muted-foreground">إدارة الطلاب وإضافة وتعديل وحذف</p>
       </div>
       <StudentsTable
         students={students}
-        teachers={teachers}
-        isAdmin={profile.role === 'admin'}
-        payments={paymentData.payments}
         currency={paymentData.currency}
       />
     </div>

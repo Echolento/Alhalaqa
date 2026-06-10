@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import type { UserRole } from './types'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 
 export async function signUp(formData: FormData) {
@@ -13,7 +12,6 @@ export async function signUp(formData: FormData) {
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
   const rawPhone = formData.get('phone') as string
-  const role = formData.get('role') as UserRole
 
   const phone = formatPhoneNumber(rawPhone)
 
@@ -29,7 +27,7 @@ export async function signUp(formData: FormData) {
         `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
       data: {
         full_name: fullName,
-        role: role,
+        role: 'teacher',
         phone: phone,
       },
     },
@@ -64,26 +62,29 @@ export async function signIn(formData: FormData) {
 
   const user = data.user
   if (user) {
-    // Get user profile to check role and settings
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    let { data: teacher } = await supabase
+      .from('teachers')
+      .select('default_monthly_price')
+      .eq('profile_id', user.id)
+      .maybeSingle()
 
-    if (profile?.role === 'teacher') {
-      const { data: teacher } = await supabase
+    if (!teacher) {
+      const { data: newTeacher, error: createError } = await supabase
         .from('teachers')
+        .insert({ profile_id: user.id })
         .select('default_monthly_price')
-        .eq('profile_id', user.id)
         .single()
 
-      // If it's a new teacher (price is 0 or null), redirect to settings first
-      // Use Number() to handle numeric strings or nulls safely
-      if (!teacher || !teacher.default_monthly_price || Number(teacher.default_monthly_price) === 0) {
-        revalidatePath('/', 'layout')
-        redirect('/dashboard/settings?first_login=true')
+      if (createError) {
+        console.error('Failed to create teacher record:', createError)
+      } else {
+        teacher = newTeacher
       }
+    }
+
+    if (!teacher || !teacher.default_monthly_price || Number(teacher.default_monthly_price) === 0) {
+      revalidatePath('/', 'layout')
+      redirect('/dashboard/settings?first_login=true')
     }
   }
 
@@ -165,26 +166,21 @@ export async function updateTeacherSettings(formData: FormData) {
     return { error: 'Unauthorized' }
   }
 
-  const googleMeetLink = formData.get('google_meet_link') as string
-  const bio = formData.get('bio') as string
   const currency = formData.get('currency') as string
-
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
-  // Update teacher record
   const { error } = await supabase
     .from('teachers')
-    .update({
-      google_meet_link: googleMeetLink,
-      bio: bio,
-      currency: currency,
-      default_monthly_price: defaultMonthlyPrice
-    })
-    .eq('profile_id', user.id)
+    .upsert(
+      {
+        profile_id: user.id,
+        currency,
+        default_monthly_price: defaultMonthlyPrice,
+      },
+      { onConflict: 'profile_id' },
+    )
 
-  if (error) {
-    return { error: error.message }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath('/dashboard/settings')
   return { success: true }

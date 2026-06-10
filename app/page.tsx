@@ -7,24 +7,32 @@ export default function HomePage() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="w-14 h-14 bg-card/50 border border-border rounded-2xl flex items-center justify-center p-1.5">
-            <Image
-              src="/Logo.png"
-              alt="Logo"
-              width={48}
-              height={48}
-              className="object-contain"
-            />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost">
-              <Link href="/auth/login">تسجيل الدخول</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/auth/signup">إنشاء حساب</Link>
-            </Button>
+        <div data-impeccable-variants="a6cbe400" data-impeccable-variant-count="2" style={{ display: "contents" }}>
+          {/* impeccable-variants-start a6cbe400 */}
+          {/* Original */}
+          <div data-impeccable-variant="original">
+            <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+              <Link href="/" className="w-14 h-14 bg-card/50 border border-border rounded-2xl flex items-center justify-center p-1.5">
+                <Image
+                  src="/Logo.png"
+                  alt="Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
+              </Link>
+              <div className="flex items-center gap-3">
+                <Button asChild variant="ghost">
+                  <Link href="/auth/login">تسجيل الدخول</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/signup">إنشاء حساب</Link>
+                </Button>
+              </div>
+            </div>
           </div>
+          {/* Variants: insert below this line */}
+          {/* impeccable-variants-end a6cbe400 */}
         </div>
       </header>
 
@@ -32,13 +40,13 @@ export default function HomePage() {
       <section className="flex-1 flex items-center justify-center py-20">
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight text-balance">
-            منصة متكاملة لإدارة
+            تتبع مستحقاتك المالية
             <br />
-            <span className="text-primary">حلقات تحفيظ القرآن الكريم</span>
+            <span className="text-primary"> كمعلم القرآن الكريم</span>
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            نظام شامل يساعد المعلمين على إدارة حصصهم مع الطلاب، تسجيل الملاحظات،
-            ومتابعة التقدم بكل سهولة ويسر
+            الحلقة يساعد معلمي القرآن على تتبع الدفعات المستلمة والمستحقة، إدارة
+            سجلات الطلاب، ومعرفة من سدد ومن عليه باقي بكل سهولة
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="text-lg px-8">
@@ -54,7 +62,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-6 text-center text-muted-foreground">
-          <p>جميع الحقوق محفوظة © {new Date().getFullYear()} منصة تحفيظ القرآن</p>
+          <p>جميع الحقوق محفوظة © {new Date().getFullYear()} الحلقة</p>
         </div>
       </footer>
     </div>

@@ -1,11 +1,27 @@
 'use client'
 
-import { useState, transition, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { CreditCard, Check, User, Clock, Settings2, Calendar as CalendarIcon, Save } from 'lucide-react'
+import { CreditCard, Check, User, Clock, Settings2, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/data-actions'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -23,8 +39,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [tempPrice, setTempPrice] = useState('')
   const [editingDay, setEditingDay] = useState<string | null>(null)
-  const [tempDay, setTempDay] = useState('')
-  const [dayError, setDayError] = useState<string | null>(null)
+  const [undoTarget, setUndoTarget] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -79,21 +94,9 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
     }
   }
 
-  const handleStartEditDay = (studentId: string, currentDay: number) => {
-    setEditingDay(studentId)
-    setTempDay((currentDay || 1).toString())
-  }
-
-  const handleSaveDay = async (studentId: string) => {
+  const handleDaySelect = async (studentId: string, day: number) => {
     setLoading(studentId)
     try {
-      const day = parseInt(tempDay)
-      if (isNaN(day) || day < 1 || day > 31) {
-        setDayError('يجب أن يكون اليوم بين 1 و 31')
-        setLoading(null)
-        return
-      }
-      setDayError(null)
       const result = await updateStudentPaymentDay(studentId, day)
       if (result.success) {
         setEditingDay(null)
@@ -126,17 +129,17 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                 isPaid ? 'bg-emerald-50/30' : 'bg-red-50/30 border-r-4 border-r-red-500'
               }`}
             >
-              <CardContent className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4 w-full">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-3 w-full">
+                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                     isPaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
                   }`}>
-                    {isPaid ? <Check className="w-6 h-6" /> : <User className="w-6 h-6" />}
+                    {isPaid ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <User className="w-5 h-5 md:w-6 md:h-6" />}
                   </div>
                   
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-lg">{student.full_name}</h3>
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-bold text-sm md:text-lg truncate">{student.full_name}</h3>
                       <Badge 
                         variant={isPaid ? 'secondary' : 'destructive'} 
                         className={`text-[10px] px-2 py-0 ${!isPaid ? 'bg-red-600 animate-pulse' : ''}`}
@@ -147,7 +150,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
 
                     <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
                       {/* Price Setting */}
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/50 px-2 py-1 rounded-md border border-muted-foreground/10 hover:border-muted-foreground/20 transition-colors">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/50 px-2 py-1.5 rounded-md border border-muted-foreground/10 hover:border-muted-foreground/20 transition-colors">
                         <CreditCard className="w-3.5 h-3.5" />
                         <span>الاشتراك:</span>
                         {isEditing ? (
@@ -164,7 +167,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                                 if (e.key === 'Escape') setEditingPrice(null)
                                 if (e.key === 'Enter' || e.key === 'Escape') e.preventDefault()
                               }}
-                              className="h-7 w-20 text-xs px-2 text-center bg-white border-primary/30 focus:border-primary shadow-sm"
+                              className="h-8 w-20 text-xs px-2 text-center bg-white border-primary/30 focus:border-primary shadow-sm"
                               autoFocus
                             />
                             {loading === student.id && (
@@ -179,45 +182,44 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                             className="flex items-center gap-1 hover:text-primary transition-colors"
                           >
                             <span className="font-bold text-primary">{student.monthly_price} {currencySymbol}</span>
-                            <Settings2 className="w-3 h-3 opacity-60" />
                           </button>
                         )}
                       </div>
 
                       {/* Payment Day Setting */}
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/50 px-2 py-1 rounded-md border border-muted-foreground/10 hover:border-muted-foreground/20 transition-colors">
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        <span>يوم الدفع:</span>
-                        {editingDay === student.id ? (
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                min={1}
-                                max={31}
-                                value={tempDay}
-                                onChange={(e) => { setTempDay(e.target.value); setDayError(null) }}
-                                className="h-6 w-14 text-[10px] px-1 text-center bg-white rounded border border-input"
-                                autoFocus
-                              />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSaveDay(student.id)} disabled={loading === student.id}>
-                                <Save className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            {dayError && (
-                              <p className="text-[10px] text-destructive">{dayError}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleStartEditDay(student.id, student.payment_day)}
-                            className="flex items-center gap-1 hover:text-primary transition-colors"
+                      <Popover open={editingDay === student.id} onOpenChange={(open) => { if (!open) setEditingDay(null) }}>
+                        <PopoverTrigger asChild>
+                          <button
+                            onClick={() => setEditingDay(student.id)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/50 px-2 py-1.5 rounded-md border border-muted-foreground/10 hover:border-muted-foreground/20 hover:text-primary transition-colors"
                           >
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <span>يوم الدفع:</span>
                             <span className="font-bold text-slate-700">{student.payment_day || 1}</span>
-                            <Settings2 className="w-3 h-3 opacity-60" />
                           </button>
-                        )}
-                      </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-fit p-3" align="start">
+                          <div className="grid grid-cols-7 gap-1">
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                              const isSelected = d === (student.payment_day || 1)
+                              return (
+                                <button
+                                  key={d}
+                                  onClick={() => handleDaySelect(student.id, d)}
+                                  disabled={loading === student.id}
+                                  className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                                    isSelected
+                                      ? 'bg-primary text-primary-foreground shadow-sm'
+                                      : 'hover:bg-muted text-foreground'
+                                  }`}
+                                >
+                                  {d}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
 
                       {isPaid && payment?.paid_at && (
                         <div className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -230,22 +232,53 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                 </div>
                 
                 <div className="w-full sm:w-auto">
-                  <Button
-                    variant={isPaid ? 'outline' : 'default'}
-                    onClick={() => handleToggle(student.id)}
-                    disabled={loading === student.id}
-                    className={`w-full sm:w-[120px] font-bold ${
-                      !isPaid ? "bg-red-600 hover:bg-red-700" : ""
-                    }`}
-                  >
-                    {loading === student.id ? (
-                      <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                    ) : isPaid ? (
-                      "تراجع"
-                    ) : (
-                      "تحديد كمدفوع"
-                    )}
-                  </Button>
+                  {isPaid ? (
+                    <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          disabled={loading === student.id}
+                          className="w-full sm:w-[120px] font-bold"
+                        >
+                          {loading === student.id ? (
+                            <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                          ) : "تراجع"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <div className="mx-auto sm:mx-0 w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mb-2">
+                            <AlertTriangle className="w-6 h-6 text-destructive" />
+                          </div>
+                          <AlertDialogTitle>تراجع عن الدفع</AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2">
+                            <p>سيتم إلغاء حالة الدفع للطالب <strong>{student.full_name}</strong>.</p>
+                            <p>سيتم إعادة المبلغ المستلم إلى صفر وإزالة تاريخ الدفع. يمكنك إعادة تعيين الدفع لاحقاً.</p>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => handleToggle(student.id)}
+                          >
+                            نعم، تراجع
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  ) : (
+                    <Button
+                      variant="default"
+                      onClick={() => handleToggle(student.id)}
+                      disabled={loading === student.id}
+                      className="w-full sm:w-[120px] font-bold bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {loading === student.id ? (
+                        <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                      ) : "تحديد كمدفوع"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

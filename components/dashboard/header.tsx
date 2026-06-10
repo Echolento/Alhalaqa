@@ -18,14 +18,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
   Menu,
   LogOut,
-  User,
   Settings,
-  BookOpen,
-  Calendar,
   Users,
-  BarChart3,
-  Building,
-  GraduationCap,
   LayoutDashboard,
   Wallet,
   MessageCircle,
@@ -39,27 +33,7 @@ interface HeaderProps {
 const teacherLinks = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
-  { href: '/dashboard/calendar', label: 'التقويم', icon: Calendar },
   { href: '/dashboard/students', label: 'الطلاب', icon: Users },
-  { href: '/dashboard/sessions', label: 'الحصص', icon: BookOpen },
-  { href: '/dashboard/analytics', label: 'الإحصائيات', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
-]
-
-const studentLinks = [
-  { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
-  { href: '/dashboard/sessions', label: 'حصصي', icon: BookOpen },
-  { href: '/dashboard/progress', label: 'تقدمي', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
-]
-
-const adminLinks = [
-  { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { href: '/dashboard/organizations', label: 'المؤسسات', icon: Building },
-  { href: '/dashboard/teachers', label: 'المعلمون', icon: GraduationCap },
-  { href: '/dashboard/students', label: 'الطلاب', icon: Users },
-  { href: '/dashboard/analytics', label: 'الإحصائيات', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ]
 
@@ -67,17 +41,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
-  const links = profile.role === 'admin'
-    ? adminLinks
-    : profile.role === 'teacher'
-      ? teacherLinks
-      : studentLinks
-
-  const roleLabels = {
-    admin: 'مشرف',
-    teacher: 'معلم',
-    student: 'طالب',
-  }
+  const links = teacherLinks
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6">
@@ -126,21 +90,18 @@ export function DashboardHeader({ profile }: HeaderProps) {
               })}
             </nav>
 
-            {/* WhatsApp contact — teachers only */}
-            {profile.role === 'teacher' && (
-              <div className="px-4 pb-4">
-                <a
-                  href="https://wa.me/201067372520"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50/10 transition-colors w-full"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  <span>تواصل معي عبر واتساب</span>
-                </a>
-              </div>
-            )}
+            <div className="px-4 pb-4">
+              <a
+                href="https://wa.me/201067372520"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50/10 transition-colors w-full"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>تواصل معي عبر واتساب</span>
+              </a>
+            </div>
           </SheetContent>
         </Sheet>
 
@@ -157,10 +118,8 @@ export function DashboardHeader({ profile }: HeaderProps) {
         </Link>
       </div>
 
-      {/* Page title - hidden on mobile */}
       <div className="hidden md:block" />
 
-      {/* User dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex items-center gap-2">
@@ -175,7 +134,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
         <DropdownMenuContent align="start" className="w-56">
           <div className="px-2 py-1.5">
             <p className="text-sm font-medium">{profile.full_name || 'مستخدم'}</p>
-            <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
+            <p className="text-xs text-muted-foreground">معلم</p>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
@@ -185,19 +144,17 @@ export function DashboardHeader({ profile }: HeaderProps) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {profile.role === 'teacher' && (
-            <DropdownMenuItem asChild>
-              <a
-                href="https://wa.me/201067372520"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 cursor-pointer text-green-600"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>تواصل عبر واتساب</span>
-              </a>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem asChild>
+            <a
+              href="https://wa.me/201067372520"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 cursor-pointer text-green-600"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>تواصل عبر واتساب</span>
+            </a>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => signOut()}
