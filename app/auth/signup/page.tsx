@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { PasswordInput } from '@/components/auth/password-input'
-import { PhoneInput } from '@/components/auth/phone-input'
-import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
 
 export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +17,6 @@ export default function SignUpPage() {
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -80,14 +77,6 @@ export default function SignUpPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-
-        <PhoneInput
-          id="phone"
-          name="phone"
-          value={phone}
-          onChange={(val) => setPhone(val)}
-          required
-        />
 
         <div className="space-y-2">
           <Label htmlFor="password">كلمة المرور</Label>

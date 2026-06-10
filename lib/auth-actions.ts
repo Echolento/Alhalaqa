@@ -11,13 +11,6 @@ export async function signUp(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
-  const rawPhone = formData.get('phone') as string
-
-  const phone = formatPhoneNumber(rawPhone)
-
-  if (!isValidPhoneNumber(phone)) {
-    return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
-  }
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -28,7 +21,6 @@ export async function signUp(formData: FormData) {
       data: {
         full_name: fullName,
         role: 'teacher',
-        phone: phone,
       },
     },
   })
