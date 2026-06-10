@@ -40,13 +40,12 @@ export default function HomePage() {
       <section className="flex-1 flex items-center justify-center py-20">
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight text-balance">
-            تتبع مستحقاتك المالية
+            لكل معلم قرآن يستحق
             <br />
-            <span className="text-primary"> كمعلم القرآن الكريم</span>
+            <span className="text-primary"> أدوات تليق برسالته</span>
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            الحلقة يساعد معلمي القرآن على تتبع الدفعات المستلمة والمستحقة، إدارة
-            سجلات الطلاب، ومعرفة من سدد ومن عليه باقي بكل سهولة
+            تابع مستحقاتك المالية بدون تعقيد، لتبقى متفرغاً لتعليم كتاب الله
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="text-lg px-8">
