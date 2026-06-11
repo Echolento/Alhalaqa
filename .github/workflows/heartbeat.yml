@@ -1,0 +1,27 @@
+name: Supabase Heartbeat
+
+on:
+  schedule:
+    - cron: "0 */5 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        id: ping
+        run: |
+          curl -f -s -o /dev/null \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/teachers?select=count"
+        continue-on-error: true
+
+      - name: Notify Discord (failure)
+        if: steps.ping.outcome == 'failure'
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"embeds":[{"title":"Supabase Heartbeat","description":"Database ping failed — check the project.","color":15158332}]}' \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
