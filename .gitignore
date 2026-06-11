@@ -29,6 +29,12 @@ next-env.d.ts
 # AntiCrow ローカルデータ
 .anticrow/
 
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/e2e/.auth/
+
 # Temporary and debug files
 /tmp/
 /scratch/

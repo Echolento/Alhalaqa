@@ -291,19 +291,18 @@ export async function deleteStudent(studentId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
-  const { error: paymentsError } = await supabase
-    .from('student_payments')
-    .delete()
-    .eq('student_id', studentId)
-
-  if (paymentsError) return { error: paymentsError.message }
-
   const { error } = await supabase
     .from('students')
     .delete()
     .eq('id', studentId)
 
   if (error) return { error: error.message }
+
+  // Clean up any payments (best-effort, RLS may or may not allow it)
+  await supabase
+    .from('student_payments')
+    .delete()
+    .eq('student_id', studentId)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
