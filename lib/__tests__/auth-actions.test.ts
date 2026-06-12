@@ -75,7 +75,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'exists@example.com', password: 'Password123!', fullName: 'Test' })
     )
-    expect(result.error).toBe('Email already registered')
+    expect(result.error).toBe('هذا البريد مسجل بالفعل')
   })
 
   it('redirects to dashboard if session returned', async () => {
@@ -139,7 +139,7 @@ describe('signIn', () => {
       createFormData({ email: 'wrong@example.com', password: 'bad' })
     )
 
-    expect(result.error).toBe('Invalid login credentials')
+    expect(result.error).toBe('بيانات الدخول غير صحيحة')
   })
 
   it('redirects to settings on first login when no price set', async () => {
@@ -309,7 +309,7 @@ describe('resetPasswordForEmail', () => {
     const result = await resetPasswordForEmail(
       createFormData({ email: 'nonexistent@example.com' })
     )
-    expect(result.error).toBe('User not found')
+    expect(result.error).toBe('المستخدم غير موجود')
   })
 })
 
@@ -344,6 +344,6 @@ describe('updateUserPassword', () => {
     const result = await updateUserPassword(
       createFormData({ password: 'short', confirmPassword: 'short' })
     )
-    expect(result.error).toBe('Weak password')
+    expect(result.error).toBe('كلمة المرور ضعيفة جداً')
   })
 })

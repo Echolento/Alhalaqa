@@ -5,6 +5,23 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 
+function translateAuthError(message: string): string {
+  const map: Record<string, string> = {
+    'Invalid login credentials': 'بيانات الدخول غير صحيحة',
+    'Email not confirmed': 'البريد الإلكتروني غير مؤكد',
+    'User already registered': 'هذا البريد مسجل بالفعل',
+    'Email already registered': 'هذا البريد مسجل بالفعل',
+    'Invalid email or password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    'Rate limit exceeded': 'طلبات كثيرة جداً، حاول لاحقاً',
+    'Password should be at least 6 characters': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    'Email link is invalid or expired': 'رابط البريد الإلكتروني غير صالح أو منتهي الصلاحية',
+    'User not found': 'المستخدم غير موجود',
+    'Weak password': 'كلمة المرور ضعيفة جداً',
+    'New password should be different from the old password': 'كلمة المرور الجديدة يجب أن تختلف عن القديمة',
+  }
+  return map[message] || message
+}
+
 export async function signUp(formData: FormData) {
   const supabase = await createClient()
 
@@ -26,7 +43,7 @@ export async function signUp(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: translateAuthError(error.message) }
   }
 
   if (data.session) {
@@ -49,7 +66,7 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: translateAuthError(error.message) }
   }
 
   const user = data.user
@@ -187,7 +204,7 @@ export async function resetPasswordForEmail(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: translateAuthError(error.message) }
   }
 
   return { success: true }
@@ -207,7 +224,7 @@ export async function updateUserPassword(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: translateAuthError(error.message) }
   }
 
   revalidatePath('/', 'layout')
