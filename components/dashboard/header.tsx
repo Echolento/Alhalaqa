@@ -53,7 +53,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
           <SheetContent side="right" className="w-72 p-0">
             <div className="p-6 border-b border-border">
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-primary/10 border border-border rounded-xl flex items-center justify-center p-2">
+                <div className="w-16 h-16 border border-border rounded-xl flex items-center justify-center p-2">
                   <Image
                     src="/Logo.png"
                     alt="Logo"
@@ -103,7 +103,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
         </Sheet>
 
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="bg-primary/10 backdrop-blur-sm border border-border/50 rounded-lg p-1 shadow-sm">
+          <div className="border border-border/50 rounded-lg p-1">
             <Image
               src="/Logo.png"
               alt="Logo"

@@ -29,19 +29,16 @@ export function DashboardSidebar({ profile }: SidebarProps) {
 
   return (
     <aside className="fixed right-0 top-0 h-screen w-64 bg-sidebar border-l border-sidebar-border hidden md:flex flex-col z-40 overflow-y-auto">
-      <div className="p-6 border-b border-sidebar-border">
+      <div className="p-6">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="bg-sidebar-primary/10 backdrop-blur-sm border border-sidebar-border/50 rounded-xl p-1 shadow-sm">
+          <div className="w-14 h-14 border border-border rounded-2xl flex items-center justify-center p-1.5">
             <Image
               src="/Logo.png"
               alt="Logo"
-              width={32}
-              height={32}
+              width={48}
+              height={48}
               className="object-contain"
             />
-          </div>
-          <div>
-            <p className="text-xs text-sidebar-foreground/60">معلم</p>
           </div>
         </Link>
       </div>
