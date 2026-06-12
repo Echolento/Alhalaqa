@@ -15,7 +15,7 @@ export async function getTeacherStudents() {
 
   const { data: teacher } = await supabase
     .from('teachers')
-    .select('id')
+    .select('id, default_monthly_price')
     .eq('profile_id', user.id)
     .maybeSingle()
 
@@ -30,7 +30,7 @@ export async function getTeacherStudents() {
   return (students || []).map(s => ({
     ...s,
     name: s.name || 'طالب',
-    monthly_price: Number(s.monthly_price) || 0,
+    monthly_price: Number(s.monthly_price) || Number(teacher.default_monthly_price) || 0,
     payment_day: Number(s.payment_day) || 1,
   }))
 }
