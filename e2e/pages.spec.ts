@@ -69,10 +69,9 @@ test.describe('Authenticated dashboard pages', () => {
     expect(resp?.status()).toBe(200)
   })
 
-  test('/dashboard renders with data', async ({ page }) => {
+  test('/dashboard redirects to payments', async ({ page }) => {
     await page.goto('/dashboard')
-    await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible()
-    await expect(page.getByText('إجمالي الطلاب')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'المدفوعات' })).toBeVisible()
   })
 
   test('/dashboard/students renders', async ({ page }) => {
@@ -101,7 +100,6 @@ test.describe('Authenticated dashboard pages', () => {
     await page.goto('/dashboard/payments')
     await expect(page.getByText('المبالغ المستلمة')).toBeVisible()
     await expect(page.getByText('المبالغ المتبقية')).toBeVisible()
-    await expect(page.getByText(/إجمالي الطلاب/)).toBeVisible()
   })
 })
 

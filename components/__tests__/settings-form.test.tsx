@@ -88,7 +88,7 @@ describe('SettingsForm', () => {
   it('shows "حفظ والمتابعة" button text on first login for teachers', () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams('first_login=true'))
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('حفظ والمتابعة للوحة التحكم')).toBeInTheDocument()
+    expect(screen.getByText('حفظ والمتابعة للمدفوعات')).toBeInTheDocument()
   })
 
   it('hides teacher settings for non-teacher role', () => {

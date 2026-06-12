@@ -4,7 +4,6 @@ import { getTeacherPayments } from '@/lib/data-actions'
 import { PaymentsList } from '@/components/dashboard/payments-list'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { ChevronRight, ChevronLeft, DollarSign, Clock } from 'lucide-react'
 import Link from 'next/link'
 
@@ -62,7 +61,7 @@ export default async function PaymentsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+      <div className="grid grid-cols-2 gap-3 md:gap-6">
         <Card className="border shadow-sm">
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -86,7 +85,6 @@ export default async function PaymentsPage({
             <h2 className="text-2xl font-bold">{pendingRevenue} {currencySymbol}</h2>
           </CardContent>
         </Card>
-
       </div>
 
       <div className="space-y-4 pt-6">

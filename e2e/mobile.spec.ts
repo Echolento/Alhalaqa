@@ -19,9 +19,9 @@ test.describe('Mobile viewport (375x812)', () => {
   test.describe('Dashboard (authenticated)', () => {
     test.use({ storageState: 'e2e/.auth/user.json' })
 
-    test('/dashboard loads - sidebar hidden on mobile', async ({ page }) => {
+    test('/dashboard redirects to payments on mobile', async ({ page }) => {
       await page.goto('/dashboard')
-      await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'المدفوعات' })).toBeVisible()
       const sidebar = page.locator('aside')
       await expect(sidebar).toBeHidden()
     })
@@ -35,7 +35,6 @@ test.describe('Mobile viewport (375x812)', () => {
     test('hamburger opens navigation sheet', async ({ page }) => {
       await page.goto('/dashboard')
       await page.locator('button:has(svg.lucide-menu)').click()
-      await expect(page.getByRole('link', { name: 'لوحة التحكم' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'الطلاب' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'المدفوعات' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'الإعدادات' })).toBeVisible()

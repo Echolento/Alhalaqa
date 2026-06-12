@@ -241,7 +241,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               </div>
 
               <Button type="submit" disabled={loading}>
-                {loading ? 'جاري الحفظ...' : (isFirstLogin ? 'حفظ والمتابعة للوحة التحكم' : 'حفظ الإعدادات')}
+                {loading ? 'جاري الحفظ...' : (isFirstLogin ? 'حفظ والمتابعة للمدفوعات' : 'حفظ الإعدادات')}
               </Button>
             </form>
           </CardContent>
