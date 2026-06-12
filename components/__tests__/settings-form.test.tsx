@@ -1,6 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { SettingsForm } from '@/components/dashboard/settings-form'
+import { updateUserProfile, updateTeacherSettings } from '@/lib/auth-actions'
+
+const { mockUseSearchParams } = vi.hoisted(() => ({
+  mockUseSearchParams: vi.fn(() => new URLSearchParams()),
+}))
+
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => '/dashboard'),
+  useSearchParams: mockUseSearchParams,
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn() })),
+  redirect: vi.fn(),
+}))
 
 vi.mock('@/lib/auth-actions', () => ({
   updateTeacherSettings: vi.fn(),
@@ -25,6 +37,11 @@ const mockTeacherData = {
   currency: 'EGP',
   default_monthly_price: 150,
 }
+
+beforeEach(() => {
+  mockUseSearchParams.mockReturnValue(new URLSearchParams())
+  vi.clearAllMocks()
+})
 
 describe('SettingsForm', () => {
   it('renders profile name and role', () => {
@@ -59,5 +76,71 @@ describe('SettingsForm', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
     const emailInput = screen.getByDisplayValue('test@example.com')
     expect(emailInput).toBeDisabled()
+  })
+
+  it('shows welcome card on first login and hides profile card', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('first_login=true'))
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    expect(screen.getByText('أهلاً بك يا أحمد!')).toBeInTheDocument()
+    expect(screen.queryByText('معلومات الحساب')).not.toBeInTheDocument()
+  })
+
+  it('shows "حفظ والمتابعة" button text on first login for teachers', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('first_login=true'))
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    expect(screen.getByText('حفظ والمتابعة للوحة التحكم')).toBeInTheDocument()
+  })
+
+  it('hides teacher settings for non-teacher role', () => {
+    const studentProfile = { ...mockProfile, role: 'student' as const }
+    render(<SettingsForm profile={studentProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    expect(screen.queryByText('إعدادات المعلم')).not.toBeInTheDocument()
+  })
+
+  it('defaults to EGP currency when teacherData is null', () => {
+    render(<SettingsForm profile={mockProfile} teacherData={null} email="test@example.com" />)
+    expect(screen.getByLabelText('العملة')).toHaveValue('EGP')
+  })
+
+  it('defaults to 0 price when teacherData is null', () => {
+    render(<SettingsForm profile={mockProfile} teacherData={null} email="test@example.com" />)
+    expect(screen.getByLabelText('السعر الافتراضي للطلاب الجدد')).toHaveValue(0)
+  })
+
+  it('shows fallback text when full_name is null', () => {
+    const nullNameProfile = { ...mockProfile, full_name: null }
+    render(<SettingsForm profile={nullNameProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    expect(screen.getByText('مستخدم')).toBeInTheDocument()
+    expect(screen.getByText('؟')).toBeInTheDocument()
+  })
+
+  it('shows success banner after profile save', async () => {
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    const submitBtn = screen.getByRole('button', { name: 'حفظ التحديثات' })
+    fireEvent.click(submitBtn)
+    expect(await screen.findByText('تم تحديث معلومات الحساب بنجاح')).toBeInTheDocument()
+  })
+
+  it('shows error banner when profile save fails', async () => {
+    vi.mocked(updateUserProfile).mockResolvedValueOnce({ error: 'خطأ في حفظ الملف الشخصي' })
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    const submitBtn = screen.getByRole('button', { name: 'حفظ التحديثات' })
+    fireEvent.click(submitBtn)
+    expect(await screen.findByText('خطأ في حفظ الملف الشخصي')).toBeInTheDocument()
+  })
+
+  it('shows success banner after teacher settings save', async () => {
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    const saveBtns = screen.getAllByText('حفظ الإعدادات')
+    fireEvent.click(saveBtns[0])
+    expect(await screen.findByText('تم حفظ الإعدادات بنجاح')).toBeInTheDocument()
+  })
+
+  it('shows error banner when teacher settings save fails', async () => {
+    vi.mocked(updateTeacherSettings).mockResolvedValueOnce({ error: 'فشل حفظ الإعدادات' })
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    const saveBtns = screen.getAllByText('حفظ الإعدادات')
+    fireEvent.click(saveBtns[0])
+    expect(await screen.findByText('فشل حفظ الإعدادات')).toBeInTheDocument()
   })
 })

@@ -5,7 +5,7 @@ import { PaymentsList } from '@/components/dashboard/payments-list'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ChevronRight, ChevronLeft, DollarSign, Clock, Users } from 'lucide-react'
+import { ChevronRight, ChevronLeft, DollarSign, Clock } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function PaymentsPage({
@@ -23,9 +23,6 @@ export default async function PaymentsPage({
   const { students, payments, currency } = await getTeacherPayments(currentMonth)
 
   const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
-
-  const paidCount = payments.filter((p: any) => p.paid).length
-  const unpaidCount = students.length - paidCount
 
   const totalCollected = payments.reduce((sum: number, p: any) => sum + (Number(p.amount_paid) || 0), 0)
   const totalExpected = students.reduce((sum: number, s: any) => sum + (Number(s.monthly_price) || 0), 0)
@@ -90,28 +87,10 @@ export default async function PaymentsPage({
           </CardContent>
         </Card>
 
-        <Card className="border shadow-sm">
-          <CardContent className="p-4 md:p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
-                <Users className="w-5 h-5" />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium">إجمالي الطلاب</p>
-            </div>
-            <h2 className="text-2xl font-bold">{students.length} طالب</h2>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="space-y-4 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">قائمة الطلاب</h2>
-          {unpaidCount > 0 && (
-            <Badge variant="destructive" className="rounded-lg">
-              بانتظار {unpaidCount} طلاب
-            </Badge>
-          )}
-        </div>
+        <h2 className="text-xl font-bold">قائمة الطلاب</h2>
 
         <div className="border rounded-2xl overflow-hidden bg-card">
           <PaymentsList students={students} payments={payments} month={currentMonth} currency={currency} />

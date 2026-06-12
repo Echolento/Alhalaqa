@@ -28,4 +28,22 @@ describe('Input', () => {
     fireEvent.change(input, { target: { value: 'test' } })
     expect(onChange).toHaveBeenCalled()
   })
+
+  it('applies disabled styling', () => {
+    render(<Input disabled />)
+    const input = screen.getByRole('textbox')
+    expect(input).toBeDisabled()
+    expect(input.className).toContain('disabled:opacity-50')
+  })
+
+  it('applies aria-invalid styling', () => {
+    render(<Input aria-invalid="true" />)
+    const input = screen.getByRole('textbox')
+    expect(input.className).toContain('aria-invalid:border-destructive')
+  })
+
+  it('has data-slot attribute', () => {
+    render(<Input />)
+    expect(screen.getByRole('textbox')).toHaveAttribute('data-slot', 'input')
+  })
 })

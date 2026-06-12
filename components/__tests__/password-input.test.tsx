@@ -45,4 +45,59 @@ describe('PasswordInput', () => {
     render(<PasswordInput />)
     expect(document.querySelector('.lucide-lock')).toBeInTheDocument()
   })
+
+  it('shows strength 0 for very short password', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: 'ab' } })
+    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
+      b => !b.classList.contains('bg-muted')
+    )
+    expect(filledBars.length).toBe(0)
+  })
+
+  it('shows red bars for low strength (< 3)', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: 'abcdef' } })
+    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
+      b => !b.classList.contains('bg-muted')
+    )
+    expect(filledBars.length).toBe(1)
+    expect(filledBars[0]).toHaveClass('bg-red-500')
+  })
+
+  it('shows yellow bars for medium strength (3-4)', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: 'Abcdef1' } })
+    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
+      b => !b.classList.contains('bg-muted')
+    )
+    expect(filledBars.length).toBe(3)
+    expect(filledBars[0]).toHaveClass('bg-yellow-500')
+  })
+
+  it('shows green bars for high strength (5)', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: 'Abcd1234!@' } })
+    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
+      b => !b.classList.contains('bg-muted')
+    )
+    expect(filledBars.length).toBe(5)
+    expect(filledBars[0]).toHaveClass('bg-green-500')
+  })
+
+  it('hides strength bars when showStrength is false even with value', () => {
+    render(<PasswordInput showStrength={false} value="initial" />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: 'StrongPass1!' } })
+    expect(document.querySelectorAll('.rounded-full').length).toBe(0)
+  })
+
+  it('forwards disabled prop to input', () => {
+    render(<PasswordInput disabled />)
+    expect(getInput()).toBeDisabled()
+  })
 })

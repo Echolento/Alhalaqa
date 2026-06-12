@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 30000,
   retries: 0,
   fullyParallel: true,
+  reporter: 'line',
   use: {
     baseURL: 'http://localhost:3000',
     locale: 'ar',
@@ -16,7 +17,7 @@ export default defineConfig({
     },
     {
       name: 'e2e',
-      testMatch: /pages\.spec\.ts/,
+      testMatch: /\.spec\.ts/,
       dependencies: ['setup'],
     },
   ],

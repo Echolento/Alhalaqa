@@ -89,40 +89,91 @@ test.describe('Authenticated dashboard pages', () => {
     await page.goto('/dashboard/settings')
     await expect(page.getByRole('heading', { name: 'الإعدادات' })).toBeVisible()
   })
+
+  test('shows empty state when search has no results', async ({ page }) => {
+    await page.goto('/dashboard/students')
+    await page.getByPlaceholder('البحث عن طالب...').fill('ZZZZ_EMPTY_SEARCH_ZZZZ')
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('cell', { name: 'لا يوجد طلاب' })).toBeVisible()
+  })
+
+  test('payments page shows stat cards', async ({ page }) => {
+    await page.goto('/dashboard/payments')
+    await expect(page.getByText('المبالغ المستلمة')).toBeVisible()
+    await expect(page.getByText('المبالغ المتبقية')).toBeVisible()
+    await expect(page.getByText(/إجمالي الطلاب/)).toBeVisible()
+  })
 })
 
-test.describe('Student CRUD (self-cleaning)', () => {
+test.describe.serial('Data mutating tests', () => {
   test.use({ storageState: 'e2e/.auth/user.json' })
-  const testName = '__test_delete_me__'
 
   test('adds a student, verifies it, then deletes it', async ({ page }) => {
+    const testName = `__test_delete_me_${Date.now()}__`
+
     await page.goto('/dashboard/students')
     await expect(page.getByText('قائمة الطلاب')).toBeVisible()
 
-    // Open add dialog
     await page.getByRole('button', { name: 'إضافة طالب' }).click()
     await expect(page.getByText('إضافة طالب جديد')).toBeVisible()
     await page.getByLabel('الاسم').fill(testName)
-
-    // Submit add form — triggers window.location.reload()
     await page.getByRole('button', { name: 'إضافة', exact: true }).click()
 
-    // Wait for student to appear in the page after reload
     await expect(page.getByText(testName).last()).toBeAttached({ timeout: 20000 })
 
-    // Click the last delete button — our test student was added last
+    await page.waitForLoadState('load')
+
+    const searchInput = page.getByPlaceholder('البحث عن طالب...')
+    await searchInput.fill(testName)
+    await page.waitForTimeout(500)
+
     const deleteBtns = page.getByRole('button', { name: 'حذف' })
     await deleteBtns.last().click()
-    await expect(page.getByRole('dialog')).toBeAttached()
+    await expect(page.getByRole('dialog')).toBeAttached({ timeout: 10000 })
     await expect(page.getByRole('dialog')).toContainText(testName)
 
-    // Confirm deletion — triggers window.location.reload() on success
     await page.getByRole('button', { name: 'تأكيد الحذف' }).click()
-
-    // Wait for page to fully reload after deletion
     await expect(page.getByRole('button', { name: 'إضافة' })).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('load')
+    await expect(page.getByText(testName)).toHaveCount(0, { timeout: 20000 })
+  })
 
-    // Verify student is gone from the table
+  test('marks a student paid, then undoes it', async ({ page }) => {
+    const testName = `__test_payment_toggle_${Date.now()}__`
+
+    await page.goto('/dashboard/students')
+    await expect(page.getByText('قائمة الطلاب')).toBeVisible()
+    await page.getByRole('button', { name: 'إضافة طالب' }).click()
+    await expect(page.getByText('إضافة طالب جديد')).toBeVisible()
+    await page.getByLabel('الاسم').fill(testName)
+    await page.getByRole('button', { name: 'إضافة', exact: true }).click()
+    await expect(page.getByText(testName).last()).toBeAttached({ timeout: 20000 })
+    await page.waitForLoadState('load')
+
+    await page.getByRole('link', { name: 'المدفوعات' }).click()
+    await page.waitForURL('/dashboard/payments')
+    await expect(page.getByRole('heading', { name: 'المدفوعات' })).toBeVisible()
+
+    const card = page.getByText(testName).first().locator('xpath=ancestor::div[@data-slot="card"]')
+    await card.locator('button:has-text("تحديد كمدفوع")').click()
+    await expect(card.locator('button:has-text("تراجع")')).toBeVisible({ timeout: 15000 })
+
+    await card.locator('button:has-text("تراجع")').click()
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await page.getByRole('button', { name: 'نعم، تراجع' }).click()
+    await expect(card.locator('button:has-text("تحديد كمدفوع")')).toBeVisible({ timeout: 15000 })
+
+    await page.goto('/dashboard/students')
+    await page.waitForLoadState('load')
+    const searchInput = page.getByPlaceholder('البحث عن طالب...')
+    await searchInput.fill(testName)
+    await page.waitForTimeout(500)
+    const deleteBtns = page.getByRole('button', { name: 'حذف' })
+    await deleteBtns.last().click()
+    await expect(page.getByRole('dialog')).toContainText(testName)
+    await page.getByRole('button', { name: 'تأكيد الحذف' }).click()
+    await expect(page.getByRole('button', { name: 'إضافة' })).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('load')
     await expect(page.getByText(testName)).toHaveCount(0, { timeout: 20000 })
   })
 })

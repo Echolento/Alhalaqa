@@ -20,7 +20,6 @@ import {
   LogOut,
   Settings,
   Users,
-  LayoutDashboard,
   Wallet,
   MessageCircle,
 } from 'lucide-react'
@@ -31,7 +30,6 @@ interface HeaderProps {
 }
 
 const teacherLinks = [
-  { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
   { href: '/dashboard/students', label: 'الطلاب', icon: Users },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
@@ -68,8 +66,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
             </div>
             <nav className="p-4 space-y-1">
               {links.map((link) => {
-                const isActive = pathname === link.href ||
-                  (link.href !== '/dashboard' && pathname.startsWith(link.href))
+                const isActive = pathname.startsWith(link.href)
 
                 return (
                   <Link

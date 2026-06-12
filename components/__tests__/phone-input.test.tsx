@@ -75,4 +75,62 @@ describe('PhoneInput', () => {
     fireEvent.blur(input)
     expect(onBlur).toHaveBeenCalled()
   })
+
+  it('supports controlled mode with value prop', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<PhoneInput value="1234567890" onChange={onChange} />)
+    const input = getInput()
+    expect(input.value).toBe('1234567890')
+    fireEvent.change(input, { target: { value: '0987654321' } })
+    expect(onChange).toHaveBeenCalledWith('987654321')
+    rerender(<PhoneInput value="987654321" onChange={onChange} />)
+    expect(input.value).toBe('987654321')
+  })
+
+  it('strips +20 from controlled value', () => {
+    render(<PhoneInput value="+201234567890" />)
+    expect(getInput().value).toBe('1234567890')
+  })
+
+  it('shows error when required and empty on blur', () => {
+    render(<PhoneInput required />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.blur(input)
+    expect(screen.getByText('الرقم قصير جداً')).toBeInTheDocument()
+  })
+
+  it('shows help text when no error', () => {
+    render(<PhoneInput />)
+    expect(screen.getByText('يرجى التأكد من صحة الرقم')).toBeInTheDocument()
+  })
+
+  it('hides help text and shows error on short input blur', () => {
+    render(<PhoneInput />)
+    const input = getInput()
+    expect(screen.getByText('يرجى التأكد من صحة الرقم')).toBeInTheDocument()
+    fireEvent.change(input, { target: { value: '123' } })
+    fireEvent.blur(input)
+    expect(screen.queryByText('يرجى التأكد من صحة الرقم')).not.toBeInTheDocument()
+    expect(screen.getByText('الرقم قصير جداً')).toBeInTheDocument()
+  })
+
+  it('applies focus styling to the prefix on focus', () => {
+    render(<PhoneInput />)
+    const input = getInput()
+    const prefix = screen.getByText('+20').closest('div')
+    expect(prefix?.className).not.toContain('text-foreground')
+    fireEvent.focus(input)
+    expect(prefix?.className).toContain('text-foreground')
+  })
+
+  it('clears error when user enters valid digits after error', () => {
+    render(<PhoneInput />)
+    const input = getInput()
+    fireEvent.change(input, { target: { value: '123' } })
+    fireEvent.blur(input)
+    expect(screen.getByText('الرقم قصير جداً')).toBeInTheDocument()
+    fireEvent.change(input, { target: { value: '1234567890' } })
+    expect(screen.queryByText('الرقم قصير جداً')).not.toBeInTheDocument()
+  })
 })
