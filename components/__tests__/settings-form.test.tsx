@@ -3,13 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { SettingsForm } from '@/components/dashboard/settings-form'
 import { updateUserProfile, updateTeacherSettings } from '@/lib/auth-actions'
 
-const { mockUseSearchParams } = vi.hoisted(() => ({
-  mockUseSearchParams: vi.fn(() => new URLSearchParams()),
-}))
-
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/dashboard'),
-  useSearchParams: mockUseSearchParams,
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn() })),
   redirect: vi.fn(),
 }))
@@ -39,7 +34,6 @@ const mockTeacherData = {
 }
 
 beforeEach(() => {
-  mockUseSearchParams.mockReturnValue(new URLSearchParams())
   vi.clearAllMocks()
 })
 
@@ -76,19 +70,6 @@ describe('SettingsForm', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
     const emailInput = screen.getByDisplayValue('test@example.com')
     expect(emailInput).toBeDisabled()
-  })
-
-  it('shows welcome card on first login and hides profile card', () => {
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('first_login=true'))
-    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('أهلاً بك يا أحمد!')).toBeInTheDocument()
-    expect(screen.queryByText('معلومات الحساب')).not.toBeInTheDocument()
-  })
-
-  it('shows "حفظ والمتابعة" button text on first login for teachers', () => {
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('first_login=true'))
-    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('حفظ والمتابعة للمدفوعات')).toBeInTheDocument()
   })
 
   it('hides teacher settings for non-teacher role', () => {

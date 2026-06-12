@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,8 +31,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-  const isFirstLogin = searchParams.get('first_login') === 'true'
   const router = useRouter()
 
   const [loadingProfile, setLoadingProfile] = useState(false)
@@ -73,11 +71,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
       setError(result.error)
     } else {
       setSuccess(true)
-      if (isFirstLogin) {
-        router.push('/dashboard')
-      } else {
-        setTimeout(() => setSuccess(false), 3000)
-      }
+      setTimeout(() => setSuccess(false), 3000)
     }
 
     setLoading(false)
@@ -85,30 +79,8 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {isFirstLogin && (
-        <AlertCircle className="hidden" /> /* Pre-import check if needed, but we use icons below */
-      )}
-
-      {isFirstLogin && (
-        <Card className="border-primary/20 bg-primary/5 shadow-lg animate-in slide-in-from-top duration-500">
-          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3">
-            <CardTitle className="text-xl font-bold flex items-center gap-2 text-primary">
-              <CheckCircle className="w-6 h-6" />
-              أهلاً بك يا {profile.full_name?.split(' ')[0]}!
-            </CardTitle>
-            <CardDescription className="text-primary/70 font-medium">
-              يسعدنا انضمامك إلينا. يرجى ضبط الإعدادات الافتراضية لحسابك للمتابعة.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 md:px-6 pb-4 md:pb-6 text-sm space-y-2 text-muted-foreground">
-            <p>• قم بتحديد <strong>السعر الافتراضي</strong> للحصص الشهرية.</p>
-            <p>• اختر <strong>العملة</strong> التي تفضل استلام تقاريرك بها.</p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Profile Info */}
-      {!isFirstLogin && <Card>
+      <Card>
         <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -148,7 +120,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
             <div className="grid gap-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="full_name">الاسم الكامل</Label>
+                <Label htmlFor="full_name">الاسم</Label>
                 <Input id="full_name" name="full_name" defaultValue={profile.full_name || ''} required />
               </div>
 
@@ -188,7 +160,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
             </div>
           </form>
         </CardContent>
-      </Card>}
+      </Card>
 
       {/* Teacher Settings */}
       {profile.role === 'teacher' && (
@@ -222,7 +194,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   id="currency"
                   name="currency"
                   defaultValue={teacherData?.currency || 'EGP'}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="EGP">الجنية المصري (EGP)</option>
                   <option value="SAR">الريال السعودي (SAR)</option>
@@ -241,7 +213,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               </div>
 
               <Button type="submit" disabled={loading}>
-                {loading ? 'جاري الحفظ...' : (isFirstLogin ? 'حفظ والمتابعة للمدفوعات' : 'حفظ الإعدادات')}
+                {loading ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
               </Button>
             </form>
           </CardContent>

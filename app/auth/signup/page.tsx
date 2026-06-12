@@ -51,7 +51,7 @@ export default function SignUpPage() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="fullName">الاسم الكامل</Label>
+          <Label htmlFor="fullName">الاسم</Label>
           <Input
             id="fullName"
             name="fullName"

@@ -48,7 +48,7 @@ export async function signUp(formData: FormData) {
 
   if (data.session) {
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    redirect('/welcome')
   }
 
   return { success: true }
@@ -93,7 +93,7 @@ export async function signIn(formData: FormData) {
 
     if (!teacher || !teacher.default_monthly_price || Number(teacher.default_monthly_price) === 0) {
       revalidatePath('/', 'layout')
-      redirect('/dashboard/settings?first_login=true')
+      redirect('/welcome')
     }
   }
 
@@ -193,6 +193,34 @@ export async function updateTeacherSettings(formData: FormData) {
 
   revalidatePath('/dashboard/settings')
   return { success: true }
+}
+
+export async function completeOnboarding(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized' }
+  }
+
+  const currency = formData.get('currency') as string
+  const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
+
+  const { error } = await supabase
+    .from('teachers')
+    .upsert(
+      {
+        profile_id: user.id,
+        currency,
+        default_monthly_price: defaultMonthlyPrice,
+      },
+      { onConflict: 'profile_id' },
+    )
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/', 'layout')
+  redirect('/dashboard')
 }
 
 export async function resetPasswordForEmail(formData: FormData) {

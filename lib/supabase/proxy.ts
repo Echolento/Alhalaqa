@@ -50,8 +50,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (
-    // if the user is not logged in and the dashboard is accessed, redirect to the login page
-    request.nextUrl.pathname.startsWith('/dashboard') &&
+    // if the user is not logged in and a protected page is accessed, redirect to the login page
+    (request.nextUrl.pathname.startsWith('/dashboard') ||
+      request.nextUrl.pathname.startsWith('/welcome')) &&
     !user
   ) {
     // no user, redirect to the login page

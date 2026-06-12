@@ -78,7 +78,7 @@ describe('signUp', () => {
     expect(result.error).toBe('هذا البريد مسجل بالفعل')
   })
 
-  it('redirects to dashboard if session returned', async () => {
+  it('redirects to welcome if session returned', async () => {
     const { redirect } = await import('next/navigation')
     mockSupabase.auth.signUp.mockResolvedValue({
       data: { user: { id: 'user-1' }, session: { access_token: 'xxx' } },
@@ -90,7 +90,7 @@ describe('signUp', () => {
       createFormData({ email: 'test@example.com', password: 'Password123!', fullName: 'Test' })
     )
 
-    expect(redirect).toHaveBeenCalledWith('/dashboard')
+    expect(redirect).toHaveBeenCalledWith('/welcome')
   })
 })
 
@@ -142,7 +142,7 @@ describe('signIn', () => {
     expect(result.error).toBe('بيانات الدخول غير صحيحة')
   })
 
-  it('redirects to settings on first login when no price set', async () => {
+  it('redirects to welcome on first login when no price set', async () => {
     const { redirect } = await import('next/navigation')
 
     mockSupabase.auth.signInWithPassword.mockResolvedValue({
@@ -172,7 +172,7 @@ describe('signIn', () => {
       createFormData({ email: 'new@example.com', password: 'Password123!' })
     )
 
-    expect(redirect).toHaveBeenCalledWith('/dashboard/settings?first_login=true')
+    expect(redirect).toHaveBeenCalledWith('/welcome')
   })
 })
 

@@ -48,7 +48,7 @@ describe('SignUpPage', () => {
   it('renders form fields', async () => {
     const SignUpPage = (await import('@/app/auth/signup/page')).default
     render(<SignUpPage />)
-    expect(screen.getByText('الاسم الكامل')).toBeInTheDocument()
+    expect(screen.getByText('الاسم')).toBeInTheDocument()
     expect(screen.getByText('البريد الإلكتروني')).toBeInTheDocument()
     expect(screen.getByText('كلمة المرور')).toBeInTheDocument()
   })
