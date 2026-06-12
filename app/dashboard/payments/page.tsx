@@ -4,7 +4,7 @@ import { getTeacherPayments } from '@/lib/data-actions'
 import { PaymentsList } from '@/components/dashboard/payments-list'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronRight, ChevronLeft, DollarSign, Clock } from 'lucide-react'
+import { ChevronRight, ChevronLeft, DollarSign, Clock, Users } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function PaymentsPage({
@@ -90,9 +90,24 @@ export default async function PaymentsPage({
       <div className="space-y-4 pt-6">
         <h2 className="text-xl font-bold">قائمة الطلاب</h2>
 
-        <div className="border rounded-2xl overflow-hidden bg-card">
-          <PaymentsList students={students} payments={payments} month={currentMonth} currency={currency} />
-        </div>
+        {students.length === 0 ? (
+          <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
+            <CardContent className="p-8 md:p-12 flex flex-col items-center gap-4 text-center">
+              <Users className="w-12 h-12 text-primary/40" />
+              <div>
+                <h3 className="text-xl font-bold mb-1">لا يوجد طلاب بعد</h3>
+                <p className="text-muted-foreground">أضف طلابك الجدد لبدء تتبع المدفوعات</p>
+              </div>
+              <Button asChild>
+                <Link href="/dashboard/students">إضافة طالب</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="border rounded-2xl overflow-hidden bg-card">
+            <PaymentsList students={students} payments={payments} month={currentMonth} currency={currency} />
+          </div>
+        )}
       </div>
     </div>
   )
