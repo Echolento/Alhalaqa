@@ -28,7 +28,8 @@ import {
 } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Search, Users, Plus, Pencil, Trash2, Settings2 } from 'lucide-react'
-import { addStudent, updateStudent, deleteStudent, updateStudentPaymentDay } from '@/lib/data-actions'
+import { addStudent, updateStudent, deleteStudent } from '@/lib/student-actions'
+import { updateStudentPaymentDay } from '@/lib/payment-actions'
 import { useToast } from '@/components/ui/use-toast'
 import { PhoneInput } from '@/components/auth/phone-input'
 

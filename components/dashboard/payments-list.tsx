@@ -22,7 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/data-actions'
+import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/payment-actions'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { FormattedDate } from '@/components/ui/formatted-date'

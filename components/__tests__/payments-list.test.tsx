@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { PaymentsList } from '@/components/dashboard/payments-list'
-import { toggleStudentPayment } from '@/lib/data-actions'
+import { toggleStudentPayment } from '@/lib/payment-actions'
 
-vi.mock('@/lib/data-actions', () => ({
+vi.mock('@/lib/payment-actions', () => ({
   toggleStudentPayment: vi.fn(() => ({ success: true })),
   updateStudentMonthlyPrice: vi.fn(() => ({ success: true })),
   updateStudentPaymentDay: vi.fn(() => ({ success: true })),

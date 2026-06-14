@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { StudentsTable } from '@/components/dashboard/students-table'
-import { getTeacherStudents, getTeacherPayments } from '@/lib/data-actions'
+import { getTeacherStudents } from '@/lib/student-actions'
+import { getTeacherPayments } from '@/lib/payment-actions'
 
 export default async function StudentsPage() {
   const supabase = await createClient()

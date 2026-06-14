@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getTeacherPayments } from '@/lib/data-actions'
+import { getTeacherPayments } from '@/lib/payment-actions'
 import { PaymentsList } from '@/components/dashboard/payments-list'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronRight, ChevronLeft, DollarSign, Clock, Users } from 'lucide-react'
 import Link from 'next/link'
+import { prevMonthKey, nextMonthKey, getCurrentMonthKey } from '@/lib/billing-period'
 
 export default async function PaymentsPage({
   searchParams,
@@ -30,11 +31,9 @@ export default async function PaymentsPage({
   const monthDate = new Date(currentMonth)
   const monthLabel = monthDate.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long', year: 'numeric' })
 
-  const prevDate = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1)
-  const nextDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1)
-  const prevMonth = prevDate.toISOString().slice(0, 7) + '-01'
-  const nextMonth = nextDate.toISOString().slice(0, 7) + '-01'
-  const isCurrentMonth = currentMonth === new Date().toISOString().slice(0, 7) + '-01'
+  const prevMonth = prevMonthKey(currentMonth)
+  const nextMonth = nextMonthKey(currentMonth)
+  const isCurrentMonth = currentMonth === getCurrentMonthKey()
 
   return (
     <div className="space-y-6 pb-20">
