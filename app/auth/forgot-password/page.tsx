@@ -77,12 +77,16 @@ export default function ForgotPasswordPage() {
                         required
                         dir="ltr"
                         className="text-right"
+                        disabled={loading}
                     />
                 </div>
 
                 <Button type="submit" className="w-full flex items-center justify-center gap-2" disabled={loading}>
                     {loading ? (
-                        <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <>
+                            <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            جاري الإرسال...
+                        </>
                     ) : (
                         <>
                             إرسال الرابط

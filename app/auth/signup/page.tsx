@@ -12,6 +12,7 @@ import { PasswordInput } from '@/components/auth/password-input'
 
 export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
+  const [emailTaken, setEmailTaken] = useState(false)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -29,6 +30,7 @@ export default function SignUpPage() {
 
     if (result?.error) {
       setError(result.error)
+      setEmailTaken(!!(result as any).emailTaken)
       setLoading(false)
     } else if (result?.success) {
       // If we're here, auto-login didn't trigger, possibly still needing verification
@@ -44,9 +46,19 @@ export default function SignUpPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div className="space-y-3 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            {emailTaken && (
+              <p className="text-xs text-muted-foreground border-t border-destructive/20 pt-2">
+                قم بتسجيل الدخول{' '}
+                <Link href="/auth/login" className="text-primary hover:underline font-medium">
+                  من هنا
+                </Link>
+              </p>
+            )}
           </div>
         )}
 

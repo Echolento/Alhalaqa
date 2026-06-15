@@ -29,12 +29,15 @@ export async function signUp(formData: FormData) {
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        `${siteUrl}/auth/callback`,
       data: {
         full_name: fullName,
         role: 'teacher',
@@ -43,7 +46,11 @@ export async function signUp(formData: FormData) {
   })
 
   if (error) {
-    return { error: translateAuthError(error.message) }
+    const isEmailTaken = error.message?.toLowerCase().includes('already registered')
+    return {
+      error: translateAuthError(error.message),
+      ...(isEmailTaken ? { emailTaken: true } : {}),
+    }
   }
 
   if (data.session) {
@@ -227,8 +234,11 @@ export async function resetPasswordForEmail(formData: FormData) {
   const supabase = await createClient()
   const email = formData.get('email') as string
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/auth/update-password`,
+    redirectTo: `${siteUrl}/auth/callback?next=/auth/update-password`,
   })
 
   if (error) {

@@ -46,6 +46,7 @@ export default function UpdatePasswordPage() {
                         name="password"
                         required
                         showStrength
+                        disabled={loading}
                     />
                 </div>
 
@@ -55,12 +56,16 @@ export default function UpdatePasswordPage() {
                         id="confirmPassword"
                         name="confirmPassword"
                         required
+                        disabled={loading}
                     />
                 </div>
 
                 <Button type="submit" className="w-full flex items-center justify-center gap-2" disabled={loading}>
                     {loading ? (
-                        <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <>
+                            <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            جاري التحديث...
+                        </>
                     ) : (
                         <>
                             تحديث كلمة المرور
