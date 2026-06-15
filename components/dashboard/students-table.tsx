@@ -315,6 +315,7 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
                       <Contact className="w-4 h-4" />
                       استيراد من جهات الاتصال
                     </Button>
+                    <p className="text-center text-xs text-muted-foreground -mt-1">يمكن اختيار أكثر من طالب</p>
                   </>
                 )}
               </>
