@@ -88,6 +88,44 @@ export async function updateStudent(studentId: string, name: string, phone?: str
   return { success: true }
 }
 
+export async function addMultipleStudents(students: { name: string; phone?: string }[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  let { data: teacher } = await supabase
+    .from('teachers')
+    .select('id, default_monthly_price')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  if (!teacher) {
+    const { data: newTeacher, error: createError } = await supabase
+      .from('teachers')
+      .insert({ profile_id: user.id })
+      .select('id, default_monthly_price')
+      .single()
+    if (createError || !newTeacher) return { error: 'Teacher not found' }
+    teacher = newTeacher
+  }
+
+  const paymentDay = new Date().getDate()
+  const inserts = students.map((s) => ({
+    teacher_id: teacher!.id,
+    name: s.name,
+    phone: s.phone || null,
+    monthly_price: Number(teacher!.default_monthly_price) || 0,
+    payment_day: paymentDay,
+  }))
+
+  const { error } = await supabase.from('students').insert(inserts)
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
 export async function deleteStudent(studentId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
