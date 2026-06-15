@@ -227,7 +227,7 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
               إضافة طالب
             </Button>
           </DialogTrigger>
-          <DialogContent className={importMode ? 'max-w-lg' : ''}>
+          <DialogContent className={importMode ? 'max-w-lg' : ''} onOpenAutoFocus={(e) => e.preventDefault()}>
             {importMode ? (
               <>
                 <DialogHeader>
