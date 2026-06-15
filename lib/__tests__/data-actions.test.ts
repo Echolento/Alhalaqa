@@ -267,3 +267,34 @@ describe('updateStudentPaymentDay', () => {
     expect((await updateStudentPaymentDay(studentId, 10)).success).toBe(true)
   })
 })
+
+describe('addMultipleStudents', () => {
+  it('inserts multiple students in batch', async () => {
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.insert = vi.fn().mockResolvedValue({ error: null })
+      b.eq = vi.fn().mockReturnValue({
+        ...b,
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 150 },
+        }),
+      })
+      return b
+    })
+
+    const { addMultipleStudents } = await import('@/lib/student-actions')
+    const result = await addMultipleStudents([
+      { name: 'أحمد', phone: '+201011111111' },
+      { name: 'محمد' },
+    ])
+    expect(result.success).toBe(true)
+  })
+
+  it('returns error when unauthorized', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+
+    const { addMultipleStudents } = await import('@/lib/student-actions')
+    const result = await addMultipleStudents([{ name: 'أحمد' }])
+    expect(result.error).toBe('Unauthorized')
+  })
+})

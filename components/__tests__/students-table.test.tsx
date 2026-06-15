@@ -38,4 +38,9 @@ describe('StudentsTable', () => {
     render(<StudentsTable students={[]} />)
     expect(screen.getAllByText('لا يوجد طلاب').length).toBeGreaterThanOrEqual(1)
   })
+
+  it('does not show contacts import button when API unavailable', () => {
+    render(<StudentsTable students={mockStudents} />)
+    expect(screen.queryByText('استيراد من جهات الاتصال')).not.toBeInTheDocument()
+  })
 })
