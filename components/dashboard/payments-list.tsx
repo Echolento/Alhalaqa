@@ -198,7 +198,10 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                             <span className="font-bold text-slate-700">{student.payment_day || 1}</span>
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-fit p-3" align="start">
+                        <PopoverContent className="w-72 p-3" align="start">
+                          <p className="text-xs text-muted-foreground leading-relaxed mb-3 text-center">
+                            اليوم المحدد للدفع كل شهر. يتم احتساب دورة الفوترة من هذا اليوم إلى نفس اليوم من الشهر التالي.
+                          </p>
                           <div className="grid grid-cols-7 gap-1">
                             {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
                               const isSelected = d === (student.payment_day || 1)
