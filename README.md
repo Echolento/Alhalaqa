@@ -27,14 +27,16 @@
 ### 👥 Student Management
 Maintain a clean, organized directory of all your students with their profiles, contact information, and enrollment status.
 
+### 💳 Payment & Revenue
+Professional billing management. Track monthly fees, mark payments as received, and view your revenue dashboard at a glance.
+
+## 🔜 Coming Soon.
+
 ### 📅 Attendance Tracking
 Log attendance for every session with a single click. View history to identify patterns and ensure consistency.
 
 ### 📖 Memorization Progress
 Detailed tracking of Quranic memorization (Hifz) and revision. Monitor student milestones and current lesson progress.
-
-### 💳 Payment & Revenue
-Professional billing management. Track monthly fees, mark payments as received, and view your revenue dashboard at a glance.
 
 ### 💬 Frictionless Invitations
 Invite new students via a dedicated WhatsApp-integrated flow, making onboarding quick and intuitive.
