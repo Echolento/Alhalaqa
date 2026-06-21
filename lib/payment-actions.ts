@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getCurrentMonthKey, getBillingMonthKey } from './billing-period'
+import { logActivity } from './log-activity'
 
 export async function getTeacherPayments(month?: string) {
   const supabase = await createClient()
@@ -77,6 +78,15 @@ export async function getTeacherPayments(month?: string) {
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {
   const supabase = await createClient()
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('name, monthly_price')
+    .eq('id', studentId)
+    .maybeSingle()
+
+  const oldPrice = student?.monthly_price || 0
+
   const { error: studentError } = await supabase
     .from('students')
     .update({ monthly_price: price })
@@ -103,6 +113,17 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
     }
   }
 
+  await logActivity({
+    actionType: 'price_update',
+    entityType: 'student',
+    entityId: studentId,
+    details: {
+      student_name: student?.name || 'طالب',
+      old_price: oldPrice,
+      new_price: price,
+    },
+  })
+
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
   return { success: true }
@@ -114,7 +135,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   if (!monthKey) {
     const { data: student } = await supabase
       .from('students')
-      .select('payment_day')
+      .select('payment_day, name')
       .eq('id', studentId)
       .maybeSingle()
 
@@ -131,7 +152,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
   const { data: student } = await supabase
     .from('students')
-    .select('monthly_price, teacher:teachers(default_monthly_price)')
+    .select('name, monthly_price, teacher:teachers(default_monthly_price)')
     .eq('id', studentId)
     .maybeSingle()
 
@@ -139,7 +160,10 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
   const effectivePrice = s?.monthly_price || teacher?.default_monthly_price || 0
 
+  let newPaid: boolean
+
   if (!existing) {
+    newPaid = true
     const { error } = await supabase
       .from('student_payments')
       .insert({
@@ -151,7 +175,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       })
     if (error) return { error: error.message }
   } else {
-    const newPaid = !existing.paid
+    newPaid = !existing.paid
     const { error } = await supabase
       .from('student_payments')
       .update({
@@ -164,6 +188,18 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     if (error) return { error: error.message }
   }
 
+  await logActivity({
+    actionType: 'payment_toggle',
+    entityType: 'student_payment',
+    entityId: studentId,
+    details: {
+      student_name: s?.name || 'طالب',
+      month: monthKey,
+      new_status: newPaid ? 'paid' : 'unpaid',
+      amount: newPaid ? effectivePrice : 0,
+    },
+  })
+
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -172,12 +208,33 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
 export async function updateStudentPaymentDay(studentId: string, paymentDay: number) {
   const supabase = await createClient()
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('name, payment_day')
+    .eq('id', studentId)
+    .maybeSingle()
+
+  const oldDay = student?.payment_day || 1
+
   const { error } = await supabase
     .from('students')
     .update({ payment_day: paymentDay })
     .eq('id', studentId)
 
   if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'payment_day_update',
+    entityType: 'student',
+    entityId: studentId,
+    details: {
+      student_name: student?.name || 'طالب',
+      old_day: oldDay,
+      new_day: paymentDay,
+    },
+  })
+
   revalidatePath('/dashboard/payments')
   return { success: true }
 }

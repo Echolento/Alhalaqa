@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logActivity } from './log-activity'
 
 export async function getTeacherStudents() {
   const supabase = await createClient()
@@ -66,6 +67,13 @@ export async function addStudent(name: string, phone?: string) {
 
   if (error) return { error: error.message }
 
+  await logActivity({
+    actionType: 'student_add',
+    entityType: 'student',
+    entityId: data?.id,
+    details: { student_name: name },
+  })
+
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
   return { success: true, student: data }
@@ -76,12 +84,28 @@ export async function updateStudent(studentId: string, name: string, phone?: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
+  const { data: old } = await supabase
+    .from('students')
+    .select('name')
+    .eq('id', studentId)
+    .single()
+
   const { error } = await supabase
     .from('students')
     .update({ name, phone: phone || null })
     .eq('id', studentId)
 
   if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'student_update',
+    entityType: 'student',
+    entityId: studentId,
+    details: {
+      student_name: name,
+      old_name: old?.name,
+    },
+  })
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -121,6 +145,12 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   const { error } = await supabase.from('students').insert(inserts)
   if (error) return { error: error.message }
 
+  await logActivity({
+    actionType: 'student_bulk_add',
+    entityType: 'student',
+    details: { count: students.length },
+  })
+
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
   return { success: true }
@@ -130,6 +160,12 @@ export async function deleteStudent(studentId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('name')
+    .eq('id', studentId)
+    .single()
 
   const { error } = await supabase
     .from('students')
@@ -142,6 +178,13 @@ export async function deleteStudent(studentId: string) {
     .from('student_payments')
     .delete()
     .eq('student_id', studentId)
+
+  await logActivity({
+    actionType: 'student_delete',
+    entityType: 'student',
+    entityId: studentId,
+    details: { student_name: student?.name },
+  })
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')

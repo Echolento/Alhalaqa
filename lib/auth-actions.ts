@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
+import { logActivity } from './log-activity'
 
 function translateAuthError(message: string): string {
   const map: Record<string, string> = {
@@ -198,6 +199,12 @@ export async function updateTeacherSettings(formData: FormData) {
 
   if (error) return { error: error.message }
 
+  await logActivity({
+    actionType: 'teacher_settings_update',
+    entityType: 'teacher',
+    details: { currency, default_monthly_price: defaultMonthlyPrice },
+  })
+
   revalidatePath('/dashboard/settings')
   return { success: true }
 }
@@ -225,6 +232,12 @@ export async function completeOnboarding(formData: FormData) {
     )
 
   if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'onboarding_complete',
+    entityType: 'teacher',
+    details: { currency, default_monthly_price: defaultMonthlyPrice },
+  })
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')
