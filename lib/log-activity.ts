@@ -16,13 +16,17 @@ export async function logActivity(opts: LogActivityOptions) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  await supabase.from('activity_log').insert({
-    user_id: user.id,
-    action_type: opts.actionType,
-    entity_type: opts.entityType || null,
-    entity_id: opts.entityId || null,
-    details: opts.details || null,
-  })
+  try {
+    await supabase.from('activity_log').insert({
+      user_id: user.id,
+      action_type: opts.actionType,
+      entity_type: opts.entityType || null,
+      entity_id: opts.entityId || null,
+      details: opts.details || null,
+    })
+  } catch {
+    // DB insert is best-effort — never block the action or the Discord webhook
+  }
 
   const { data: profile } = await supabase
     .from('profiles')

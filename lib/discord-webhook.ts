@@ -1,4 +1,6 @@
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
+function getWebhookUrl() {
+  return process.env.DISCORD_WEBHOOK_URL
+}
 
 type ColorCode = 0x22c55e | 0xef4444 | 0x3b82f6 | 0xf59e0b
 
@@ -20,15 +22,15 @@ export async function sendDiscordWebhook(
   description: string,
   fields?: { name: string; value: string; inline?: boolean }[],
 ): Promise<void> {
-  if (!DISCORD_WEBHOOK_URL) return
+  const url = getWebhookUrl()
+  if (!url) return
 
   try {
-    await fetch(DISCORD_WEBHOOK_URL, {
+    await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: 'Alhalaqa',
-        avatar_url: 'https://mekubphfwjgojqulbmjg.supabase.co/storage/v1/object/public/assets/logo.png',
         embeds: [
           {
             title: actionType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
