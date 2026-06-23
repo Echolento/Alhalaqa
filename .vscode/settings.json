@@ -11,5 +11,10 @@
     "vitest.nodeExecArgs": ["--experimental-require-module"],
     "vitest.nodeEnv": {
         "NODE_OPTIONS": "--experimental-require-module"
-    }
+    },
+    "builder.serverUrl": "http://localhost:3000",
+    "builder.command": "npm run dev",
+    "builder.runDevServer": false,
+    "builder.autoDetectDevServer": false,
+    "builder.launchType": "editor"
 }

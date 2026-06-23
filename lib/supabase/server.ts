@@ -35,6 +35,9 @@ export async function createClient() {
           }
         },
       },
+      auth: {
+        persistSession: false,
+      },
     },
   )
 }

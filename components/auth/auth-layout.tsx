@@ -15,7 +15,7 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
             {/* Form Section */}
             <div className="flex items-center justify-center p-8 bg-background">
                 <div className="w-full max-w-md space-y-8">
-                    <div className="space-y-2 text-center">
+                    <div className="space-y-2 text-center flex flex-col justify-center items-center">
                         {/* Mobile Logo (only visible on small screens) */}
                         <div className="lg:hidden flex justify-center mb-4">
                             <div className="w-32 h-32 bg-card/50 backdrop-blur-sm border border-border rounded-2xl flex items-center justify-center p-3 shadow-sm">

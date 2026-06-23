@@ -36,6 +36,9 @@ export async function updateSession(request: NextRequest) {
           )
         },
       },
+      auth: {
+        persistSession: false,
+      },
     },
   )
 
