@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { getCurrencySymbol } from '@/lib/currencies'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -60,7 +61,7 @@ interface StudentsTableProps {
 }
 
 export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps) {
-  const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
+  const currencySymbol = getCurrencySymbol(currency)
   const [search, setSearch] = useState('')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)

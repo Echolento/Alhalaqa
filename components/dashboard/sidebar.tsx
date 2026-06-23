@@ -80,15 +80,17 @@ export function DashboardSidebar({ profile }: SidebarProps) {
           </div>
         </div>
 
-        <a
-          href="https://wa.me/201067372520"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50/10 transition-colors"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>تواصل معي عبر واتساب</span>
-        </a>
+        {profile.phone && (
+          <a
+            href={`https://wa.me/${profile.phone.replace(/[^0-9]/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-green-600 hover:bg-green-50/10 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>تواصل معي عبر واتساب</span>
+          </a>
+        )}
       </div>
     </aside>
   )

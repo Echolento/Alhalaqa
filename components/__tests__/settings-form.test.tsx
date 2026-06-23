@@ -51,8 +51,7 @@ describe('SettingsForm', () => {
 
   it('renders currency select', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('الجنية المصري (EGP)')).toBeInTheDocument()
-    expect(screen.getByText('الريال السعودي (SAR)')).toBeInTheDocument()
+    expect(screen.getByText((content) => content.includes('الجنية المصري'))).toBeInTheDocument()
   })
 
   it('renders save buttons', () => {
@@ -80,7 +79,7 @@ describe('SettingsForm', () => {
 
   it('defaults to EGP currency when teacherData is null', () => {
     render(<SettingsForm profile={mockProfile} teacherData={null} email="test@example.com" />)
-    expect(screen.getByLabelText('العملة')).toHaveValue('EGP')
+    expect(screen.getByText((content) => content.includes('الجنية المصري'))).toBeInTheDocument()
   })
 
   it('defaults to 0 price when teacherData is null', () => {

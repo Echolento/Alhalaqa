@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronRight, ChevronLeft, DollarSign, Clock, Users } from 'lucide-react'
 import Link from 'next/link'
 import { prevMonthKey, nextMonthKey, getCurrentMonthKey } from '@/lib/billing-period'
+import { getCurrencySymbol } from '@/lib/currencies'
 
 export default async function PaymentsPage({
   searchParams,
@@ -22,7 +23,7 @@ export default async function PaymentsPage({
   const currentMonth = month || new Date().toISOString().slice(0, 7) + '-01'
   const { students, payments, currency } = await getTeacherPayments(currentMonth)
 
-  const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
+  const currencySymbol = getCurrencySymbol(currency)
 
   const totalCollected = payments.reduce((sum: number, p: any) => sum + (Number(p.amount_paid) || 0), 0)
   const totalExpected = students.reduce((sum: number, s: any) => sum + (Number(s.monthly_price) || 0), 0)

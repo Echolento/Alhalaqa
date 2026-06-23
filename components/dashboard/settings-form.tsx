@@ -14,6 +14,7 @@ import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-ac
 import type { Profile } from '@/lib/types'
 import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
+import { CurrencySelect } from '@/components/ui/currency-select'
 
 interface TeacherData {
   id: string
@@ -190,15 +191,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
 
               <div className="space-y-2">
                 <Label htmlFor="currency">العملة</Label>
-                <select
-                  id="currency"
-                  name="currency"
-                  defaultValue={teacherData?.currency || 'EGP'}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="EGP">الجنية المصري (EGP)</option>
-                  <option value="SAR">الريال السعودي (SAR)</option>
-                </select>
+                <CurrencySelect name="currency" defaultValue={teacherData?.currency || 'EGP'} onValueChange={() => {}} />
               </div>
 
               <div className="space-y-2">

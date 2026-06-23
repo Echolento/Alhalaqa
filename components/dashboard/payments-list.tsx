@@ -26,6 +26,7 @@ import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDa
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { FormattedDate } from '@/components/ui/formatted-date'
+import { getCurrencySymbol } from '@/lib/currencies'
 
 interface PaymentsListProps {
   students: any[]
@@ -43,7 +44,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
   const router = useRouter()
   const { toast } = useToast()
 
-  const currencySymbol = currency === 'EGP' ? 'ج.م' : 'ر.س'
+  const currencySymbol = getCurrencySymbol(currency)
 
   const handleToggle = async (studentId: string) => {
     setLoading(studentId)
