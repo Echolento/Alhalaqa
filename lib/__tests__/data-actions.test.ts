@@ -98,7 +98,7 @@ describe('addStudent', () => {
         ...b,
         select: vi.fn().mockReturnValue({
           ...b,
-          single: vi.fn().mockResolvedValue({ data: { id: studentId, name: 'Ali', teacher_id: teacherId } }),
+          single: vi.fn().mockResolvedValue({ data: { id: studentId, name: 'Ali', payment_day: 1, teacher_id: teacherId } }),
         }),
       })
       return b
@@ -108,6 +108,33 @@ describe('addStudent', () => {
     const result = await addStudent('Ali', '+201022222222')
     expect(result.success).toBe(true)
     expect(result.student.name).toBe('Ali')
+  })
+
+  it('defaults payment_day to 1', async () => {
+    let capturedInsert: any
+    mockSupabase.from.mockImplementation((_tableName?: string) => {
+      const b = createBuilder()
+      b.eq = vi.fn().mockReturnValue({
+        ...b,
+        maybeSingle: vi.fn().mockResolvedValue({ data: { id: teacherId, default_monthly_price: 200 } }),
+      })
+      b.insert = vi.fn().mockImplementation((data: any) => {
+        if (_tableName === 'students') capturedInsert = data
+        return {
+          ...b,
+          select: vi.fn().mockReturnValue({
+            ...b,
+            single: vi.fn().mockResolvedValue({ data: { ...data, id: studentId }, error: null }),
+          }),
+        }
+      })
+      return b
+    })
+
+    const { addStudent } = await import('@/lib/data-actions')
+    const result = await addStudent('Ali', '+201022222222')
+    expect(result.success).toBe(true)
+    expect(capturedInsert.payment_day).toBe(1)
   })
 
   it('returns error when not authenticated', async () => {
@@ -288,6 +315,34 @@ describe('addMultipleStudents', () => {
       { name: 'محمد' },
     ])
     expect(result.success).toBe(true)
+  })
+
+  it('defaults payment_day to 1 for all students', async () => {
+    let capturedPayload: any
+    mockSupabase.from.mockImplementation((_tableName?: string) => {
+      const b = createBuilder()
+      b.eq = vi.fn().mockReturnValue({
+        ...b,
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 150 },
+        }),
+      })
+      b.insert = vi.fn().mockImplementation((data: any) => {
+        if (_tableName === 'students') capturedPayload = data
+        return { error: null }
+      })
+      return b
+    })
+
+    const { addMultipleStudents } = await import('@/lib/student-actions')
+    const result = await addMultipleStudents([
+      { name: 'أحمد', phone: '+201011111111' },
+      { name: 'محمد' },
+    ])
+    expect(result.success).toBe(true)
+    expect(capturedPayload).toHaveLength(2)
+    expect(capturedPayload[0].payment_day).toBe(1)
+    expect(capturedPayload[1].payment_day).toBe(1)
   })
 
   it('returns error when unauthorized', async () => {

@@ -60,7 +60,7 @@ export async function addStudent(name: string, phone?: string) {
       name,
       phone: phone || null,
       monthly_price: Number(teacher.default_monthly_price) || 0,
-      payment_day: new Date().getDate(),
+      payment_day: 1,
     })
     .select()
     .single()
@@ -133,13 +133,12 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     teacher = newTeacher
   }
 
-  const paymentDay = new Date().getDate()
   const inserts = students.map((s) => ({
     teacher_id: teacher!.id,
     name: s.name,
     phone: s.phone || null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
-    payment_day: paymentDay,
+    payment_day: 1,
   }))
 
   const { error } = await supabase.from('students').insert(inserts)

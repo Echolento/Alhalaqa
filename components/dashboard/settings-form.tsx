@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { User, CheckCircle, AlertCircle } from 'lucide-react'
+import { User, Bell, CheckCircle, AlertCircle } from 'lucide-react'
+import { NotificationToggle } from '@/components/dashboard/notification-toggle'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import type { Profile } from '@/lib/types'
@@ -162,6 +164,22 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           </form>
         </CardContent>
       </Card>
+
+      {/* Notifications */}
+      {profile.role === 'teacher' && (
+        <Card>
+          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              الإشعارات
+            </CardTitle>
+            <CardDescription>تذكير بالمستحقات المتأخرة عبر الإشعارات</CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+            <NotificationToggle />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Teacher Settings */}
       {profile.role === 'teacher' && (

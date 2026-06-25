@@ -43,6 +43,16 @@ export interface ActivityLog {
   created_at: string;
 }
 
+export interface PushSubscription {
+  id: string;
+  profile_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ActionType =
   | 'payment_toggle'
   | 'student_add'
