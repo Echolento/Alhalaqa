@@ -9,6 +9,7 @@ const mockProfile = {
   full_name: 'أحمد',
   role: 'teacher' as const,
   avatar_url: null,
+  phone: '+201111111111',
   organization_id: null,
   created_at: '2024-01-01',
   updated_at: '2024-01-01',

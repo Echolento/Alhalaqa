@@ -171,11 +171,12 @@ describe('deleteStudent', () => {
   it('deletes student and their payments', async () => {
     mockSupabase.from.mockImplementation(() => {
       const b = createBuilder()
+      b.single = vi.fn().mockResolvedValue({ data: { name: 'Test' } })
+      b.eq = vi.fn().mockReturnValue(b)
       b.in = vi.fn().mockReturnValue({
         ...b,
         in: vi.fn().mockResolvedValue({ error: null }),
       })
-      b.eq = vi.fn().mockResolvedValue({ error: null })
       b.delete = vi.fn().mockReturnValue({
         ...b,
         eq: vi.fn().mockResolvedValue({ error: null }),
