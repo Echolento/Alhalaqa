@@ -124,4 +124,22 @@ describe('PaymentsList', () => {
     const spinner = document.querySelector('.animate-spin')
     expect(spinner).toBeInTheDocument()
   })
+
+  it('optimistically updates unpaid to paid on toggle click', async () => {
+    const unpaidPayment = { student_id: 's2', paid: false, amount_paid: 0 }
+    render(
+      <PaymentsList
+        students={mockStudents}
+        payments={[...mockPayments, unpaidPayment]}
+        month="2025-06"
+        currency="SAR"
+      />
+    )
+    expect(screen.getAllByText('لم يدفع').length).toBe(1)
+    expect(screen.getAllByText('مدفوع').length).toBe(1)
+    fireEvent.click(screen.getByText('تحديد كمدفوع'))
+    const paidElements = await screen.findAllByText('مدفوع')
+    expect(paidElements.length).toBe(2)
+    expect(screen.queryByText('لم يدفع')).not.toBeInTheDocument()
+  })
 })

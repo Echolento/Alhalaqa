@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,20 +41,36 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
   const [tempPrice, setTempPrice] = useState('')
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [undoTarget, setUndoTarget] = useState<string | null>(null)
+  const [localPayments, setLocalPayments] = useState(payments)
   const router = useRouter()
   const { toast } = useToast()
+
+  useEffect(() => {
+    setLocalPayments(payments)
+  }, [payments])
 
   const currencySymbol = getCurrencySymbol(currency)
 
   const handleToggle = async (studentId: string) => {
     setLoading(studentId)
+    const payment = localPayments.find((p) => p.student_id === studentId)
+    const newPaid = !payment?.paid
+    setLocalPayments((prev) =>
+      prev.map((p) =>
+        p.student_id === studentId ? { ...p, paid: newPaid } : p
+      )
+    )
     try {
       const result = await toggleStudentPayment(studentId, month)
       if (result.success) {
         router.refresh()
         toast({ title: '✓ تم التحديث', description: 'تم تغيير حالة الدفع بنجاح' })
+      } else {
+        setLocalPayments(payments)
+        toast({ variant: 'destructive', title: 'خطأ', description: result.error || 'فشل تحديث حالة الدفع' })
       }
     } catch (error) {
+      setLocalPayments(payments)
       toast({ variant: 'destructive', title: 'خطأ', description: 'فشل تحديث حالة الدفع' })
     } finally {
       setLoading(null)
@@ -119,7 +135,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
         </div>
       ) : (
         students.map((student) => {
-          const payment = payments.find((p) => p.student_id === student.id)
+          const payment = localPayments.find((p) => p.student_id === student.id)
           const isPaid = payment?.paid || false
           const isEditing = editingPrice === student.id
 

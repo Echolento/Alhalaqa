@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { registerPushSubscription, unregisterPushSubscription } from '@/lib/push-actions'
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -18,6 +18,7 @@ export function usePushNotifications() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -25,14 +26,19 @@ export function usePushNotifications() {
       return
     }
 
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      reg.pushManager.getSubscription().then(sub => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        registrationRef.current = reg
+        return reg.pushManager.getSubscription()
+      })
+      .then(sub => {
         setIsSubscribed(!!sub)
         setIsLoading(false)
       })
-    }).catch(() => {
-      setIsLoading(false)
-    })
+      .catch(err => {
+        console.error('[sw-register]', err)
+        setIsLoading(false)
+      })
   }, [])
 
   const subscribe = useCallback(async () => {
@@ -42,8 +48,44 @@ export function usePushNotifications() {
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready
-      const existing = await registration.pushManager.getSubscription()
+      let permission = Notification.permission
+      if (permission === 'denied') {
+        setError('الإشعارات محظورة في المتصفح. سمح بها من إعدادات الموقع (أيقونة القفل بجانب الرابط)')
+        return
+      }
+      if (permission === 'default') {
+        permission = await Notification.requestPermission()
+        if (permission !== 'granted') {
+          setError('لم يتم منح الإذن')
+          return
+        }
+      }
+
+      // Force clean SW registration
+      const existingRegs = await navigator.serviceWorker.getRegistrations()
+      for (const r of existingRegs) {
+        await r.unregister()
+      }
+
+      await new Promise<void>((resolve) => {
+        // Small delay to let browser clean up
+        setTimeout(resolve, 300)
+      })
+
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+      registrationRef.current = reg
+
+      if (!reg.active) {
+        setError('الخدمة المساعدة (Service Worker) غير نشطة')
+        return
+      }
+      if (!reg.pushManager) {
+        setError('Push غير مدعوم في هذا المتصفح')
+        return
+      }
+
+      const existing = await reg.pushManager.getSubscription()
       if (existing) {
         await existing.unsubscribe()
       }
@@ -54,16 +96,21 @@ export function usePushNotifications() {
         return
       }
 
-      const subscription = await registration.pushManager.subscribe({
+      const subPromise = reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       })
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('تعذر الاتصال بخدمة الإشعارات — تحقق من اتصالك بالإنترنت أو جرب متصفح آخر')), 15000)
+      )
+      const subscription = await Promise.race([subPromise, timeout])
 
+      const json = subscription.toJSON()
       const result = await registerPushSubscription({
-        endpoint: subscription.endpoint,
+        endpoint: json.endpoint!,
         keys: {
-          p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
-          auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+          p256dh: json.keys!.p256dh,
+          auth: json.keys!.auth,
         },
       })
 
@@ -75,18 +122,15 @@ export function usePushNotifications() {
       setIsSubscribed(true)
       setError(null)
     } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
-        setError('تم رفض إذن الإشعارات')
-      } else {
-        setError('Failed to subscribe')
-      }
+      console.error('[push-subscribe]', err)
+      setError(err.message || 'Failed to subscribe')
     }
   }, [])
 
   const unsubscribe = useCallback(async () => {
     try {
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.getSubscription()
+      const reg = registrationRef.current || await navigator.serviceWorker.ready
+      const subscription = await reg.pushManager.getSubscription()
       if (subscription) {
         await subscription.unsubscribe()
       }
