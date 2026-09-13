@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 import { logActivity } from './log-activity'
+import { getSiteUrl } from './auth-redirect'
 
 function translateAuthError(message: string): string {
   const map: Record<string, string> = {
@@ -30,8 +31,7 @@ export async function signUp(formData: FormData) {
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const siteUrl = getSiteUrl()
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -247,8 +247,7 @@ export async function resetPasswordForEmail(formData: FormData) {
   const supabase = await createClient()
   const email = formData.get('email') as string
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const siteUrl = getSiteUrl()
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${siteUrl}/auth/callback?next=/auth/update-password`,
@@ -268,6 +267,12 @@ export async function updateUserPassword(formData: FormData) {
 
   if (password !== confirmPassword) {
     return { error: 'كلمات المرور غير متطابقة' }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'انتهت صلاحية رابط التعيين. اطلب رابطاً جديداً من صفحة نسيت كلمة المرور.' }
   }
 
   const { error } = await supabase.auth.updateUser({

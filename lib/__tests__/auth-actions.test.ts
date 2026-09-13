@@ -346,4 +346,15 @@ describe('updateUserPassword', () => {
     )
     expect(result.error).toBe('كلمة المرور ضعيفة جداً')
   })
+
+  it('returns expiry error when no session exists', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+
+    const { updateUserPassword } = await import('@/lib/auth-actions')
+    const result = await updateUserPassword(
+      createFormData({ password: 'NewPass123!', confirmPassword: 'NewPass123!' })
+    )
+    expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
+    expect(result.error).toContain('انتهت صلاحية رابط التعيين')
+  })
 })

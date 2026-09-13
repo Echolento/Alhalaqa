@@ -71,7 +71,29 @@ describe('GET /auth/callback', () => {
     const response = await GET(new Request(url))
 
     expect(response.status).toBe(307)
-    expect(response.headers.get('location')).toContain('/dashboard')
+    expect(response.headers.get('location')).toContain('/welcome')
+  })
+
+  it('honors a safe next param', async () => {
+    const { GET } = await import('@/app/auth/callback/route')
+    mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ error: null })
+
+    const url = new URL('http://localhost/auth/callback?code=valid-code&next=/auth/update-password')
+    const response = await GET(new Request(url))
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/auth/update-password')
+  })
+
+  it('drops an evil next param to the default', async () => {
+    const { GET } = await import('@/app/auth/callback/route')
+    mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ error: null })
+
+    const url = new URL('http://localhost/auth/callback?code=valid-code&next=https://evil.com')
+    const response = await GET(new Request(url))
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/welcome')
   })
 
   it('redirects to error page on failure', async () => {
