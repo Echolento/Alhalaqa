@@ -92,6 +92,51 @@ describe('signUp', () => {
 
     expect(redirect).toHaveBeenCalledWith('/welcome')
   })
+
+  it('rejects short passwords', async () => {
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'test@example.com', password: 'Ab1!', fullName: 'Test' })
+    )
+    expect(result.error).toContain('8 أحرف')
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+  })
+
+  it('rejects common weak passwords', async () => {
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'test@example.com', password: 'password', fullName: 'Test' })
+    )
+    expect(result.error).toContain('ضعيفة جداً')
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+  })
+
+  it('rejects passwords without uppercase', async () => {
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'test@example.com', password: 'lowercase1!', fullName: 'Test' })
+    )
+    expect(result.error).toContain('حرف كبير')
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+  })
+
+  it('rejects passwords without lowercase', async () => {
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'test@example.com', password: 'UPPERCASE1!', fullName: 'Test' })
+    )
+    expect(result.error).toContain('حرف صغير')
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+  })
+
+  it('rejects passwords without digit', async () => {
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'test@example.com', password: 'NoDigitsHere!', fullName: 'Test' })
+    )
+    expect(result.error).toContain('رقم')
+    expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
+  })
 })
 
 describe('signIn', () => {
@@ -139,7 +184,7 @@ describe('signIn', () => {
       createFormData({ email: 'wrong@example.com', password: 'bad' })
     )
 
-    expect(result.error).toBe('بيانات الدخول غير صحيحة')
+    expect(result.error).toBe('البريد الإلكتروني أو كلمة المرور غير صحيحة')
   })
 
   it('redirects to welcome on first login when no price set', async () => {
@@ -337,14 +382,14 @@ describe('updateUserPassword', () => {
 
   it('returns error on supabase failure', async () => {
     mockSupabase.auth.updateUser.mockResolvedValue({
-      error: { message: 'Weak password' },
+      error: { message: 'Password too short' },
     })
 
     const { updateUserPassword } = await import('@/lib/auth-actions')
     const result = await updateUserPassword(
-      createFormData({ password: 'short', confirmPassword: 'short' })
+      createFormData({ password: 'Valid1234!', confirmPassword: 'Valid1234!' })
     )
-    expect(result.error).toBe('كلمة المرور ضعيفة جداً')
+    expect(result.error).toBe('Password too short')
   })
 
   it('returns expiry error when no session exists', async () => {
@@ -356,5 +401,23 @@ describe('updateUserPassword', () => {
     )
     expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
     expect(result.error).toContain('انتهت صلاحية رابط التعيين')
+  })
+
+  it('rejects weak password on update', async () => {
+    const { updateUserPassword } = await import('@/lib/auth-actions')
+    const result = await updateUserPassword(
+      createFormData({ password: 'password', confirmPassword: 'password' })
+    )
+    expect(result.error).toContain('ضعيفة جداً')
+    expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('rejects short password on update', async () => {
+    const { updateUserPassword } = await import('@/lib/auth-actions')
+    const result = await updateUserPassword(
+      createFormData({ password: 'Ab1!', confirmPassword: 'Ab1!' })
+    )
+    expect(result.error).toContain('8 أحرف')
+    expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
   })
 })

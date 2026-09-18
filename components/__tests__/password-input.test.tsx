@@ -46,20 +46,21 @@ describe('PasswordInput', () => {
     expect(document.querySelector('.lucide-lock')).toBeInTheDocument()
   })
 
-  it('shows strength 0 for very short password', () => {
+  it('shows strength 1 for very short lowercase-only password', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'ab' } })
     const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
       b => !b.classList.contains('bg-muted')
     )
-    expect(filledBars.length).toBe(0)
+    expect(filledBars.length).toBe(1)
+    expect(filledBars[0]).toHaveClass('bg-red-500')
   })
 
   it('shows red bars for low strength (< 3)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
-    fireEvent.change(input, { target: { value: 'abcdef' } })
+    fireEvent.change(input, { target: { value: 'abc' } })
     const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
       b => !b.classList.contains('bg-muted')
     )
@@ -70,18 +71,18 @@ describe('PasswordInput', () => {
   it('shows yellow bars for medium strength (3-4)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
-    fireEvent.change(input, { target: { value: 'Abcdef1' } })
+    fireEvent.change(input, { target: { value: 'Ab1!' } })
     const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
       b => !b.classList.contains('bg-muted')
     )
-    expect(filledBars.length).toBe(3)
+    expect(filledBars.length).toBe(4)
     expect(filledBars[0]).toHaveClass('bg-yellow-500')
   })
 
-  it('shows green bars for high strength (5)', () => {
+  it('shows green bars for high strength (5+)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
-    fireEvent.change(input, { target: { value: 'Abcd1234!@' } })
+    fireEvent.change(input, { target: { value: 'Abcd1234!' } })
     const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
       b => !b.classList.contains('bg-muted')
     )

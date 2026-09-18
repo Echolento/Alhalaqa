@@ -20,9 +20,10 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
 
         const calculateStrength = (val: string) => {
             let score = 0
-            if (val.length > 5) score += 1
-            if (val.length > 8) score += 1
+            if (val.length >= 8) score += 1
+            if (val.length >= 12) score += 1
             if (/[A-Z]/.test(val)) score += 1
+            if (/[a-z]/.test(val)) score += 1
             if (/[0-9]/.test(val)) score += 1
             if (/[^A-Za-z0-9]/.test(val)) score += 1
             return score

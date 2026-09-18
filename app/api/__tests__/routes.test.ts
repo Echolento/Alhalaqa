@@ -63,7 +63,7 @@ describe('GET /api/teachers/[id]/display', () => {
 })
 
 describe('GET /auth/callback', () => {
-  it('redirects on successful code exchange', async () => {
+  it('redirects to welcome when no next param (default)', async () => {
     const { GET } = await import('@/app/auth/callback/route')
     mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ error: null })
 

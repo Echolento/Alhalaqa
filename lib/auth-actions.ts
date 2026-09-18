@@ -9,13 +9,13 @@ import { getSiteUrl } from './auth-redirect'
 
 function translateAuthError(message: string): string {
   const map: Record<string, string> = {
-    'Invalid login credentials': 'بيانات الدخول غير صحيحة',
+    'Invalid login credentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
     'Email not confirmed': 'البريد الإلكتروني غير مؤكد',
     'User already registered': 'هذا البريد مسجل بالفعل',
     'Email already registered': 'هذا البريد مسجل بالفعل',
     'Invalid email or password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
     'Rate limit exceeded': 'طلبات كثيرة جداً، حاول لاحقاً',
-    'Password should be at least 6 characters': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    'Password should be at least 6 characters': 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
     'Email link is invalid or expired': 'رابط البريد الإلكتروني غير صالح أو منتهي الصلاحية',
     'User not found': 'المستخدم غير موجود',
     'Weak password': 'كلمة المرور ضعيفة جداً',
@@ -24,12 +24,44 @@ function translateAuthError(message: string): string {
   return map[message] || message
 }
 
+const COMMON_WEAK_PASSWORDS = [
+  '12345678', '123456789', '1234567890', 'password', 'Password1',
+  'admin', 'admin123', 'qwerty', 'abc123', 'letmein', 'welcome',
+  'monkey', 'dragon', 'master', 'login', 'princess', 'football',
+  'shadow', 'sunshine', 'trustno1', 'iloveyou', 'batman',
+  'access', 'hello', 'charlie', 'donald', 'password1', 'Password123',
+]
+
+function validatePasswordStrength(password: string): string | null {
+  if (password.length < 8) {
+    return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+  }
+  if (COMMON_WEAK_PASSWORDS.includes(password.toLowerCase())) {
+    return 'كلمة المرور ضعيفة جداً، اختر كلمة مرور أقوى'
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'كلمة المرور يجب أن تحتوي على حرف كبير (A-Z)'
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'كلمة المرور يجب أن تحتوي على حرف صغير (a-z)'
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'كلمة المرور يجب أن تحتوي على رقم'
+  }
+  return null
+}
+
 export async function signUp(formData: FormData) {
   const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
+
+  const passwordError = validatePasswordStrength(password)
+  if (passwordError) {
+    return { error: passwordError }
+  }
 
   const siteUrl = getSiteUrl()
 
@@ -267,6 +299,11 @@ export async function updateUserPassword(formData: FormData) {
 
   if (password !== confirmPassword) {
     return { error: 'كلمات المرور غير متطابقة' }
+  }
+
+  const passwordError = validatePasswordStrength(password)
+  if (passwordError) {
+    return { error: passwordError }
   }
 
   const { data: { user } } = await supabase.auth.getUser()
