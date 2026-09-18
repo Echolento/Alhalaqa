@@ -3,6 +3,18 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
   try {
+    const { searchParams, pathname } = new URL(request.url)
+    const code = searchParams.get('code')
+
+    if (code && !pathname.startsWith('/auth/callback')) {
+      const params = new URLSearchParams(searchParams)
+      if (!params.has('next')) {
+        params.set('next', '/welcome')
+      }
+      const callbackUrl = new URL(`/auth/callback?${params.toString()}`, request.url)
+      return NextResponse.redirect(callbackUrl)
+    }
+
     return await updateSession(request)
   } catch (err) {
     console.error('Middleware proxy error:', err)

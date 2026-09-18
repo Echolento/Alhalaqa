@@ -1,4 +1,34 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md"]
+  "instructions": ["AGENTS.md"],
+  "permission": {
+    "bash": {
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git branch*": "allow",
+      "npx vitest*": "allow",
+      "npx tsc*": "allow",
+      "*": "ask",
+      "rm *": "deny",
+      "del *": "deny",
+      "Remove-Item *": "deny",
+      "git push --force*": "deny",
+      "git push -f*": "deny",
+      "git reset --hard*": "deny",
+      "git clean -f*": "deny",
+      "format *": "deny",
+      "drop *": "deny"
+    }
+  },
+  "mcp": {
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp"
+    },
+    "vercel": {
+      "type": "remote",
+      "url": "https://mcp.vercel.com"
+    }
+  }
 }

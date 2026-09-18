@@ -1,0 +1,2 @@
+[    1243ms] [INFO] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113 @ https://www.alhalaqa.com/:120
+[    1286ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8400/live.js:0
