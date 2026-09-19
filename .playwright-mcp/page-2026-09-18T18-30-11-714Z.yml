@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e44]:
+    - generic [ref=e45]:
+      - img "Alhalaqa" [ref=e48]
+      - heading "أهلاً بك في الحلقة" [level=1] [ref=e49]
+      - paragraph [ref=e50]: قم بتحديد إعداداتك الأولية للمتابعة
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]: العملة
+        - combobox [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]: ج.م
+            - generic [ref=e59]: الجنية المصري
+            - generic [ref=e60]: (EGP)
+      - generic [ref=e61]:
+        - generic [ref=e62]: السعر الشهري
+        - spinbutton "السعر الشهري" [ref=e63]: "500"
+      - button "جاري الحفظ..." [disabled]
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e38]

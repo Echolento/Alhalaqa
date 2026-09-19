@@ -1,0 +1,48 @@
+- generic [ref=e1]:
+  - generic [ref=e65]:
+    - complementary [ref=e66]:
+      - link [ref=e68] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=e70]
+      - navigation [ref=e71]:
+        - link "المدفوعات" [ref=e72] [cursor=pointer]:
+          - /url: /dashboard/payments
+        - link "الطلاب" [active] [ref=e77] [cursor=pointer]:
+          - /url: /dashboard/students
+        - link "الإعدادات" [ref=e84] [cursor=pointer]:
+          - /url: /dashboard/settings
+      - generic [ref=e90]:
+        - generic [ref=e91]: أ
+        - generic [ref=e93]:
+          - paragraph [ref=e94]: أحمد تجريبي 2
+          - paragraph [ref=e95]: معلم
+    - generic [ref=e96]:
+      - banner [ref=e97]:
+        - button "أ أحمد تجريبي 2" [ref=e98]:
+          - generic [ref=e99]: أ
+          - generic [ref=e101]: أحمد تجريبي 2
+      - main [ref=e102]:
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - heading "الطلاب" [level=1] [ref=e146]
+            - paragraph [ref=e147]: إدارة الطلاب وإضافة وتعديل وحذف
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - generic [ref=e150]: قائمة الطلاب (0)
+              - button "إضافة طالب" [ref=e156]
+            - generic [ref=e157]:
+              - textbox "البحث عن طالب..." [ref=e162]
+              - table [ref=e165]:
+                - rowgroup [ref=e166]:
+                  - row [ref=e167]:
+                    - columnheader "الطالب" [ref=e168]
+                    - columnheader "الهاتف" [ref=e169]
+                    - columnheader "السعر" [ref=e170]
+                    - columnheader "يوم الدفع" [ref=e171]
+                    - columnheader "الإجراءات" [ref=e172]
+                - rowgroup [ref=e173]:
+                  - row [ref=e174]:
+                    - cell "لا يوجد طلاب" [ref=e175]
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e38]

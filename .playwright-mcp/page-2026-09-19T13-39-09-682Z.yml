@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "نسيت كلمة المرور؟" [level=1] [ref=e6]
+        - paragraph [ref=e7]: أدخل بريدك الإلكتروني لاستعادة حسابك
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: البريد الإلكتروني
+          - textbox "البريد الإلكتروني" [ref=e11]:
+            - /placeholder: name@example.com
+        - button "إرسال الرابط" [ref=e12]
+        - link "العودة لتسجيل الدخول" [ref=e13] [cursor=pointer]:
+          - /url: /auth/login
+    - generic [ref=e14]:
+      - img "Quran" [ref=e15]
+      - img "Logo" [ref=e20]
+      - blockquote [ref=e22]:
+        - paragraph [ref=e23]: “خيركم من تعلم القرآن وعلمه”
+        - contentinfo [ref=e24]: حديث شريف
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e25]

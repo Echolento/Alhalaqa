@@ -1,0 +1,6 @@
+[     547ms] [INFO] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113 @ https://www.alhalaqa.com/auth/signup:0
+[     563ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8400/live.js:0
+[     650ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o @ https://www.alhalaqa.com/auth/signup:0
+[  352312ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8400/live.js:0
+[  352378ms] [INFO] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113 @ https://www.alhalaqa.com/auth/login?signup_success=true:0
+[  352498ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o @ https://www.alhalaqa.com/auth/login?signup_success=true:0

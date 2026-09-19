@@ -1,0 +1,55 @@
+- generic [ref=e1]:
+  - generic [ref=e65]:
+    - complementary [ref=e66]:
+      - link [ref=e68] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=e70]
+      - navigation [ref=e71]:
+        - link "المدفوعات" [active] [ref=e72] [cursor=pointer]:
+          - /url: /dashboard/payments
+        - link "الطلاب" [ref=e77] [cursor=pointer]:
+          - /url: /dashboard/students
+        - link "الإعدادات" [ref=e84] [cursor=pointer]:
+          - /url: /dashboard/settings
+      - generic [ref=e90]:
+        - generic [ref=e91]: أ
+        - generic [ref=e93]:
+          - paragraph [ref=e94]: أحمد تجريبي 2
+          - paragraph [ref=e95]: معلم
+    - generic [ref=e96]:
+      - banner [ref=e97]:
+        - button "أ أحمد تجريبي 2" [ref=e98]:
+          - generic [ref=e99]: أ
+          - generic [ref=e101]: أحمد تجريبي 2
+      - main [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - generic [ref=e105]:
+              - heading "المدفوعات" [level=1] [ref=e106]
+              - paragraph [ref=e107]: سبتمبر ٢٠٢٦
+            - generic [ref=e108]:
+              - link [ref=e109] [cursor=pointer]:
+                - /url: /dashboard/payments?month=2026-08-01
+                - button [ref=e110]
+              - generic [ref=e111]: سبتمبر ٢٠٢٦
+              - link [ref=e112] [cursor=pointer]:
+                - /url: /dashboard/payments?month=2026-10-01
+                - button [disabled]
+          - generic [ref=e113]:
+            - generic [ref=e115]:
+              - paragraph [ref=e120]: المبالغ المستلمة
+              - heading "0 ج.م" [level=2] [ref=e121]
+            - generic [ref=e123]:
+              - paragraph [ref=e129]: المبالغ المتبقية
+              - heading "0 ج.م" [level=2] [ref=e130]
+          - generic [ref=e131]:
+            - heading "قائمة الطلاب" [level=2] [ref=e132]
+            - generic [ref=e134]:
+              - generic [ref=e140]:
+                - heading "لا يوجد طلاب بعد" [level=3] [ref=e141]
+                - paragraph [ref=e142]: أضف طلابك الجدد لبدء تتبع المدفوعات
+              - link "إضافة طالب" [ref=e143] [cursor=pointer]:
+                - /url: /dashboard/students
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e38]

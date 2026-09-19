@@ -1,0 +1,48 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - complementary [ref=f4e3]:
+      - link [ref=f4e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=f4e7]
+      - navigation [ref=f4e8]:
+        - link "المدفوعات" [ref=f4e9] [cursor=pointer]:
+          - /url: /dashboard/payments
+        - link "الطلاب" [active] [ref=f4e14] [cursor=pointer]:
+          - /url: /dashboard/students
+        - link "الإعدادات" [ref=f4e21] [cursor=pointer]:
+          - /url: /dashboard/settings
+      - generic [ref=f4e27]:
+        - generic [ref=f4e28]: أ
+        - generic [ref=f4e30]:
+          - paragraph [ref=f4e31]: أحمد المعلم
+          - paragraph [ref=f4e32]: معلم
+    - generic [ref=f4e33]:
+      - banner [ref=f4e34]:
+        - button "أ أحمد المعلم" [ref=f4e133]:
+          - generic [ref=f4e36]: أ
+          - generic [ref=f4e38]: أحمد المعلم
+      - main [ref=f4e39]:
+        - generic [ref=f4e134]:
+          - generic [ref=f4e135]:
+            - heading "الطلاب" [level=1] [ref=f4e136]
+            - paragraph [ref=f4e137]: إدارة الطلاب وإضافة وتعديل وحذف
+          - generic [ref=f4e138]:
+            - generic [ref=f4e139]:
+              - generic [ref=f4e140]: قائمة الطلاب (0)
+              - button "إضافة طالب" [ref=f4e146]
+            - generic [ref=f4e147]:
+              - textbox "البحث عن طالب..." [ref=f4e152]
+              - table [ref=f4e155]:
+                - rowgroup [ref=f4e156]:
+                  - row [ref=f4e157]:
+                    - columnheader "الطالب" [ref=f4e158]
+                    - columnheader "الهاتف" [ref=f4e159]
+                    - columnheader "السعر" [ref=f4e160]
+                    - columnheader "يوم الدفع" [ref=f4e161]
+                    - columnheader "الإجراءات" [ref=f4e162]
+                - rowgroup [ref=f4e163]:
+                  - row [ref=f4e164]:
+                    - cell "لا يوجد طلاب" [ref=f4e165]
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=f4e132]

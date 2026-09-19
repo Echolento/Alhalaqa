@@ -1,0 +1,27 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e42]:
+    - complementary [ref=f5e43]:
+      - link [ref=f5e45] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=f5e47]
+      - navigation [ref=f5e48]:
+        - link "المدفوعات" [ref=f5e49] [cursor=pointer]:
+          - /url: /dashboard/payments
+        - link "الطلاب" [ref=f5e54] [cursor=pointer]:
+          - /url: /dashboard/students
+        - link "الإعدادات" [ref=f5e61] [cursor=pointer]:
+          - /url: /dashboard/settings
+      - generic [ref=f5e67]:
+        - generic [ref=f5e68]: أ
+        - generic [ref=f5e70]:
+          - paragraph [ref=f5e71]: أحمد المعلم
+          - paragraph [ref=f5e72]: معلم
+    - generic [ref=f5e73]:
+      - banner [ref=f5e74]:
+        - button "أ أحمد المعلم" [ref=f5e75]:
+          - generic [ref=f5e76]: أ
+          - generic [ref=f5e78]: أحمد المعلم
+      - main [ref=f5e79]
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=f5e41]

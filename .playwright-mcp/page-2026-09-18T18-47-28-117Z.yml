@@ -1,0 +1,84 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - complementary [ref=f6e3]:
+      - link [ref=f6e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=f6e7]
+      - navigation [ref=f6e8]:
+        - link "المدفوعات" [ref=f6e9] [cursor=pointer]:
+          - /url: /dashboard/payments
+        - link "الطلاب" [ref=f6e14] [cursor=pointer]:
+          - /url: /dashboard/students
+        - link "الإعدادات" [ref=f6e21] [cursor=pointer]:
+          - /url: /dashboard/settings
+      - generic [ref=f6e27]:
+        - generic [ref=f6e28]: أ
+        - generic [ref=f6e30]:
+          - paragraph [ref=f6e31]: أحمد المعلم
+          - paragraph [ref=f6e32]: معلم
+    - generic [ref=f6e33]:
+      - banner [ref=f6e34]:
+        - button "أ أحمد المعلم" [ref=f6e35]:
+          - generic [ref=f6e36]: أ
+          - generic [ref=f6e38]: أحمد المعلم
+      - main [ref=f6e39]:
+        - generic [ref=f6e40]:
+          - generic [ref=f6e41]:
+            - heading "الإعدادات" [level=1] [ref=f6e42]
+            - paragraph [ref=f6e43]: إدارة حسابك وتفضيلاتك
+          - generic [ref=f6e44]:
+            - generic [ref=f6e45]:
+              - generic [ref=f6e46]:
+                - generic [ref=f6e47]: معلومات الحساب
+                - generic [ref=f6e51]: معلومات حسابك الأساسية
+              - generic [ref=f6e53]:
+                - generic [ref=f6e54]:
+                  - generic [ref=f6e55]: أ
+                  - generic [ref=f6e57]:
+                    - paragraph [ref=f6e58]: أحمد المعلم
+                    - generic [ref=f6e59]: معلم
+                - generic [ref=f6e60]:
+                  - generic [ref=f6e61]:
+                    - generic [ref=f6e62]: الاسم
+                    - textbox "الاسم" [ref=f6e63]: أحمد المعلم
+                  - generic [ref=f6e64]:
+                    - generic [ref=f6e65]: رقم الهاتف (اختياري)
+                    - generic [ref=f6e66]:
+                      - generic [ref=f6e67]: "+20"
+                      - textbox "رقم الهاتف (اختياري)" [ref=f6e68]:
+                        - /placeholder: 1xxxxxxxxx
+                    - paragraph [ref=f6e70]: يرجى التأكد من صحة الرقم
+                  - generic [ref=f6e74]:
+                    - generic [ref=f6e75]: البريد الإلكتروني
+                    - textbox [disabled]: gnaze@mailto.plus
+                    - paragraph [ref=f6e76]: لتغيير البريد الإلكتروني، يرجى التواصل مع الدعم.
+                  - generic [ref=f6e77]:
+                    - generic [ref=f6e78]: تاريخ الانضمام
+                    - generic [ref=f6e79]: ...
+                  - button "حفظ التحديثات" [ref=f6e82]
+            - generic [ref=f6e84]:
+              - generic [ref=f6e85]: الإشعارات
+              - generic [ref=f6e89]: تذكير بالمستحقات المتأخرة عبر الإشعارات
+            - generic [ref=f6e96]:
+              - generic [ref=f6e97]:
+                - generic [ref=f6e98]: إعدادات المعلم
+                - generic [ref=f6e102]: إعدادات خاصة بحساب المعلم
+              - generic [ref=f6e104]:
+                - generic [ref=f6e105]:
+                  - generic [ref=f6e106]: العملة
+                  - combobox [ref=f6e107]:
+                    - generic [ref=f6e108]:
+                      - generic [ref=f6e109]: ج.م
+                      - generic [ref=f6e110]: الجنية المصري
+                      - generic [ref=f6e111]: (EGP)
+                - generic [ref=f6e112]:
+                  - generic [ref=f6e113]: السعر الافتراضي للطلاب الجدد
+                  - spinbutton "السعر الافتراضي للطلاب الجدد" [ref=f6e114]: "500"
+                - button "حفظ الإعدادات" [ref=f6e115]
+            - generic [ref=f6e116]:
+              - generic [ref=f6e117]:
+                - generic [ref=f6e118]: تسجيل الخروج
+                - generic [ref=f6e119]: قم بتسجيل الخروج من حسابك على هذا الجهاز
+              - button "تسجيل الخروج" [ref=f6e121]
+  - region "Notifications (F8)":
+    - list

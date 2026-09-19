@@ -1,0 +1,37 @@
+- generic [active] [ref=f7e1]:
+  - generic [ref=f7e2]:
+    - generic [ref=f7e4]:
+      - generic [ref=f7e5]:
+        - heading "مرحباً بعودتك" [level=1] [ref=f7e6]
+        - paragraph [ref=f7e7]: أدخل بياناتك للدخول إلى حسابك
+      - generic [ref=f7e8]:
+        - generic [ref=f7e39]: البريد الإلكتروني أو كلمة المرور غير صحيحة
+        - generic [ref=f7e9]:
+          - generic [ref=f7e10]: البريد الإلكتروني
+          - textbox "البريد الإلكتروني" [ref=f7e11]:
+            - /placeholder: ""
+            - text: gnaze@mailto.plus
+        - generic [ref=f7e12]:
+          - generic [ref=f7e13]:
+            - generic [ref=f7e14]: كلمة المرور
+            - link "نسيت كلمة المرور؟" [ref=f7e15] [cursor=pointer]:
+              - /url: /auth/forgot-password
+          - generic [ref=f7e17]:
+            - textbox "كلمة المرور" [ref=f7e18]:
+              - /placeholder: ""
+              - text: TestPass123!
+            - button "Show password" [ref=f7e22]
+        - button "تسجيل الدخول" [ref=f7e24]
+        - paragraph [ref=f7e25]:
+          - text: ليس لديك حساب؟
+          - link "إنشاء حساب جديد" [ref=f7e26] [cursor=pointer]:
+            - /url: /auth/signup
+    - generic [ref=f7e27]:
+      - img "Quran" [ref=f7e28]
+      - img "Logo" [ref=f7e33]
+      - blockquote [ref=f7e35]:
+        - paragraph [ref=f7e36]: “خيركم من تعلم القرآن وعلمه”
+        - contentinfo [ref=f7e37]: حديث شريف
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=f7e38]

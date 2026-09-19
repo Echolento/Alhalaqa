@@ -3,9 +3,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 import { logActivity } from './log-activity'
 import { getSiteUrl } from './auth-redirect'
+
+/**
+ * Prefer the actual request host over env vars. NEXT_PUBLIC_SITE_URL on
+ * Vercel is a write-only secret here, so a wrong/stale value would silently
+ * make Supabase fall back to the Site URL root (losing /auth/callback?next=).
+ * Deriving from headers guarantees redirectTo matches the domain served.
+ */
+async function getRequestSiteUrl(): Promise<string> {
+  try {
+    const h = await headers()
+    const host = h.get('x-forwarded-host') ?? h.get('host')
+    const proto = h.get('x-forwarded-proto') ?? 'https'
+    if (host) return `${proto}://${host}`
+  } catch {
+    // fall through to env-based URL
+  }
+  return getSiteUrl()
+}
 
 function translateAuthError(message: string): string {
   const map: Record<string, string> = {
@@ -63,7 +82,7 @@ export async function signUp(formData: FormData) {
     return { error: passwordError }
   }
 
-  const siteUrl = getSiteUrl()
+  const siteUrl = await getRequestSiteUrl()
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -279,7 +298,7 @@ export async function resetPasswordForEmail(formData: FormData) {
   const supabase = await createClient()
   const email = formData.get('email') as string
 
-  const siteUrl = getSiteUrl()
+  const siteUrl = await getRequestSiteUrl()
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${siteUrl}/auth/callback?next=/auth/update-password`,

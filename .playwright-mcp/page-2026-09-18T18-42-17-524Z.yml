@@ -1,0 +1,77 @@
+- generic:
+  - generic [aria-hidden]:
+    - complementary:
+      - generic:
+        - link:
+          - /url: /dashboard
+      - navigation:
+        - link:
+          - /url: /dashboard/payments
+          - generic: المدفوعات
+        - link:
+          - /url: /dashboard/students
+          - generic: الطلاب
+        - link:
+          - /url: /dashboard/settings
+          - generic: الإعدادات
+      - generic:
+        - generic:
+          - generic: أ
+          - generic:
+            - paragraph: أحمد المعلم
+            - paragraph: معلم
+    - generic:
+      - banner:
+        - button:
+          - generic: أ
+          - generic: أحمد المعلم
+      - main:
+        - generic:
+          - generic:
+            - heading [level=1]: الطلاب
+            - paragraph: إدارة الطلاب وإضافة وتعديل وحذف
+          - generic:
+            - generic:
+              - generic: قائمة الطلاب (0)
+              - button [expanded] [active]: إضافة طالب
+            - generic:
+              - generic:
+                - textbox:
+                  - /placeholder: البحث عن طالب...
+              - generic:
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: الطالب
+                        - columnheader: الهاتف
+                        - columnheader: السعر
+                        - columnheader: يوم الدفع
+                        - columnheader: الإجراءات
+                    - rowgroup:
+                      - row:
+                        - cell: لا يوجد طلاب
+  - list
+  - alert
+  - dialog [ref=f4e167]:
+    - generic [ref=f4e168]:
+      - heading "إضافة طالب جديد" [level=2] [ref=f4e169]
+      - paragraph [ref=f4e170]: أدخل اسم الطالب ورقم الهاتف (اختياري)
+    - generic [ref=f4e171]:
+      - generic [ref=f4e172]:
+        - generic [ref=f4e173]:
+          - text: الاسم
+          - generic [ref=f4e174]: "*"
+        - textbox "الاسم *" [ref=f4e175]:
+          - /placeholder: أدخل اسم الطالب
+      - generic [ref=f4e176]:
+        - generic [ref=f4e177]: رقم الهاتف
+        - generic [ref=f4e178]:
+          - generic [ref=f4e179]: "+20"
+          - textbox "رقم الهاتف" [ref=f4e180]:
+            - /placeholder: 1xxxxxxxxx
+        - paragraph [ref=f4e182]: يرجى التأكد من صحة الرقم
+      - generic [ref=f4e186]:
+        - button "إلغاء" [ref=f4e187]
+        - button "إضافة" [ref=f4e188]
+    - button "Close" [ref=f4e189]

@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "تم إرسال الرابط" [level=1] [ref=e26]
+        - paragraph [ref=e7]: يرجى التحقق من بريدك الإلكتروني
+      - generic [ref=e27]:
+        - generic [ref=e32]:
+          - heading "تم إرسال رابط إعادة التعيين" [level=3] [ref=e33]
+          - paragraph [ref=e34]: تحقق من صندوق بريدك الإلكتروني للحصول على التعليمات.
+        - link "العودة لتسجيل الدخول" [ref=e35] [cursor=pointer]:
+          - /url: /auth/login
+    - generic [ref=e14]:
+      - img "Quran" [ref=e15]
+      - img "Logo" [ref=e20]
+      - blockquote [ref=e22]:
+        - paragraph [ref=e23]: “خيركم من تعلم القرآن وعلمه”
+        - contentinfo [ref=e24]: حديث شريف
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e25]

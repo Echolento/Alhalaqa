@@ -1,0 +1,27 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - generic [ref=f5e4]:
+      - generic [ref=f5e5]:
+        - heading "كلمة المرور الجديدة" [level=1] [ref=f5e6]
+        - paragraph [ref=f5e7]: قم بتعيين كلمة مرور قوية لحسابك
+      - generic [ref=f5e8]:
+        - generic [ref=f5e9]:
+          - generic [ref=f5e10]: كلمة المرور الجديدة
+          - generic [ref=f5e12]:
+            - textbox "كلمة المرور الجديدة" [ref=f5e13]
+            - button "Show password" [ref=f5e17]
+        - generic [ref=f5e19]:
+          - generic [ref=f5e20]: تأكيد كلمة المرور
+          - generic [ref=f5e22]:
+            - textbox "تأكيد كلمة المرور" [ref=f5e23]
+            - button "Show password" [ref=f5e27]
+        - button "تحديث كلمة المرور" [ref=f5e29]
+    - generic [ref=f5e30]:
+      - img "Quran" [ref=f5e31]
+      - img "Logo" [ref=f5e36]
+      - blockquote [ref=f5e38]:
+        - paragraph [ref=f5e39]: “خيركم من تعلم القرآن وعلمه”
+        - contentinfo [ref=f5e40]: حديث شريف
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=f5e41]

@@ -1,0 +1,25 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e133]:
+    - banner [ref=f6e134]:
+      - generic [ref=f6e137]:
+        - link [ref=f6e138] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=f6e139]
+        - generic [ref=f6e140]:
+          - link "تسجيل الدخول" [ref=f6e141] [cursor=pointer]:
+            - /url: /auth/login
+          - link "إنشاء حساب" [ref=f6e142] [cursor=pointer]:
+            - /url: /auth/signup
+    - generic [ref=f6e144]:
+      - heading "لكل معلم قرآن يستحق أدوات تليق برسالته" [level=1] [ref=f6e145]
+      - paragraph [ref=f6e146]: تابع مستحقاتك المالية بدون تعقيد، لتبقى متفرغاً لتعليم كتاب الله
+      - generic [ref=f6e147]:
+        - link "إنشاء حساب جديد" [ref=f6e148] [cursor=pointer]:
+          - /url: /auth/signup
+        - link "تسجيل الدخول" [ref=f6e149] [cursor=pointer]:
+          - /url: /auth/login
+    - contentinfo [ref=f6e150]:
+      - paragraph [ref=f6e152]: جميع الحقوق محفوظة © 2026 الحلقة
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=f6e132]

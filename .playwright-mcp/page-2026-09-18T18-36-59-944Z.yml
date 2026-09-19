@@ -1,0 +1,59 @@
+- generic [ref=e1]:
+  - banner:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6] [cursor=pointer]: tempmail +
+        - generic [ref=e7]:
+          - link "Privacy policy" [ref=e8] [cursor=pointer]:
+            - /url: "#!privacy"
+          - link "Contact us" [ref=e9] [cursor=pointer]:
+            - /url: "#!contacts"
+      - button "EN" [ref=e11] [cursor=pointer]
+  - text: Text
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - link [ref=e16] [cursor=pointer]:
+          - /url: https://digital-core.us/store
+        - link [ref=e18] [cursor=pointer]:
+          - /url: https://digital-core.us/store
+      - generic [ref=e20]:
+        - heading "Your tempmail address is ready" [level=2] [ref=e21]
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - textbox "Name" [ref=e25]: gnaze
+            - button "@mailto.plus" [ref=e29] [cursor=pointer]
+            - button "Copy" [ref=e30] [cursor=pointer]
+          - generic [ref=e31]:
+            - button "New random name" [ref=e33] [cursor=pointer]
+            - button "Settings" [ref=e37] [cursor=pointer]
+            - paragraph [ref=e41]: One-time mail from TempMail.Plus will save you from spam and promotional email newsletters. Disposable mail service for anonymous use is provided free of charge.
+        - generic [ref=e42]:
+          - paragraph [ref=e43]: Inbox
+          - button "Compose" [ref=e44] [cursor=pointer]
+    - generic [ref=e132]:
+      - generic [ref=e133]:
+        - button "Back" [ref=e134] [cursor=pointer]
+        - button "Delete" [ref=e136] [cursor=pointer]
+      - generic [ref=e138]:
+        - generic [ref=e139]:
+          - generic [ref=e140]: Alhalaqa Team <hello@alhalaqa.com>
+          - generic [ref=e143]: 21:34
+        - generic [ref=e144]: طلب إعادة تعيين كلمة المرور
+        - generic [ref=e146]:
+          - img "شعار منصة الحلقة" [ref=e148]
+          - generic [ref=e149]:
+            - heading "هل نسيت كلمة المرور؟" [level=2] [ref=e150]
+            - paragraph [ref=e151]:
+              - text: لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في
+              - strong [ref=e152]: منصة الحلقة
+              - text: ". يمكنك إنشاء كلمة مرور جديدة من خلال الرابط التالي:"
+            - link "إعادة تعيين كلمة المرور" [active] [ref=e154] [cursor=pointer]:
+              - /url: https://mekubphfwjgojqulbmjg.supabase.co/auth/v1/verify?token=pkce_2bceebec9bd8fc4020328a1754babf2ea7bfca845851267960a91057&type=recovery&redirect_to=https://www.alhalaqa.com
+            - paragraph [ref=e155]: إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد الإلكتروني.
+          - paragraph [ref=e157]: © 2026 منصة الحلقة. جميع الحقوق محفوظة.
+  - contentinfo:
+    - generic [ref=e67]:
+      - text: © TempMail.Plus Our TOR mirror is
+      - link "tempmail4... .onion" [ref=e68] [cursor=pointer]:
+        - /url: http://tempmail4gi5qfqzjs2bxo3wf6eurpelxmior6ohzq5vw7aeay67wiyd.onion/

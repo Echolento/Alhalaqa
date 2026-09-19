@@ -1,0 +1,6 @@
+[    3695ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o @ https://tempmail.plus/en/#!:0
+[    3695ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o @ https://tempmail.plus/en/#!:0
+[    4050ms] [LOG] Registration successful, scope is: https://tempmail.plus/ @ https://tempmail.plus/sw-register.js:2
+[    5059ms] [ERROR] Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID @ https://c.hit.ua/hit?i=110&g=0&x=3&s=1&t=-180&c=1&w=1280&h=720&d=24&r=&u=https%3A//tempmail.plus/en/%23%21&0.6404375501877867:0
+[   38300ms] [ERROR] Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID @ https://c.hit.ua/hit?i=110&g=0&x=3&s=1&t=-180&c=1&w=1280&h=720&d=24&r=&u=https%3A//tempmail.plus/en/%23%21&0.5694613920744737:0
+[   71172ms] [ERROR] Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID @ https://c.hit.ua/hit?i=110&g=0&x=3&s=1&t=-180&c=1&w=1280&h=720&d=24&r=&u=https%3A//tempmail.plus/en/%23%21mail/1826022369&0.15803273952687658:0

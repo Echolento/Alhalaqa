@@ -1,0 +1,59 @@
+- generic [active] [ref=f2e1]:
+  - banner:
+    - generic [ref=f2e4]:
+      - generic [ref=f2e5]:
+        - heading "tempmail +" [level=1] [ref=f2e6] [cursor=pointer]
+        - generic [ref=f2e7]:
+          - link "Privacy policy" [ref=f2e8] [cursor=pointer]:
+            - /url: "#!privacy"
+          - link "Contact us" [ref=f2e9] [cursor=pointer]:
+            - /url: "#!contacts"
+      - button "EN" [ref=f2e11] [cursor=pointer]
+  - text: Text
+  - generic [ref=f2e12]:
+    - generic [ref=f2e13]:
+      - generic [ref=f2e15]:
+        - link [ref=f2e16] [cursor=pointer]:
+          - /url: https://digital-core.us/store
+        - link [ref=f2e18] [cursor=pointer]:
+          - /url: https://digital-core.us/store
+      - generic [ref=f2e20]:
+        - heading "Your tempmail address is ready" [level=2] [ref=f2e21]
+        - generic [ref=f2e22]:
+          - generic [ref=f2e24]:
+            - textbox "Name" [ref=f2e25]: gnaze
+            - button "@mailto.plus" [ref=f2e29] [cursor=pointer]
+            - button "Copy" [ref=f2e30] [cursor=pointer]
+          - generic [ref=f2e31]:
+            - button "New random name" [ref=f2e33] [cursor=pointer]
+            - button "Settings" [ref=f2e37] [cursor=pointer]
+            - paragraph [ref=f2e41]: One-time mail from TempMail.Plus will save you from spam and promotional email newsletters. Disposable mail service for anonymous use is provided free of charge.
+        - generic [ref=f2e42]:
+          - paragraph [ref=f2e43]: Inbox
+          - button "Compose" [ref=f2e44] [cursor=pointer]
+    - generic [ref=f2e202]:
+      - generic [ref=f2e203]:
+        - button "Back" [ref=f2e204] [cursor=pointer]
+        - button "Delete" [ref=f2e206] [cursor=pointer]
+      - generic [ref=f2e208]:
+        - generic [ref=f2e209]:
+          - generic [ref=f2e210]: Alhalaqa Team <hello@alhalaqa.com>
+          - generic [ref=f2e213]: 18:43
+        - generic [ref=f2e214]: تأكيد تسجيل حسابك في منصة الحلقة
+        - generic [ref=f2e216]:
+          - img "شعار منصة الحلقة" [ref=f2e218]
+          - generic [ref=f2e219]:
+            - heading "مرحباً بك!" [level=2] [ref=f2e220]
+            - paragraph [ref=f2e221]:
+              - text: لقد قمت بالتسجيل في
+              - strong [ref=f2e222]: منصة الحلقة
+              - text: "لإدارة حلقات تحفيظ القرآن الكريم. لتفعيل حسابك والبدء في الاستخدام، يرجى تأكيد بريدك الإلكتروني بالضغط على الرابط أدناه:"
+            - link "تأكيد البريد الإلكتروني" [ref=f2e224] [cursor=pointer]:
+              - /url: https://mekubphfwjgojqulbmjg.supabase.co/auth/v1/verify?token=pkce_2d422fe2fc572615419b66a062d0c340a2b5c3f233d6c1d171c5e364&type=signup&redirect_to=https://www.alhalaqa.com
+            - paragraph [ref=f2e225]: إذا لم تقم بطلب هذا التسجيل، يمكنك تجاهل هذه الرسالة بأمان.
+          - paragraph [ref=f2e227]: © 2026 منصة الحلقة. جميع الحقوق محفوظة.
+  - contentinfo:
+    - generic [ref=f2e68]:
+      - text: © TempMail.Plus Our TOR mirror is
+      - link "tempmail4... .onion" [ref=f2e69] [cursor=pointer]:
+        - /url: http://tempmail4gi5qfqzjs2bxo3wf6eurpelxmior6ohzq5vw7aeay67wiyd.onion/
