@@ -24,7 +24,7 @@ export default async function DashboardLayout({
 
   if (!profile) {
     // If user is authenticated but has no profile, show a setup message
-    // preventing infinite redirect loop with middleware
+    // preventing infinite redirect loop with the auth proxy
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full p-6 bg-card rounded-lg shadow-lg border text-center space-y-4">

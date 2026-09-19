@@ -17,7 +17,7 @@ export async function proxy(request: NextRequest) {
 
     return await updateSession(request)
   } catch (err) {
-    console.error('Middleware proxy error:', err)
+    console.error('Proxy error:', err)
     return NextResponse.next()
   }
 }
