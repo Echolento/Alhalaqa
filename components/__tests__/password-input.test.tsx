@@ -79,6 +79,17 @@ describe('PasswordInput', () => {
     expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
   })
 
+  it('updates meter when parent passes onChange (controlled usage)', () => {
+    // Regression: parent onChange must not overwrite the internal handler,
+    // otherwise the meter never updates on signup/update-password pages.
+    const onChange = vi.fn()
+    render(<PasswordInput showStrength value="initial" onChange={onChange} />)
+    fireEvent.change(getInput(), { target: { value: 'Abcd1234!' } })
+    expect(onChange).toHaveBeenCalled()
+    expect(screen.getByTestId('password-strength-fill')).toHaveClass('bg-green-500')
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
+  })
+
   it('hides strength meter when showStrength is false even with value', () => {
     render(<PasswordInput showStrength={false} value="initial" />)
     const input = getInput()

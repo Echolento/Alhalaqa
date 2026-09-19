@@ -46,8 +46,11 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                         className={cn('pl-10 pr-10 text-right', className)}
                         dir="ltr"
                         ref={ref}
-                        onChange={handleChange}
                         {...props}
+                        // NOTE: onChange must come after the spread — otherwise a
+                        // parent onChange would overwrite handleChange and the
+                        // strength meter would never update.
+                        onChange={handleChange}
                     />
                     <Lock className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Button
