@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Eye, EyeOff, Lock } from 'lucide-react'
+import { CheckCircle, Eye, EyeOff, Lock, XCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -25,16 +25,24 @@ function calculateStrength(val: string) {
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
     ({ className, showStrength, ...props }, ref) => {
         const [showPassword, setShowPassword] = React.useState(false)
-        const [strength, setStrength] = React.useState(() =>
-            calculateStrength(typeof props.value === 'string' ? props.value : ''),
+        const [text, setText] = React.useState(() =>
+            typeof props.value === 'string' ? props.value : '',
         )
+        const strength = calculateStrength(text)
+
+        // Mirrors validatePasswordStrength in lib/auth-actions.ts so the user
+        // sees live why their password is still weak.
+        const requirements = [
+            { label: '8 أحرف على الأقل', met: text.length >= 8 },
+            { label: 'حرف كبير (A-Z)', met: /[A-Z]/.test(text) },
+            { label: 'حرف صغير (a-z)', met: /[a-z]/.test(text) },
+            { label: 'رقم (0-9)', met: /[0-9]/.test(text) },
+        ]
 
         const togglePassword = () => setShowPassword(!showPassword)
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            if (showStrength) {
-                setStrength(calculateStrength(e.target.value))
-            }
+            setText(e.target.value)
             props.onChange?.(e)
         }
 
@@ -104,6 +112,27 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                             </span>
                         </div>
                     </div>
+                )}
+
+                {showStrength && (
+                    <ul className="space-y-1 text-xs mt-2">
+                        {requirements.map((req) => (
+                            <li
+                                key={req.label}
+                                className={cn(
+                                    "flex items-center gap-1.5 transition-colors",
+                                    req.met ? "text-green-600" : "text-red-500",
+                                )}
+                            >
+                                {req.met ? (
+                                    <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                                ) : (
+                                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                                )}
+                                {req.label}
+                            </li>
+                        ))}
+                    </ul>
                 )}
             </div>
         )

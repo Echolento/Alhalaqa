@@ -90,6 +90,30 @@ describe('PasswordInput', () => {
     expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
   })
 
+  it('marks each requirement individually (abc: only lowercase met)', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    fireEvent.change(getInput(), { target: { value: 'abc' } })
+    const rowClass = (label: string) => screen.getByText(label).closest('li')?.className ?? ''
+    expect(rowClass('8 أحرف على الأقل')).toMatch('text-red-500')
+    expect(rowClass('حرف كبير (A-Z)')).toMatch('text-red-500')
+    expect(rowClass('حرف صغير (a-z)')).toMatch('text-green-600')
+    expect(rowClass('رقم (0-9)')).toMatch('text-red-500')
+  })
+
+  it('flips each requirement green as it is met', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    fireEvent.change(getInput(), { target: { value: 'Abcd1234' } })
+    for (const label of ['8 أحرف على الأقل', 'حرف كبير (A-Z)', 'حرف صغير (a-z)', 'رقم (0-9)']) {
+      const item = screen.getByText(label).closest('li')
+      expect(item?.className).toMatch('text-green-600')
+    }
+  })
+
+  it('hides requirements when showStrength is false', () => {
+    render(<PasswordInput showStrength={false} value="Abcd1234" />)
+    expect(screen.queryByText('8 أحرف على الأقل')).not.toBeInTheDocument()
+  })
+
   it('hides strength meter when showStrength is false even with value', () => {
     render(<PasswordInput showStrength={false} value="initial" />)
     const input = getInput()
