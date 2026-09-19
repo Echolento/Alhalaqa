@@ -109,6 +109,18 @@ describe('PasswordInput', () => {
     }
   })
 
+  it('label agrees with checklist: fully-valid password is strong even without symbol', () => {
+    // Abcd1234 meets every server rule but earns no bonus points — the label
+    // must still read strong whenever the whole checklist is green.
+    render(<PasswordInput showStrength value="initial" />)
+    fireEvent.change(getInput(), { target: { value: 'Abcd1234' } })
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
+    for (const label of ['8 أحرف على الأقل', 'حرف كبير (A-Z)', 'حرف صغير (a-z)', 'رقم (0-9)']) {
+      const item = screen.getByText(label).closest('li')
+      expect(item?.className).toMatch('text-green-600')
+    }
+  })
+
   it('hides requirements when showStrength is false', () => {
     render(<PasswordInput showStrength={false} value="Abcd1234" />)
     expect(screen.queryByText('8 أحرف على الأقل')).not.toBeInTheDocument()

@@ -38,6 +38,10 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
             { label: 'حرف صغير (a-z)', met: /[a-z]/.test(text) },
             { label: 'رقم (0-9)', met: /[0-9]/.test(text) },
         ]
+        // The label follows the checklist (the actual acceptance rules) so the
+        // two can never disagree; the bar width keeps bonus points for 12+
+        // chars and symbols as extra health signal.
+        const metCount = requirements.filter((r) => r.met).length
 
         const togglePassword = () => setShowPassword(!showPassword)
 
@@ -88,9 +92,9 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                                     data-testid="password-strength-fill"
                                     className={cn(
                                         "h-2 rounded-full transition-all duration-300",
-                                        strength <= 2
+                                        metCount <= 1
                                             ? "bg-red-500"
-                                            : strength <= 4
+                                            : metCount <= 3
                                                 ? "bg-yellow-500"
                                                 : "bg-green-500",
                                     )}
@@ -101,14 +105,14 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                                 data-testid="password-strength-label"
                                 className={cn(
                                     "text-xs",
-                                    strength <= 2
+                                    metCount <= 1
                                         ? "text-red-600"
-                                        : strength <= 4
+                                        : metCount <= 3
                                             ? "text-yellow-600"
                                             : "text-green-600",
                                 )}
                             >
-                                {strength <= 2 ? "ضعيفة" : strength <= 4 ? "متوسطة" : "قوية"}
+                                {metCount <= 1 ? "ضعيفة" : metCount <= 3 ? "متوسطة" : "قوية"}
                             </span>
                         </div>
                     </div>
