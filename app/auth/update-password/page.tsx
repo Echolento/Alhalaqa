@@ -11,6 +11,10 @@ import { PasswordInput } from '@/components/auth/password-input'
 export default function UpdatePasswordPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    // Controlled so typed passwords survive a failed submit (e.g. mismatch).
+    // Uncontrolled inputs get reset when the form action completes.
+    const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
 
     async function handleSubmit(formData: FormData) {
         setLoading(true)
@@ -47,6 +51,8 @@ export default function UpdatePasswordPage() {
                         required
                         showStrength
                         disabled={loading}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
 
@@ -57,6 +63,8 @@ export default function UpdatePasswordPage() {
                         name="confirmPassword"
                         required
                         disabled={loading}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                 </div>
 
