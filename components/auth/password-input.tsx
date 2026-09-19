@@ -11,24 +11,12 @@ export interface PasswordInputProps
     showStrength?: boolean
 }
 
-function calculateStrength(val: string) {
-    let score = 0
-    if (val.length >= 8) score += 1
-    if (val.length >= 12) score += 1
-    if (/[A-Z]/.test(val)) score += 1
-    if (/[a-z]/.test(val)) score += 1
-    if (/[0-9]/.test(val)) score += 1
-    if (/[^A-Za-z0-9]/.test(val)) score += 1
-    return score
-}
-
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
     ({ className, showStrength, ...props }, ref) => {
         const [showPassword, setShowPassword] = React.useState(false)
         const [text, setText] = React.useState(() =>
             typeof props.value === 'string' ? props.value : '',
         )
-        const strength = calculateStrength(text)
 
         // Mirrors validatePasswordStrength in lib/auth-actions.ts so the user
         // sees live why their password is still weak.
@@ -38,9 +26,8 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
             { label: 'حرف صغير (a-z)', met: /[a-z]/.test(text) },
             { label: 'رقم (0-9)', met: /[0-9]/.test(text) },
         ]
-        // The label follows the checklist (the actual acceptance rules) so the
-        // two can never disagree; the bar width keeps bonus points for 12+
-        // chars and symbols as extra health signal.
+        // One standard for everything: bar width, color, and label all follow
+        // the checklist count, so each label has exactly one visual state.
         const metCount = requirements.filter((r) => r.met).length
 
         const togglePassword = () => setShowPassword(!showPassword)
@@ -98,7 +85,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                                                 ? "bg-yellow-500"
                                                 : "bg-green-500",
                                     )}
-                                    style={{ width: `${(strength / 6) * 100}%` }}
+                                    style={{ width: `${(metCount / 4) * 100}%` }}
                                 />
                             </div>
                             <span
