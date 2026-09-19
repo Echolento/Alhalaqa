@@ -11,23 +11,25 @@ export interface PasswordInputProps
     showStrength?: boolean
 }
 
+function calculateStrength(val: string) {
+    let score = 0
+    if (val.length >= 8) score += 1
+    if (val.length >= 12) score += 1
+    if (/[A-Z]/.test(val)) score += 1
+    if (/[a-z]/.test(val)) score += 1
+    if (/[0-9]/.test(val)) score += 1
+    if (/[^A-Za-z0-9]/.test(val)) score += 1
+    return score
+}
+
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
     ({ className, showStrength, ...props }, ref) => {
         const [showPassword, setShowPassword] = React.useState(false)
-        const [strength, setStrength] = React.useState(0)
+        const [strength, setStrength] = React.useState(() =>
+            calculateStrength(typeof props.value === 'string' ? props.value : ''),
+        )
 
         const togglePassword = () => setShowPassword(!showPassword)
-
-        const calculateStrength = (val: string) => {
-            let score = 0
-            if (val.length >= 8) score += 1
-            if (val.length >= 12) score += 1
-            if (/[A-Z]/.test(val)) score += 1
-            if (/[a-z]/.test(val)) score += 1
-            if (/[0-9]/.test(val)) score += 1
-            if (/[^A-Za-z0-9]/.test(val)) score += 1
-            return score
-        }
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             if (showStrength) {
@@ -68,18 +70,36 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                 </div>
 
                 {showStrength && props.value && (
-                    <div className="flex gap-1 h-1 mt-2">
-                        {[1, 2, 3, 4, 5].map((index) => (
-                            <div
-                                key={index}
+                    <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-muted rounded-full h-2">
+                                <div
+                                    data-testid="password-strength-fill"
+                                    className={cn(
+                                        "h-2 rounded-full transition-all duration-300",
+                                        strength <= 2
+                                            ? "bg-red-500"
+                                            : strength <= 4
+                                                ? "bg-yellow-500"
+                                                : "bg-green-500",
+                                    )}
+                                    style={{ width: `${(strength / 6) * 100}%` }}
+                                />
+                            </div>
+                            <span
+                                data-testid="password-strength-label"
                                 className={cn(
-                                    "h-full flex-1 rounded-full transition-all duration-300",
-                                    index <= strength
-                                        ? strength < 3 ? "bg-red-500" : strength < 5 ? "bg-yellow-500" : "bg-green-500"
-                                        : "bg-muted"
+                                    "text-xs",
+                                    strength <= 2
+                                        ? "text-red-600"
+                                        : strength <= 4
+                                            ? "text-yellow-600"
+                                            : "text-green-600",
                                 )}
-                            />
-                        ))}
+                            >
+                                {strength <= 2 ? "ضعيفة" : strength <= 4 ? "متوسطة" : "قوية"}
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>

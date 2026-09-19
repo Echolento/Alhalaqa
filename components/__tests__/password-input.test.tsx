@@ -30,15 +30,16 @@ describe('PasswordInput', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
-  it('renders strength bars when showStrength is true and value is provided', () => {
+  it('renders strength meter when showStrength is true and value is provided', () => {
     render(<PasswordInput showStrength value="StrongPass1!" />)
-    const bars = document.querySelectorAll('.rounded-full')
-    expect(bars.length).toBeGreaterThanOrEqual(5)
+    expect(screen.getByTestId('password-strength-fill')).toBeInTheDocument()
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
   })
 
-  it('hides strength bars when value is empty', () => {
+  it('hides strength meter when value is empty', () => {
     render(<PasswordInput showStrength />)
-    expect(document.querySelectorAll('.rounded-full').length).toBe(0)
+    expect(screen.queryByTestId('password-strength-fill')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('password-strength-label')).not.toBeInTheDocument()
   })
 
   it('renders lock icon', () => {
@@ -46,55 +47,44 @@ describe('PasswordInput', () => {
     expect(document.querySelector('.lucide-lock')).toBeInTheDocument()
   })
 
-  it('shows strength 1 for very short lowercase-only password', () => {
+  it('shows weak red meter for very short lowercase-only password', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'ab' } })
-    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
-      b => !b.classList.contains('bg-muted')
-    )
-    expect(filledBars.length).toBe(1)
-    expect(filledBars[0]).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('password-strength-fill')).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('ضعيفة')
   })
 
-  it('shows red bars for low strength (< 3)', () => {
+  it('shows red meter for low strength (< 3)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'abc' } })
-    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
-      b => !b.classList.contains('bg-muted')
-    )
-    expect(filledBars.length).toBe(1)
-    expect(filledBars[0]).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('password-strength-fill')).toHaveClass('bg-red-500')
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('ضعيفة')
   })
 
-  it('shows yellow bars for medium strength (3-4)', () => {
+  it('shows yellow meter for medium strength (3-4)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'Ab1!' } })
-    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
-      b => !b.classList.contains('bg-muted')
-    )
-    expect(filledBars.length).toBe(4)
-    expect(filledBars[0]).toHaveClass('bg-yellow-500')
+    expect(screen.getByTestId('password-strength-fill')).toHaveClass('bg-yellow-500')
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('متوسطة')
   })
 
-  it('shows green bars for high strength (5+)', () => {
+  it('shows green meter for high strength (5+)', () => {
     render(<PasswordInput showStrength value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'Abcd1234!' } })
-    const filledBars = [...document.querySelectorAll('.rounded-full')].filter(
-      b => !b.classList.contains('bg-muted')
-    )
-    expect(filledBars.length).toBe(5)
-    expect(filledBars[0]).toHaveClass('bg-green-500')
+    expect(screen.getByTestId('password-strength-fill')).toHaveClass('bg-green-500')
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
   })
 
-  it('hides strength bars when showStrength is false even with value', () => {
+  it('hides strength meter when showStrength is false even with value', () => {
     render(<PasswordInput showStrength={false} value="initial" />)
     const input = getInput()
     fireEvent.change(input, { target: { value: 'StrongPass1!' } })
-    expect(document.querySelectorAll('.rounded-full').length).toBe(0)
+    expect(screen.queryByTestId('password-strength-fill')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('password-strength-label')).not.toBeInTheDocument()
   })
 
   it('forwards disabled prop to input', () => {
