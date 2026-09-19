@@ -22,6 +22,7 @@ const mockSupabase = {
     signOut: vi.fn(),
     resetPasswordForEmail: vi.fn(),
     updateUser: vi.fn(),
+    signInWithOAuth: vi.fn(),
   },
   from: vi.fn(() => createBuilder()),
 }
@@ -355,6 +356,38 @@ describe('resetPasswordForEmail', () => {
       createFormData({ email: 'nonexistent@example.com' })
     )
     expect(result.error).toBe('المستخدم غير موجود')
+  })
+})
+
+describe('signInWithGoogle', () => {
+  it('redirects to the provider url', async () => {
+    const { redirect } = await import('next/navigation')
+    mockSupabase.auth.signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://accounts.google.com/o/oauth2/auth?x=1' },
+      error: null,
+    })
+
+    const { signInWithGoogle } = await import('@/lib/auth-actions')
+    await signInWithGoogle()
+
+    expect(mockSupabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: expect.stringContaining('/auth/callback?next=/welcome'),
+      },
+    })
+    expect(redirect).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/auth?x=1')
+  })
+
+  it('returns error when OAuth cannot start', async () => {
+    mockSupabase.auth.signInWithOAuth.mockResolvedValue({
+      data: { url: null },
+      error: { message: 'Provider not enabled' },
+    })
+
+    const { signInWithGoogle } = await import('@/lib/auth-actions')
+    const result = await signInWithGoogle()
+    expect(result.error).toBe('Provider not enabled')
   })
 })
 

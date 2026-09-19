@@ -18,5 +18,49 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/auth/error`)
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  // Bootstrap teacher identity. OAuth signups don't carry role metadata, so
+  // the DB trigger creates them as students with no teacher row — fix that
+  // here. Idempotent: email flows that already have it are untouched.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.redirect(`${origin}/auth/error`)
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile && (profile as { role: string }).role !== 'teacher') {
+    await supabase.from('profiles').update({ role: 'teacher' }).eq('id', user.id)
+  }
+
+  await supabase
+    .from('teachers')
+    .upsert({ profile_id: user.id }, { onConflict: 'profile_id' })
+
+  // Honor explicit destinations (e.g. recovery -> update-password). For the
+  // default welcome destination, already-onboarded users go to dashboard —
+  // this covers returning OAuth users and double-clicked confirm links.
+  let dest = next
+  if (next === '/welcome') {
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('default_monthly_price')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+
+    const price = Number(
+      (teacher as { default_monthly_price: unknown } | null)?.default_monthly_price ?? 0,
+    )
+    if (price !== 0) {
+      dest = '/dashboard'
+    }
+  }
+
+  return NextResponse.redirect(`${origin}${dest}`)
 }

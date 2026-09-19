@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
+import { GoogleButton } from '@/components/auth/google-button'
 import { PasswordInput } from '@/components/auth/password-input'
 
 export default function SignUpPage() {
@@ -114,6 +115,8 @@ export default function SignUpPage() {
             </>
           )}
         </Button>
+
+        <GoogleButton mode="signup" />
 
         <p className="text-sm text-center text-muted-foreground">
           لديك حساب بالفعل؟{' '}

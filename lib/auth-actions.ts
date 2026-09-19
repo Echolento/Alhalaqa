@@ -160,6 +160,28 @@ export async function signIn(formData: FormData) {
   redirect('/dashboard')
 }
 
+export async function signInWithGoogle() {
+  const supabase = await createClient()
+  const siteUrl = await getRequestSiteUrl()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${siteUrl}/auth/callback?next=/welcome`,
+    },
+  })
+
+  if (error) {
+    return { error: translateAuthError(error.message) }
+  }
+
+  if (data.url) {
+    redirect(data.url)
+  }
+
+  return { error: 'تعذر بدء تسجيل الدخول عبر Google، حاول مرة أخرى' }
+}
+
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()

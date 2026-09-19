@@ -63,6 +63,21 @@ describe('GET /api/teachers/[id]/display', () => {
 })
 
 describe('GET /auth/callback', () => {
+  beforeEach(() => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockSupabase.from.mockImplementation((table: string) => {
+      const builder = createBuilder()
+      if (table === 'profiles') {
+        builder.single.mockResolvedValue({ data: { role: 'teacher' } })
+      } else {
+        builder.maybeSingle.mockResolvedValue({ data: { default_monthly_price: 0 } })
+      }
+      builder.update.mockResolvedValue({ error: null })
+      builder.upsert.mockResolvedValue({ error: null })
+      return builder
+    })
+  })
+
   it('redirects to welcome when no next param (default)', async () => {
     const { GET } = await import('@/app/auth/callback/route')
     mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ error: null })

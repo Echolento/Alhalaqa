@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/auth-layout'
+import { GoogleButton } from '@/components/auth/google-button'
 import { PasswordInput } from '@/components/auth/password-input'
 
 function LoginForm() {
@@ -98,6 +99,8 @@ function LoginForm() {
             </>
           )}
         </Button>
+
+        <GoogleButton mode="login" />
 
         <p className="text-sm text-center text-muted-foreground">
           ليس لديك حساب؟{' '}
