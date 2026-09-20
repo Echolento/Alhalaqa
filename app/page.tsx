@@ -191,7 +191,16 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="footer-animate border-t border-border py-8">
-        <div className="container mx-auto px-6 text-center text-muted-foreground">
+        <div className="container mx-auto px-6 text-center text-muted-foreground space-y-3">
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <Link href="/privacy" className="hover:text-primary hover:underline transition-colors">
+              سياسة الخصوصية
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/terms" className="hover:text-primary hover:underline transition-colors">
+              شروط الاستخدام
+            </Link>
+          </div>
           <p>جميع الحقوق محفوظة © {new Date().getFullYear()} الحلقة</p>
         </div>
       </footer>
