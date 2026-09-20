@@ -8,14 +8,15 @@ export async function GET(request: Request) {
   const next = sanitizeNextPath(searchParams.get('next'))
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/auth/error`)
+    return NextResponse.redirect(`${origin}/auth/error?reason=no_code`)
   }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(`${origin}/auth/error`)
+    console.error('[auth/callback] code exchange failed:', error.message)
+    return NextResponse.redirect(`${origin}/auth/error?reason=exchange_failed`)
   }
 
   // Bootstrap teacher identity. OAuth signups don't carry role metadata, so
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/auth/error`)
+    console.error('[auth/callback] no session after code exchange')
+    return NextResponse.redirect(`${origin}/auth/error?reason=no_session`)
   }
 
   const { data: profile } = await supabase

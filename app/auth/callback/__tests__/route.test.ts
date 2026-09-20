@@ -48,7 +48,7 @@ describe('GET /auth/callback', () => {
   it('redirects to error without a code', async () => {
     const { GET } = await import('@/app/auth/callback/route')
     const res = await GET(new Request('https://x.test/auth/callback'))
-    expect(locationOf(res)).toBe('https://x.test/auth/error')
+    expect(locationOf(res)).toBe('https://x.test/auth/error?reason=no_code')
   })
 
   it('redirects to error when exchange fails', async () => {
@@ -57,7 +57,7 @@ describe('GET /auth/callback', () => {
     })
     const { GET } = await import('@/app/auth/callback/route')
     const res = await GET(new Request('https://x.test/auth/callback?code=nope'))
-    expect(locationOf(res)).toBe('https://x.test/auth/error')
+    expect(locationOf(res)).toBe('https://x.test/auth/error?reason=exchange_failed')
   })
 
   it('honors explicit next for recovery even when onboarded', async () => {

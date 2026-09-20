@@ -119,13 +119,13 @@ describe('GET /auth/callback', () => {
     const response = await GET(new Request(url))
 
     expect(response.status).toBe(307)
-    expect(response.headers.get('location')).toContain('/auth/error')
+    expect(response.headers.get('location')).toContain('/auth/error?reason=exchange_failed')
   })
 
   it('redirects to error page when no code provided', async () => {
     const { GET } = await import('@/app/auth/callback/route')
     const response = await GET(new Request('http://localhost/auth/callback'))
     expect(response.status).toBe(307)
-    expect(response.headers.get('location')).toContain('/auth/error')
+    expect(response.headers.get('location')).toContain('/auth/error?reason=no_code')
   })
 })

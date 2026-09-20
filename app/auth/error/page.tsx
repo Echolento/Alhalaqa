@@ -3,7 +3,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle } from 'lucide-react'
 
-export default function AuthErrorPage() {
+export default async function AuthErrorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>
+}) {
+  const { reason } = await searchParams
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -12,10 +17,15 @@ export default function AuthErrorPage() {
             <AlertTriangle className="w-8 h-8 text-destructive" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">خطأ في المصادقة</CardTitle>
+            <CardTitle className="text-2xl font-bold">تعذّر تسجيل الدخول</CardTitle>
             <CardDescription className="mt-2">
-              حدث خطأ أثناء محاولة تسجيل الدخول. يرجى المحاولة مرة أخرى.
+              حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.
             </CardDescription>
+            {reason && (
+              <p className="mt-2 text-xs text-muted-foreground" dir="ltr">
+                error: {reason}
+              </p>
+            )}
           </div>
         </CardHeader>
         <CardFooter className="flex flex-col gap-2">
