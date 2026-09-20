@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -55,22 +55,44 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
     setLoading(studentId)
     const payment = localPayments.find((p) => p.student_id === studentId)
     const newPaid = !payment?.paid
+    const now = new Date().toISOString()
+    // Optimistic update. NOTE: a payment row may not exist yet (first toggle
+    // of the month creates it server-side), so .map() alone would change
+    // nothing and the UI would flash the old state — add the entry instead.
     setLocalPayments((prev) =>
-      prev.map((p) =>
-        p.student_id === studentId ? { ...p, paid: newPaid } : p
-      )
+      prev.some((p) => p.student_id === studentId)
+        ? prev.map((p) =>
+            p.student_id === studentId
+              ? { ...p, paid: newPaid, paid_at: newPaid ? now : null }
+              : p
+          )
+        : [...prev, { student_id: studentId, month, paid: newPaid, paid_at: newPaid ? now : null }]
     )
+    // Revert to the previous state (not the possibly-stale `payments` prop).
+    // If the entry didn't exist before, drop the optimistic one entirely.
+    const hadEntry = !!payment
+    const prevPaidAt = payment?.paid_at ?? null
+    const revert = () =>
+      setLocalPayments((prev) =>
+        hadEntry
+          ? prev.map((p) =>
+              p.student_id === studentId
+                ? { ...p, paid: !newPaid, paid_at: !newPaid ? prevPaidAt : null }
+                : p
+            )
+          : prev.filter((p) => p.student_id !== studentId)
+      )
     try {
       const result = await toggleStudentPayment(studentId, month)
       if (result.success) {
         router.refresh()
         toast({ title: '✓ تم التحديث', description: 'تم تغيير حالة الدفع بنجاح' })
       } else {
-        setLocalPayments(payments)
+        revert()
         toast({ variant: 'destructive', title: 'خطأ', description: result.error || 'فشل تحديث حالة الدفع' })
       }
     } catch (error) {
-      setLocalPayments(payments)
+      revert()
       toast({ variant: 'destructive', title: 'خطأ', description: 'فشل تحديث حالة الدفع' })
     } finally {
       setLoading(null)

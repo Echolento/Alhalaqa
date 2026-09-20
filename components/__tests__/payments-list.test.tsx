@@ -125,6 +125,24 @@ describe('PaymentsList', () => {
     expect(spinner).toBeInTheDocument()
   })
 
+  it('optimistically marks paid even with no payment row yet (first toggle of month)', async () => {
+    // Regression: the server creates the row on first toggle, so .map()
+    // alone changed nothing and the UI flashed the old state until refresh.
+    vi.mocked(toggleStudentPayment).mockImplementation(() => new Promise(() => {}))
+    render(
+      <PaymentsList
+        students={mockStudents}
+        payments={mockPayments}
+        month="2025-06"
+        currency="SAR"
+      />
+    )
+    expect(screen.getAllByText('لم يدفع').length).toBe(1)
+    fireEvent.click(screen.getByText('تحديد كمدفوع'))
+    expect(await screen.findAllByText('مدفوع')).toHaveLength(2)
+    expect(screen.queryByText('لم يدفع')).not.toBeInTheDocument()
+  })
+
   it('optimistically updates unpaid to paid on toggle click', async () => {
     const unpaidPayment = { student_id: 's2', paid: false, amount_paid: 0 }
     render(
