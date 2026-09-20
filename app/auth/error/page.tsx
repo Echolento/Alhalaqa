@@ -3,12 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle } from 'lucide-react'
 
-export default async function AuthErrorPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ reason?: string }>
-}) {
-  const { reason } = await searchParams
+export default function AuthErrorPage() {
+  // NOTE: /auth/callback still appends ?reason=no_code|exchange_failed|no_session
+  // to this URL for debugging — readable from the address bar, never rendered.
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -21,11 +18,6 @@ export default async function AuthErrorPage({
             <CardDescription className="mt-2">
               حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.
             </CardDescription>
-            {reason && (
-              <p className="mt-2 text-xs text-muted-foreground" dir="ltr">
-                error: {reason}
-              </p>
-            )}
           </div>
         </CardHeader>
         <CardFooter className="flex flex-col gap-2">
