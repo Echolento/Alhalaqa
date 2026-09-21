@@ -46,10 +46,14 @@ export default function RootLayout({
           gtag('js', new Date());
           gtag('config', 'G-TERD2EK651');`}
         </Script>
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+        {process.env.NODE_ENV === 'development' && (
+          <>
+            {/* impeccable-live-start */}
+            <script src="http://localhost:8400/live.js"></script>
+            {/* impeccable-live-end */}
+          </>
+        )}
+      </body>
     </html>
   )
 }

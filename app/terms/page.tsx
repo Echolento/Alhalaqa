@@ -22,7 +22,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-bold text-foreground">الحساب</h2>
             <ul className="list-disc pr-5 space-y-1">
               <li>يجب أن تكون البيانات المقدمة عند التسجيل صحيحة.</li>
-              <li>أنت مسؤول عن الحفاظ على سرية كلمة مرورك وعن أي نشاط يتم عبر حسابك.</li>
+              <li>أنت مسؤول عن الحفاظ على سرية بيانات الدخول الخاصة بك (كلمة المرور أو حساب Google) وعن أي نشاط يتم عبر حسابك.</li>
               <li>يمكنك التسجيل بالبريد الإلكتروني أو عبر حساب Google الخاص بك.</li>
             </ul>
           </section>
