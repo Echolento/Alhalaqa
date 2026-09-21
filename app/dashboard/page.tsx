@@ -21,7 +21,9 @@ export default async function DashboardPage({
 
   const { month } = await searchParams
   const currentMonth = month || new Date().toISOString().slice(0, 7) + '-01'
+  const tDb = Date.now()
   const { students, payments, currency } = await getTeacherPayments(currentMonth)
+  const serverMs = Date.now() - tDb
 
   const currencySymbol = getCurrencySymbol(currency)
 
@@ -90,6 +92,7 @@ export default async function DashboardPage({
       <div className="space-y-4 pt-2 md:pt-6">
         <div className="md:hidden border-t border-border/60" />
         <StudentList students={students} payments={payments} month={currentMonth} currency={currency} />
+        <p className="text-center text-[10px] text-muted-foreground/50">srv:{serverMs}ms</p>
       </div>
     </div>
   )
