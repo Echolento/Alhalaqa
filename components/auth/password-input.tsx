@@ -105,7 +105,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                     </div>
                 )}
 
-                {showStrength && (
+                {showStrength && props.value && (
                     <ul className="space-y-1 text-xs mt-2">
                         {requirements.map((req) => (
                             <li
