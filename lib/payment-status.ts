@@ -23,7 +23,7 @@ export function getPaymentStatus(paid: boolean): PaymentStatus {
       cardClass: 'bg-emerald-50/30',
       avatarClass: 'bg-emerald-500/10 text-emerald-600',
       badgeVariant: 'secondary',
-      badgeClass: 'text-[10px] px-2 py-0',
+      badgeClass: 'text-[10px] px-2 py-0 bg-emerald-600 text-white hover:bg-emerald-600 border-transparent',
     }
   }
   return {

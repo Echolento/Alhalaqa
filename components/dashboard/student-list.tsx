@@ -182,7 +182,11 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               variant="destructive"
                               disabled={loading === student.id}
                               className="w-full sm:w-[120px] font-bold min-h-[44px]"
-                              onClick={(e) => e.stopPropagation()}
+                              // Row lives inside a Next Link: stopPropagation alone
+                              // doesn't stop the anchor's native navigation —
+                              // without preventDefault the browser follows the
+                              // link (full load to profile) under the dialog.
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
                             >
                               {loading === student.id ? (
                                 <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
