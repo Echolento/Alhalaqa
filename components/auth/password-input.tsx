@@ -14,6 +14,7 @@ export interface PasswordInputProps
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
     ({ className, showStrength, ...props }, ref) => {
         const [showPassword, setShowPassword] = React.useState(false)
+        const [focused, setFocused] = React.useState(false)
         const [text, setText] = React.useState(() =>
             typeof props.value === 'string' ? props.value : '',
         )
@@ -37,6 +38,16 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
             props.onChange?.(e)
         }
 
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+            setFocused(true)
+            props.onFocus?.(e)
+        }
+
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+            setFocused(false)
+            props.onBlur?.(e)
+        }
+
         return (
             <div className="relative space-y-2">
                 <div className="relative">
@@ -46,10 +57,12 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                         dir="ltr"
                         ref={ref}
                         {...props}
-                        // NOTE: onChange must come after the spread — otherwise a
-                        // parent onChange would overwrite handleChange and the
+                        // NOTE: handlers must come after the spread — otherwise a
+                        // parent handler would overwrite them and the
                         // strength meter would never update.
                         onChange={handleChange}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
                     />
                     <Lock className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Button
@@ -58,6 +71,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                         size="sm"
                         className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={togglePassword}
+                        onMouseDown={(e) => e.preventDefault()}
                         tabIndex={-1}
                     >
                         {showPassword ? (
@@ -105,7 +119,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                     </div>
                 )}
 
-                {showStrength && props.value && (
+                {showStrength && props.value && focused && (
                     <ul className="space-y-1 text-xs mt-2">
                         {requirements.map((req) => (
                             <li

@@ -92,6 +92,7 @@ describe('PasswordInput', () => {
 
   it('marks each requirement individually (abc: only lowercase met)', () => {
     render(<PasswordInput showStrength value="initial" />)
+    fireEvent.focus(getInput())
     fireEvent.change(getInput(), { target: { value: 'abc' } })
     const rowClass = (label: string) => screen.getByText(label).closest('li')?.className ?? ''
     expect(rowClass('8 أحرف على الأقل')).toMatch('text-red-500')
@@ -102,6 +103,7 @@ describe('PasswordInput', () => {
 
   it('flips each requirement green as it is met', () => {
     render(<PasswordInput showStrength value="initial" />)
+    fireEvent.focus(getInput())
     fireEvent.change(getInput(), { target: { value: 'Abcd1234' } })
     for (const label of ['8 أحرف على الأقل', 'حرف كبير (A-Z)', 'حرف صغير (a-z)', 'رقم (0-9)']) {
       const item = screen.getByText(label).closest('li')
@@ -113,12 +115,31 @@ describe('PasswordInput', () => {
     // Abcd1234 meets every server rule but earns no bonus points — the label
     // must still read strong whenever the whole checklist is green.
     render(<PasswordInput showStrength value="initial" />)
+    fireEvent.focus(getInput())
     fireEvent.change(getInput(), { target: { value: 'Abcd1234' } })
     expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
     for (const label of ['8 أحرف على الأقل', 'حرف كبير (A-Z)', 'حرف صغير (a-z)', 'رقم (0-9)']) {
       const item = screen.getByText(label).closest('li')
       expect(item?.className).toMatch('text-green-600')
     }
+  })
+
+  it('hides checklist on blur but keeps the meter when text remains', () => {
+    render(<PasswordInput showStrength value="initial" />)
+    fireEvent.focus(getInput())
+    fireEvent.change(getInput(), { target: { value: 'Abcd1234' } })
+    expect(screen.getByText('8 أحرف على الأقل')).toBeInTheDocument()
+    fireEvent.blur(getInput())
+    expect(screen.queryByText('8 أحرف على الأقل')).not.toBeInTheDocument()
+    expect(screen.getByTestId('password-strength-fill')).toBeInTheDocument()
+    expect(screen.getByTestId('password-strength-label')).toHaveTextContent('قوية')
+  })
+
+  it('re-shows checklist on re-focus', () => {
+    render(<PasswordInput showStrength value="Abcd1234" />)
+    expect(screen.queryByText('8 أحرف على الأقل')).not.toBeInTheDocument()
+    fireEvent.focus(getInput())
+    expect(screen.getByText('8 أحرف على الأقل')).toBeInTheDocument()
   })
 
   it('hides requirements when showStrength is false', () => {
