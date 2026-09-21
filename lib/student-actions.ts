@@ -1,8 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
 import { logActivity } from './log-activity'
+import { assertOwnsStudent, getOwnTeacherId } from './ownership'
 
 export async function getTeacherStudents() {
   const supabase = await createClient()
@@ -35,15 +37,16 @@ export async function addStudent(name: string, phone?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  let { data: teacher } = await supabase
+  let { data: teacher } = await service
     .from('teachers')
     .select('id, default_monthly_price')
     .eq('profile_id', user.id)
     .maybeSingle()
 
   if (!teacher) {
-    const { data: newTeacher, error: createError } = await supabase
+    const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
       .select('id, default_monthly_price')
@@ -53,7 +56,7 @@ export async function addStudent(name: string, phone?: string) {
     teacher = newTeacher
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from('students')
     .insert({
       teacher_id: teacher.id,
@@ -83,14 +86,19 @@ export async function updateStudent(studentId: string, name: string, phone?: str
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  const { data: old } = await supabase
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const { data: old } = await service
     .from('students')
     .select('name')
     .eq('id', studentId)
     .single()
 
-  const { error } = await supabase
+  const { error } = await service
     .from('students')
     .update({ name, phone: phone || null })
     .eq('id', studentId)
@@ -116,21 +124,29 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  let { data: teacher } = await supabase
-    .from('teachers')
-    .select('id, default_monthly_price')
-    .eq('profile_id', user.id)
-    .maybeSingle()
+  // Service client bypasses RLS: only ever use the caller's own teacher id.
+  const teacherId = await getOwnTeacherId(service, user.id)
+  let teacher: { id: string; default_monthly_price: unknown } | null = null
+
+  if (teacherId) {
+    const { data } = await service
+      .from('teachers')
+      .select('id, default_monthly_price')
+      .eq('id', teacherId)
+      .maybeSingle()
+    teacher = data as { id: string; default_monthly_price: unknown } | null
+  }
 
   if (!teacher) {
-    const { data: newTeacher, error: createError } = await supabase
+    const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
       .select('id, default_monthly_price')
       .single()
     if (createError || !newTeacher) return { error: 'Teacher not found' }
-    teacher = newTeacher
+    teacher = newTeacher as { id: string; default_monthly_price: unknown }
   }
 
   const inserts = students.map((s) => ({
@@ -141,7 +157,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     payment_day: 1,
   }))
 
-  const { error } = await supabase.from('students').insert(inserts)
+  const { error } = await service.from('students').insert(inserts)
   if (error) return { error: error.message }
 
   await logActivity({
@@ -159,21 +175,26 @@ export async function deleteStudent(studentId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  const { data: student } = await supabase
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const { data: student } = await service
     .from('students')
     .select('name')
     .eq('id', studentId)
     .single()
 
-  const { error } = await supabase
+  const { error } = await service
     .from('students')
     .delete()
     .eq('id', studentId)
 
   if (error) return { error: error.message }
 
-  await supabase
+  await service
     .from('student_payments')
     .delete()
     .eq('student_id', studentId)

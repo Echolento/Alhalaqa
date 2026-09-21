@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { sendDiscordWebhook } from './discord-webhook'
 import type { ActionType } from './types'
 
@@ -17,7 +18,8 @@ export async function logActivity(opts: LogActivityOptions) {
   if (!user) return
 
   try {
-    await supabase.from('activity_log').insert({
+    // Service write keyed by the session user (#25: no anon-key writes).
+    await createServiceClient().from('activity_log').insert({
       user_id: user.id,
       action_type: opts.actionType,
       entity_type: opts.entityType || null,

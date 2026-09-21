@@ -26,6 +26,28 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase),
 }))
 
+const mockService = {
+  from: vi.fn((table: string) => {
+    const b = createBuilder()
+    const row =
+      table === 'profiles'
+        ? { data: { role: 'teacher' } }
+        : { data: { default_monthly_price: 0 } }
+    b.eq = vi.fn().mockReturnValue({
+      ...b,
+      maybeSingle: vi.fn().mockResolvedValue(row),
+      single: vi.fn().mockResolvedValue(row),
+    })
+    b.update = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+    b.upsert = vi.fn().mockResolvedValue({ error: null })
+    return b
+  }),
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => mockService),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
 })

@@ -22,8 +22,18 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase),
 }))
 
+// Push writes go through the service client (#25); captures hook into it.
+const mockService = {
+  from: vi.fn(() => createBuilder()),
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => mockService),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
+  mockService.from.mockImplementation(() => createBuilder())
   mockSupabase.auth.getUser.mockResolvedValue({
     data: { user: { id: 'user-1' } },
   })
@@ -32,7 +42,7 @@ beforeEach(() => {
 describe('registerPushSubscription', () => {
   it('saves subscription to push_subscriptions table', async () => {
     let upsertPayload: any
-    mockSupabase.from.mockImplementation((_table?: string) => {
+    mockService.from.mockImplementation((_table?: string) => {
       const b = createBuilder()
       b.upsert = vi.fn().mockImplementation((data: any, _opts: any) => {
         if (_table === 'push_subscriptions') upsertPayload = data
@@ -68,7 +78,7 @@ describe('registerPushSubscription', () => {
 describe('unregisterPushSubscription', () => {
   it('deletes subscription for current user', async () => {
     let deletedProfileId = ''
-    mockSupabase.from.mockImplementation((_table?: string) => {
+    mockService.from.mockImplementation((_table?: string) => {
       const b = createBuilder()
       b.delete = vi.fn().mockReturnValue({
         ...b,

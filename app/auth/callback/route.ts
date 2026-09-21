@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { sanitizeNextPath } from '@/lib/auth-redirect'
 
 export async function GET(request: Request) {
@@ -31,17 +32,20 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/auth/error?reason=no_session`)
   }
 
-  const { data: profile } = await supabase
+  // Service writes scoped to the session user (#25: no anon-key writes).
+  const service = createServiceClient()
+
+  const { data: profile } = await service
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single()
 
   if (profile && (profile as { role: string }).role !== 'teacher') {
-    await supabase.from('profiles').update({ role: 'teacher' }).eq('id', user.id)
+    await service.from('profiles').update({ role: 'teacher' }).eq('id', user.id)
   }
 
-  await supabase
+  await service
     .from('teachers')
     .upsert({ profile_id: user.id }, { onConflict: 'profile_id' })
 
@@ -50,7 +54,7 @@ export async function GET(request: Request) {
   // this covers returning OAuth users and double-clicked confirm links.
   let dest = next
   if (next === '/welcome') {
-    const { data: teacher } = await supabase
+    const { data: teacher } = await service
       .from('teachers')
       .select('default_monthly_price')
       .eq('profile_id', user.id)

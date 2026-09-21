@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
@@ -130,6 +131,8 @@ export async function signIn(formData: FormData) {
 
   const user = data.user
   if (user) {
+    // Reads stay on the anon client (read-own RLS); the create goes through
+    // service so no anon-key write remains (#25).
     let { data: teacher } = await supabase
       .from('teachers')
       .select('default_monthly_price')
@@ -137,7 +140,7 @@ export async function signIn(formData: FormData) {
       .maybeSingle()
 
     if (!teacher) {
-      const { data: newTeacher, error: createError } = await supabase
+      const { data: newTeacher, error: createError } = await createServiceClient()
         .from('teachers')
         .insert({ profile_id: user.id })
         .select('default_monthly_price')
@@ -232,7 +235,8 @@ export async function updateUserProfile(formData: FormData) {
     return { error: 'يرجى إدخال رقم هاتف هاتف مصري صحيح (مثال: +2001012345678)' }
   }
 
-  const { error } = await supabase
+  // Service write scoped to the caller's own row (#25: no anon-key writes).
+  const { error } = await createServiceClient()
     .from('profiles')
     .update({
       phone: phone || null,
@@ -259,7 +263,7 @@ export async function updateTeacherSettings(formData: FormData) {
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
-  const { error } = await supabase
+  const { error } = await createServiceClient()
     .from('teachers')
     .upsert(
       {
@@ -293,7 +297,7 @@ export async function completeOnboarding(formData: FormData) {
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
-  const { error } = await supabase
+  const { error } = await createServiceClient()
     .from('teachers')
     .upsert(
       {

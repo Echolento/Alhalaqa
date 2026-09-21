@@ -31,6 +31,30 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase),
 }))
 
+// Service-role writes (#25) resolve successfully by default.
+const mockService = {
+  from: vi.fn(() => {
+    const b = createBuilder()
+    b.update = vi.fn().mockReturnValue({
+      ...b,
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    })
+    b.upsert = vi.fn().mockResolvedValue({ error: null })
+    b.insert = vi.fn().mockReturnValue({
+      ...b,
+      select: vi.fn().mockReturnValue({
+        ...b,
+        single: vi.fn().mockResolvedValue({ data: { default_monthly_price: 0 } }),
+      }),
+    })
+    return b
+  }),
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => mockService),
+}))
+
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }))

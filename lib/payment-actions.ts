@@ -1,9 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
 import { getCurrentMonthKey, getBillingMonthKey } from './billing-period'
 import { logActivity } from './log-activity'
+import { assertOwnsStudent } from './ownership'
 
 export async function getTeacherPayments(month?: string) {
   const supabase = await createClient()
@@ -54,7 +56,9 @@ export async function getTeacherPayments(month?: string) {
   const studentsNeedingPaymentRecord = normalizedStudents.filter(s => !paymentSet.has(`${s.id}_${s.currentMonthKey}`))
 
   if (studentsNeedingPaymentRecord.length > 0) {
-    const { error: insertError } = await supabase
+    // Backfill is a write: service client (rows are derived from the
+    // caller's own students, verified above via their teacher id).
+    const { error: insertError } = await createServiceClient()
       .from('student_payments')
       .insert(studentsNeedingPaymentRecord.map(s => ({
         student_id: s.id,
@@ -78,8 +82,15 @@ export async function getTeacherPayments(month?: string) {
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  const { data: student } = await supabase
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const { data: student } = await service
     .from('students')
     .select('name, monthly_price')
     .eq('id', studentId)
@@ -87,7 +98,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
 
   const oldPrice = student?.monthly_price || 0
 
-  const { error: studentError } = await supabase
+  const { error: studentError } = await service
     .from('students')
     .update({ monthly_price: price })
     .eq('id', studentId)
@@ -95,7 +106,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
   if (studentError) return { error: studentError.message }
 
   if (month) {
-    const { data: existing } = await supabase
+    const { data: existing } = await service
       .from('student_payments')
       .select('id, paid')
       .eq('student_id', studentId)
@@ -103,7 +114,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
       .maybeSingle()
 
     if (existing) {
-      await supabase
+      await service
         .from('student_payments')
         .update({
           amount_paid: existing.paid ? price : 0,
@@ -131,9 +142,17 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
 
 export async function toggleStudentPayment(studentId: string, month?: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
+
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
   let monthKey = month
   if (!monthKey) {
-    const { data: student } = await supabase
+    const { data: student } = await service
       .from('students')
       .select('payment_day, name')
       .eq('id', studentId)
@@ -143,14 +162,14 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     monthKey = getBillingMonthKey(new Date(), day)
   }
 
-  const { data: existing } = await supabase
+  const { data: existing } = await service
     .from('student_payments')
     .select('id, paid')
     .eq('student_id', studentId)
     .eq('month', monthKey)
     .single()
 
-  const { data: student } = await supabase
+  const { data: student } = await service
     .from('students')
     .select('name, monthly_price, teacher:teachers(default_monthly_price)')
     .eq('id', studentId)
@@ -164,7 +183,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
   if (!existing) {
     newPaid = true
-    const { error } = await supabase
+    const { error } = await service
       .from('student_payments')
       .insert({
         student_id: studentId,
@@ -176,7 +195,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     if (error) return { error: error.message }
   } else {
     newPaid = !existing.paid
-    const { error } = await supabase
+    const { error } = await service
       .from('student_payments')
       .update({
         paid: newPaid,
@@ -208,8 +227,15 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
 export async function updateStudentPaymentDay(studentId: string, paymentDay: number) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  const { data: student } = await supabase
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const { data: student } = await service
     .from('students')
     .select('name, payment_day')
     .eq('id', studentId)
@@ -217,7 +243,7 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
 
   const oldDay = student?.payment_day || 1
 
-  const { error } = await supabase
+  const { error } = await service
     .from('students')
     .update({ payment_day: paymentDay })
     .eq('id', studentId)

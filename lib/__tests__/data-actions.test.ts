@@ -26,6 +26,62 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase),
 }))
 
+// Service-role writes (#25) resolve through table-routed fixtures: the
+// caller always owns teacher-1, so ownership checks pass by default.
+// Restored in beforeEach because per-test overrides would otherwise leak.
+function serviceRouter(table: string) {
+  const b = createBuilder()
+  if (table === 'teachers') {
+    const row = { data: { id: teacherId, default_monthly_price: 150 } }
+    b.eq = vi.fn().mockReturnValue({ ...b, maybeSingle: vi.fn().mockResolvedValue(row), single: vi.fn().mockResolvedValue(row) })
+    b.insert = vi.fn().mockReturnValue({
+      ...b,
+      select: vi.fn().mockReturnValue({
+        ...b,
+        single: vi.fn().mockResolvedValue({ data: { id: teacherId, default_monthly_price: 150 } }),
+      }),
+    })
+  } else if (table === 'students') {
+    const owned = { teacher_id: teacherId, name: 'S', monthly_price: 100, payment_day: 1 }
+    b.eq = vi.fn().mockReturnValue({
+      ...b,
+      maybeSingle: vi.fn().mockResolvedValue({ data: owned }),
+      single: vi.fn().mockResolvedValue({ data: owned }),
+    })
+    b.insert = vi.fn().mockImplementation((data: any) => ({
+      ...b,
+      select: vi.fn().mockReturnValue({
+        ...b,
+        single: vi.fn().mockResolvedValue({
+          data: { ...(Array.isArray(data) ? data[0] : data), id: studentId },
+          error: null,
+        }),
+      }),
+    }))
+    b.update = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+    b.delete = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+  } else {
+    b.update = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+    b.upsert = vi.fn().mockResolvedValue({ error: null })
+    b.insert = vi.fn().mockResolvedValue({ error: null })
+    b.delete = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+    b.eq = vi.fn().mockReturnValue({
+      ...b,
+      maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+      single: vi.fn().mockResolvedValue({ data: null }),
+    })
+  }
+  return b
+}
+
+const mockService = {
+  from: vi.fn((table: string) => serviceRouter(table)),
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => mockService),
+}))
+
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
@@ -35,6 +91,7 @@ const studentId = 'student-1'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockService.from.mockImplementation((table: string) => serviceRouter(table))
   mockSupabase.auth.getUser.mockResolvedValue({
     data: { user: { id: 'user-1' } },
   })
@@ -112,7 +169,7 @@ describe('addStudent', () => {
 
   it('defaults payment_day to 1', async () => {
     let capturedInsert: any
-    mockSupabase.from.mockImplementation((_tableName?: string) => {
+    mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
         ...b,
@@ -164,6 +221,46 @@ describe('updateStudent', () => {
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
     const { updateStudent } = await import('@/lib/data-actions')
     expect((await updateStudent(studentId, 'Name')).error).toBe('Unauthorized')
+  })
+})
+
+describe('cross-teacher protection', () => {
+  function foreignStudentService() {
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      if (table === 'students') {
+        b.eq = vi.fn().mockReturnValue({
+          ...b,
+          maybeSingle: vi.fn().mockResolvedValue({ data: { teacher_id: 'other-teacher' } }),
+          single: vi.fn().mockResolvedValue({ data: { teacher_id: 'other-teacher' } }),
+        })
+      }
+      return b
+    })
+  }
+
+  it('updateStudent denies a student owned by another teacher', async () => {
+    foreignStudentService()
+    const { updateStudent } = await import('@/lib/data-actions')
+    expect((await updateStudent(studentId, 'X')).error).toBe('الطالب غير موجود')
+  })
+
+  it('deleteStudent denies a student owned by another teacher', async () => {
+    foreignStudentService()
+    const { deleteStudent } = await import('@/lib/data-actions')
+    expect((await deleteStudent(studentId)).error).toBe('الطالب غير موجود')
+  })
+
+  it('toggleStudentPayment denies a student owned by another teacher', async () => {
+    foreignStudentService()
+    const { toggleStudentPayment } = await import('@/lib/data-actions')
+    expect((await toggleStudentPayment(studentId, '2024-06-01')).error).toBe('الطالب غير موجود')
+  })
+
+  it('updateStudentMonthlyPrice denies a student owned by another teacher', async () => {
+    foreignStudentService()
+    const { updateStudentMonthlyPrice } = await import('@/lib/data-actions')
+    expect((await updateStudentMonthlyPrice(studentId, 250)).error).toBe('الطالب غير موجود')
   })
 })
 
@@ -320,7 +417,7 @@ describe('addMultipleStudents', () => {
 
   it('defaults payment_day to 1 for all students', async () => {
     let capturedPayload: any
-    mockSupabase.from.mockImplementation((_tableName?: string) => {
+    mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
         ...b,

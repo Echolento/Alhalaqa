@@ -30,6 +30,16 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => mockSupabase),
 }))
 
+const mockService = {
+  from: vi.fn((table: string) =>
+    table === 'profiles' ? chain(profileResult) : chain(teacherResult),
+  ),
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => mockService),
+}))
+
 function locationOf(res: Response): string {
   return res.headers.get('Location') ?? ''
 }
@@ -75,7 +85,7 @@ describe('GET /auth/callback', () => {
     const { GET } = await import('@/app/auth/callback/route')
     const res = await GET(new Request('https://x.test/auth/callback?code=ok&next=/welcome'))
     expect(locationOf(res)).toBe('https://x.test/welcome')
-    expect(mockSupabase.from).toHaveBeenCalledWith('teachers')
+    expect(mockService.from).toHaveBeenCalledWith('teachers')
   })
 
   it('sends already-onboarded users to dashboard on default welcome', async () => {

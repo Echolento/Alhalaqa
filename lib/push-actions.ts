@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function registerPushSubscription(subscription: {
   endpoint: string
@@ -9,8 +10,10 @@ export async function registerPushSubscription(subscription: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  // Keyed by the caller's own id — service write, no anon writes (#25).
+  const service = createServiceClient()
 
-  const { error } = await supabase
+  const { error } = await service
     .from('push_subscriptions')
     .upsert(
       {
@@ -30,8 +33,9 @@ export async function unregisterPushSubscription() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
 
-  const { error } = await supabase
+  const { error } = await service
     .from('push_subscriptions')
     .delete()
     .eq('profile_id', user.id)
