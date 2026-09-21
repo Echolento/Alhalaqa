@@ -40,16 +40,13 @@ export async function getStudentProfile(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, teacher_id, teachers(currency, default_monthly_price)')
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return null
 
-  const { data: teacher } = await service
-    .from('teachers')
-    .select('currency, default_monthly_price')
-    .eq('id', (student as any).teacher_id)
-    .maybeSingle()
+  const s = student as any
+  const teacher = Array.isArray(s.teachers) ? s.teachers[0] : s.teachers
 
   const payments = await getStudentPaymentHistory(studentId)
 
@@ -59,10 +56,10 @@ export async function getStudentProfile(studentId: string) {
       full_name: (student as any).name || 'طالب',
       name: (student as any).name || 'طالب',
       phone: (student as any).phone,
-      monthly_price: (student as any).monthly_price || (teacher as any)?.default_monthly_price || 0,
+      monthly_price: (student as any).monthly_price || teacher?.default_monthly_price || 0,
       payment_day: (student as any).payment_day || 1,
     },
     payments,
-    currency: (teacher as any)?.currency || 'SAR',
+    currency: teacher?.currency || 'SAR',
   }
 }
