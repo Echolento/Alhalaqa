@@ -17,29 +17,44 @@ const students = [
 ]
 const payments = [{ student_id: 's1', paid: true, amount_paid: 100 }]
 
+const props = {
+  students,
+  payments,
+  month: '2025-06',
+  currency: 'SAR',
+  initialCollected: 100,
+  initialExpected: 300,
+}
+
 describe('StudentList (merged home)', () => {
   it('renders search + add entry points', () => {
-    render(<StudentList students={students} payments={payments} month="2025-06" currency="SAR" />)
+    render(<StudentList {...props} />)
     expect(screen.getByPlaceholderText('البحث عن طالب...')).toBeInTheDocument()
     expect(screen.getAllByText('إضافة طالب').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('renders local totals', () => {
+    render(<StudentList {...props} />)
+    expect(screen.getByText('المبالغ المستلمة')).toBeInTheDocument()
+    expect(screen.getByText('المبالغ المتبقية')).toBeInTheDocument()
+  })
+
   it('filters rows by search', () => {
-    render(<StudentList students={students} payments={payments} month="2025-06" currency="SAR" />)
+    render(<StudentList {...props} />)
     fireEvent.change(screen.getByPlaceholderText('البحث عن طالب...'), { target: { value: 'محمد' } })
     expect(screen.queryByText('أحمد علي')).not.toBeInTheDocument()
     expect(screen.getByText('محمد حسن')).toBeInTheDocument()
   })
 
   it('each row links to profile', () => {
-    const { container } = render(<StudentList students={students} payments={payments} month="2025-06" currency="SAR" />)
+    const { container } = render(<StudentList {...props} />)
     const link = container.querySelector('a[href="/dashboard/students/s1"]')
     expect(link).toBeInTheDocument()
   })
 
   it('row shows price + pay-day readouts and shared green/red status', () => {
-    const { container } = render(<StudentList students={students} payments={payments} month="2025-06" currency="SAR" />)
-    expect(screen.getByText('100 ر.س')).toBeInTheDocument()
+    const { container } = render(<StudentList {...props} />)
+    expect(screen.getAllByText('100 ر.س').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/يوم 5/)).toBeInTheDocument()
     expect(screen.getAllByText('مدفوع').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('لم يدفع').length).toBeGreaterThanOrEqual(1)
@@ -48,8 +63,18 @@ describe('StudentList (merged home)', () => {
   })
 
   it('inline toggle has 44px target', () => {
-    render(<StudentList students={students} payments={payments} month="2025-06" currency="SAR" />)
+    render(<StudentList {...props} />)
     const btn = screen.getByText('تحديد كمدفوع')
     expect(btn.className).toContain('min-h-[44px]')
+  })
+
+  it('toggle updates totals locally with no second fetch', async () => {
+    render(<StudentList {...props} />)
+    // pending 200 appears twice (summary card + s2 row readout)
+    expect(screen.getAllByText('200 ر.س')).toHaveLength(2)
+    fireEvent.click(screen.getByText('تحديد كمدفوع'))
+    // collected 100 -> 300, pending 200 -> 0 — all local, no refresh
+    expect(await screen.findByText('300 ر.س')).toBeInTheDocument()
+    expect(await screen.findByText('0 ر.س')).toBeInTheDocument()
   })
 })

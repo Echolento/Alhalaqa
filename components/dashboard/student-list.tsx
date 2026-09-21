@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, User, Search, Users } from 'lucide-react'
+import { Check, User, Search, Users, DollarSign, Clock } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -23,7 +23,6 @@ import { toggleStudentPayment } from '@/lib/payment-actions'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
 import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
-import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 
 interface StudentListProps {
@@ -31,20 +30,23 @@ interface StudentListProps {
   payments: any[]
   month: string
   currency: string
+  initialCollected: number
+  initialExpected: number
 }
 
-export function StudentList({ students, payments, month, currency }: StudentListProps) {
+export function StudentList({ students, payments, month, currency, initialCollected, initialExpected }: StudentListProps) {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [undoTarget, setUndoTarget] = useState<string | null>(null)
   const [localPayments, setLocalPayments] = useState(payments)
-  const router = useRouter()
+  const [collected, setCollected] = useState(initialCollected)
   const { toast } = useToast()
   const currencySymbol = getCurrencySymbol(currency)
 
   useEffect(() => {
     setLocalPayments(payments)
-  }, [payments])
+    setCollected(initialCollected)
+  }, [payments, initialCollected])
 
   const filtered = students.filter((s) =>
     (s.full_name || s.name || '').toLowerCase().includes(search.toLowerCase()) || !search
@@ -57,23 +59,27 @@ export function StudentList({ students, payments, month, currency }: StudentList
     const payment = localPayments.find((p) => p.student_id === studentId)
     const newPaid = !payment?.paid
     const now = new Date().toISOString()
+    const price = Number(students.find((s) => s.id === studentId)?.monthly_price) || 0
     setLocalPayments((prev) =>
       prev.some((p) => p.student_id === studentId)
         ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: newPaid, paid_at: newPaid ? now : null } : p))
         : [...prev, { student_id: studentId, month, paid: newPaid, paid_at: newPaid ? now : null }]
     )
+    // Totals update locally — no second server trip (was router.refresh).
+    setCollected((c) => c + (newPaid ? price : -price))
     const hadEntry = !!payment
     const prevPaidAt = payment?.paid_at ?? null
-    const revert = () =>
+    const revert = () => {
+      setCollected((c) => c + (newPaid ? -price : price))
       setLocalPayments((prev) =>
         hadEntry
           ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: !newPaid, paid_at: !newPaid ? prevPaidAt : null } : p))
           : prev.filter((p) => p.student_id !== studentId)
       )
+    }
     try {
       const result = await toggleStudentPayment(studentId, month)
       if (result.success) {
-        router.refresh()
         toast({ title: '✓ تم التحديث', description: 'تم تغيير حالة الدفع بنجاح' })
       } else {
         revert()
@@ -89,6 +95,32 @@ export function StudentList({ students, payments, month, currency }: StudentList
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-6">
+        <Card className="border shadow-sm">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">المبالغ المستلمة</p>
+            </div>
+            <h2 className="text-2xl font-bold">{collected} {currencySymbol}</h2>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-sm">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                <Clock className="w-5 h-5" />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">المبالغ المتبقية</p>
+            </div>
+            <h2 className="text-2xl font-bold">{Math.max(0, initialExpected - collected)} {currencySymbol}</h2>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
