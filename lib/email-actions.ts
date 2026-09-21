@@ -66,8 +66,8 @@ export async function sendOverdueEmail(params: {
           </div>
 
           <div style="margin-top: 24px; text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/payments" style="display: inline-block; background: ${primary}; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
-              عرض صفحة المدفوعات
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard" style="display: inline-block; background: ${primary}; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+              عرض قائمة الطلاب
             </a>
           </div>
         </div>

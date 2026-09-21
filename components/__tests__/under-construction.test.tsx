@@ -17,6 +17,6 @@ describe('UnderConstruction', () => {
 
   it('renders back to dashboard link', () => {
     render(<UnderConstruction />)
-    expect(screen.getByText('العودة للمدفوعات')).toBeInTheDocument()
+    expect(screen.getByText('العودة للطلاب')).toBeInTheDocument()
   })
 })

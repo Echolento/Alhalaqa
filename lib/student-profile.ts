@@ -1,0 +1,68 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { assertOwnsStudent } from './ownership'
+
+export interface StudentPaymentRecord {
+  student_id: string
+  month: string
+  paid: boolean
+  amount_paid: number | null
+  paid_at: string | null
+}
+
+/**
+ * Payment-history reader with stable interface.
+ * Future ledger can implement same shape without UI churn.
+ */
+export async function getStudentPaymentHistory(studentId: string): Promise<StudentPaymentRecord[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const service = createServiceClient()
+  if (!(await assertOwnsStudent(service, user.id, studentId))) return []
+  const { data } = await service
+    .from('student_payments')
+    .select('student_id, month, paid, amount_paid, paid_at')
+    .eq('student_id', studentId)
+    .order('month', { ascending: false })
+    .limit(24)
+  return (data || []) as StudentPaymentRecord[]
+}
+
+export async function getStudentProfile(studentId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const service = createServiceClient()
+  if (!(await assertOwnsStudent(service, user.id, studentId))) return null
+
+  const { data: student } = await service
+    .from('students')
+    .select('id, name, phone, monthly_price, payment_day, teacher_id')
+    .eq('id', studentId)
+    .maybeSingle()
+  if (!student) return null
+
+  const { data: teacher } = await service
+    .from('teachers')
+    .select('currency, default_monthly_price')
+    .eq('id', (student as any).teacher_id)
+    .maybeSingle()
+
+  const payments = await getStudentPaymentHistory(studentId)
+
+  return {
+    student: {
+      id: (student as any).id,
+      full_name: (student as any).name || 'طالب',
+      name: (student as any).name || 'طالب',
+      phone: (student as any).phone,
+      monthly_price: (student as any).monthly_price || (teacher as any)?.default_monthly_price || 0,
+      payment_day: (student as any).payment_day || 1,
+    },
+    payments,
+    currency: (teacher as any)?.currency || 'SAR',
+  }
+}

@@ -25,7 +25,7 @@ export function UnderConstruction({
                 </p>
             </div>
             <Button asChild variant="outline">
-                <Link href="/dashboard/payments">العودة للمدفوعات</Link>
+                <Link href="/dashboard">العودة للطلاب</Link>
             </Button>
         </div>
     )

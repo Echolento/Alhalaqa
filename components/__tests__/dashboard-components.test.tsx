@@ -23,7 +23,6 @@ describe('DashboardSidebar', () => {
 
   it('renders all nav links', () => {
     render(<DashboardSidebar profile={mockProfile} />)
-    expect(screen.getByText('المدفوعات')).toBeInTheDocument()
     expect(screen.getByText('الطلاب')).toBeInTheDocument()
     expect(screen.getByText('الإعدادات')).toBeInTheDocument()
   })

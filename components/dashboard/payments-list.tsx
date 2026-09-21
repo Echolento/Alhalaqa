@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/payment-actions'
+import { getPaymentStatus } from '@/lib/payment-status'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -159,31 +160,28 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
         students.map((student) => {
           const payment = localPayments.find((p) => p.student_id === student.id)
           const isPaid = payment?.paid || false
+          const status = getPaymentStatus(isPaid)
           const isEditing = editingPrice === student.id
 
           return (
             <Card 
               key={student.id} 
-              className={`overflow-hidden transition-all duration-300 border-none shadow-md hover:shadow-lg ${
-                isPaid ? 'bg-emerald-50/30' : 'bg-red-50/30 border-r-4 border-r-red-500'
-              }`}
+              className={`overflow-hidden transition-all duration-300 border-none shadow-md hover:shadow-lg ${status.cardClass}`}
             >
               <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="flex items-center gap-3 w-full">
-                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                    isPaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
-                  }`}>
-                    {isPaid ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <User className="w-5 h-5 md:w-6 md:h-6" />}
+                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0 ${status.avatarClass}`}>
+                    {status.icon === 'check' ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <User className="w-5 h-5 md:w-6 md:h-6" />}
                   </div>
                   
                   <div className="space-y-1 flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="font-bold text-sm md:text-lg truncate">{student.full_name}</h3>
                       <Badge 
-                        variant={isPaid ? 'secondary' : 'destructive'} 
-                        className={`text-[10px] px-2 py-0 ${!isPaid ? 'bg-red-600 animate-pulse' : ''}`}
+                        variant={status.badgeVariant} 
+                        className={status.badgeClass}
                       >
-                        {isPaid ? 'مدفوع' : 'لم يدفع'}
+                        {status.label}
                       </Badge>
                     </div>
 

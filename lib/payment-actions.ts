@@ -137,6 +137,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
 
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
   return { success: true }
 }
 
@@ -262,5 +263,7 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
   })
 
   revalidatePath('/dashboard/payments')
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
   return { success: true }
 }

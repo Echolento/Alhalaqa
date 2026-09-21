@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
 import {
-  Wallet,
   Users,
   Settings,
   MessageCircle,
@@ -17,8 +16,7 @@ interface SidebarProps {
 }
 
 const teacherLinks = [
-  { href: '/dashboard/payments', label: 'المدفوعات', icon: Wallet },
-  { href: '/dashboard/students', label: 'الطلاب', icon: Users },
+  { href: '/dashboard', label: 'الطلاب', icon: Users },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ]
 
@@ -45,7 +43,7 @@ export function DashboardSidebar({ profile }: SidebarProps) {
 
       <nav className="flex-1 p-4 space-y-1">
         {links.map((link) => {
-          const isActive = pathname.startsWith(link.href)
+          const isActive = link.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(link.href)
 
           return (
             <Link

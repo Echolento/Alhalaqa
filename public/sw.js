@@ -5,7 +5,7 @@ self.addEventListener('push', (event) => {
     const data = event.data.json()
     const title = data.title || 'Payment Reminder'
     const body = data.body || ''
-    const url = data.url || '/dashboard/payments'
+    const url = data.url || '/dashboard'
 
     event.waitUntil(
       self.registration.showNotification(title, {
@@ -22,7 +22,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/dashboard/payments'
+  const url = event.notification.data?.url || '/dashboard'
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
