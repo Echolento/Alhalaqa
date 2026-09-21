@@ -68,6 +68,13 @@ describe('StudentList (merged home)', () => {
     expect(btn.className).toContain('min-h-[44px]')
   })
 
+  it('undo button opens confirm dialog instead of navigating', () => {
+    render(<StudentList {...props} />)
+    fireEvent.click(screen.getByText('تراجع'))
+    expect(screen.getByText('تراجع عن الدفع')).toBeInTheDocument()
+    expect(screen.getByText('نعم، تراجع')).toBeInTheDocument()
+  })
+
   it('toggle updates totals locally with no second fetch', async () => {
     render(<StudentList {...props} />)
     // pending 200 appears twice (summary card + s2 row readout)

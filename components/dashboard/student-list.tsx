@@ -154,10 +154,9 @@ export function StudentList({ students, payments, month, currency, initialCollec
             const isPaid = payment?.paid || false
             const status = getPaymentStatus(isPaid)
             return (
-              <Link key={student.id} href={`/dashboard/students/${student.id}`} className="block">
-                <Card className={`overflow-hidden transition-all duration-300 border-none shadow-md hover:shadow-lg ${status.cardClass}`}>
-                  <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 w-full">
+              <Card key={student.id} className={`overflow-hidden transition-all duration-300 border-none shadow-md hover:shadow-lg ${status.cardClass}`}>
+                <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 w-full min-w-0">
                       <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0 ${status.avatarClass}`}>
                         {status.icon === 'check' ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <User className="w-5 h-5 md:w-6 md:h-6" />}
                       </div>
@@ -173,8 +172,8 @@ export function StudentList({ students, payments, month, currency, initialCollec
                           <span>يوم {student.payment_day || 1}</span>
                         </div>
                       </div>
-                    </div>
-                    <div className="w-full sm:w-auto" onClick={(e) => e.preventDefault()}>
+                    </Link>
+                    <div className="w-full sm:w-auto">
                       {isPaid ? (
                         <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                           <AlertDialogTrigger asChild>
@@ -182,18 +181,13 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               variant="destructive"
                               disabled={loading === student.id}
                               className="w-full sm:w-[120px] font-bold min-h-[44px]"
-                              // Row lives inside a Next Link: stopPropagation alone
-                              // doesn't stop the anchor's native navigation —
-                              // without preventDefault the browser follows the
-                              // link (full load to profile) under the dialog.
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
                             >
                               {loading === student.id ? (
                                 <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                               ) : 'تراجع'}
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogContent>
                             <AlertDialogHeader>
                               <div className="mx-auto sm:mx-0 w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mb-2">
                                 <AlertTriangle className="w-6 h-6 text-destructive" />
@@ -229,7 +223,6 @@ export function StudentList({ students, payments, month, currency, initialCollec
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
             )
           })}
         </div>
