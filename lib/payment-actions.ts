@@ -71,6 +71,11 @@ export async function getTeacherPayments(month?: string) {
     }
   }
 
+  // No backfill needed (common case): skip the second fetch entirely.
+  if (studentsNeedingPaymentRecord.length === 0) {
+    return { students: normalizedStudents, payments: existingPayments || [], currency: teacher.currency }
+  }
+
   const { data: finalPayments } = await supabase
     .from('student_payments')
     .select('*')
@@ -133,7 +138,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
       old_price: oldPrice,
       new_price: price,
     },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
@@ -220,7 +225,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       new_status: newPaid ? 'paid' : 'unpaid',
       amount: newPaid ? effectivePrice : 0,
     },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
@@ -262,7 +267,7 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
       old_day: oldDay,
       new_day: paymentDay,
     },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')

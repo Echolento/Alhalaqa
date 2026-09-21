@@ -75,7 +75,7 @@ export async function addStudent(name: string, phone?: string) {
     entityType: 'student',
     entityId: data?.id,
     details: { student_name: name },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -113,7 +113,7 @@ export async function updateStudent(studentId: string, name: string, phone?: str
       student_name: name,
       old_name: old?.name,
     },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -164,7 +164,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     actionType: 'student_bulk_add',
     entityType: 'student',
     details: { count: students.length },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -204,7 +204,7 @@ export async function deleteStudent(studentId: string) {
     entityType: 'student',
     entityId: studentId,
     details: { student_name: student?.name },
-  })
+  }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')

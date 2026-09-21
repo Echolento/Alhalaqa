@@ -12,15 +12,19 @@ interface LogActivityOptions {
   details?: Record<string, unknown>
 }
 
-export async function logActivity(opts: LogActivityOptions) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+export async function logActivity(opts: LogActivityOptions, knownUserId?: string) {
+  let userId = knownUserId
+  if (!userId) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    userId = user.id
+  }
 
   try {
     // Service write keyed by the session user (#25: no anon-key writes).
     await createServiceClient().from('activity_log').insert({
-      user_id: user.id,
+      user_id: userId,
       action_type: opts.actionType,
       entity_type: opts.entityType || null,
       entity_id: opts.entityId || null,
@@ -30,15 +34,20 @@ export async function logActivity(opts: LogActivityOptions) {
     // DB insert is best-effort — never block the action or the Discord webhook
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .single()
+  // Display name + webhook float outside the action's critical path.
+  // (Regression: awaiting these added seconds to every pay toggle / add.)
+  void (async () => {
+    try {
+      const supabase = await createClient()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single()
 
-  const teacherName = profile?.full_name || 'مستخدم'
+      const teacherName = profile?.full_name || 'مستخدم'
 
-  const descriptionMap: Record<string, (d: Record<string, unknown>) => string> = {
+      const descriptionMap: Record<string, (d: Record<string, unknown>) => string> = {
     payment_toggle: d =>
       `${d.student_name || 'طالب'}: ${d.new_status === 'paid' ? '✅ مدفوع' : '❌ غير مدفوع'} — ${d.month || ''}`,
     student_add: d => `➕ طالب جديد: ${d.student_name || ''}`,
@@ -64,6 +73,9 @@ export async function logActivity(opts: LogActivityOptions) {
   }
 
   // Webhook is fire-and-forget: never block the action waiting on Discord.
-  // (Regression: awaiting this added seconds to every pay toggle / add.)
-  sendDiscordWebhook(opts.actionType, teacherName, desc, fields).catch(() => {})
+  await sendDiscordWebhook(opts.actionType, teacherName, desc, fields)
+  } catch {
+    // Floating task must never reject.
+  }
+})()
 }
