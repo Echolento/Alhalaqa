@@ -163,18 +163,20 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     monthKey = getBillingMonthKey(new Date(), day)
   }
 
-  const { data: existing } = await service
-    .from('student_payments')
-    .select('id, paid')
-    .eq('student_id', studentId)
-    .eq('month', monthKey)
-    .single()
-
-  const { data: student } = await service
-    .from('students')
-    .select('name, monthly_price, teacher:teachers(default_monthly_price)')
-    .eq('id', studentId)
-    .maybeSingle()
+  // Independent reads: run together, not one-after-another (toggle latency).
+  const [{ data: existing }, { data: student }] = await Promise.all([
+    service
+      .from('student_payments')
+      .select('id, paid')
+      .eq('student_id', studentId)
+      .eq('month', monthKey)
+      .single(),
+    service
+      .from('students')
+      .select('name, monthly_price, teacher:teachers(default_monthly_price)')
+      .eq('id', studentId)
+      .maybeSingle(),
+  ])
 
   const s = student as any
   const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher

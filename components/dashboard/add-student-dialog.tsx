@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Plus, Contact } from 'lucide-react'
+import { Plus, Contact, ListPlus } from 'lucide-react'
 import { addStudent, addMultipleStudents } from '@/lib/student-actions'
 import { useToast } from '@/components/ui/use-toast'
 import { PhoneInput } from '@/components/auth/phone-input'
@@ -21,9 +22,23 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { isContactPickerAvailable, pickContacts, findDuplicates } from '@/lib/contacts'
+import { useRouter } from 'next/navigation'
 
 interface AddStudentDialogProps {
   students: { name?: string | null; full_name?: string | null; phone?: string | null }[]
+}
+
+export function parseBulkStudents(text: string): { name: string; phone?: string }[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, ...rest] = line.split(',')
+      const phone = rest.join(',').trim()
+      return phone ? { name: name.trim(), phone } : { name: name.trim() }
+    })
+    .filter((s) => s.name.length > 0)
 }
 
 export function AddStudentDialog({ students }: AddStudentDialogProps) {
@@ -31,6 +46,8 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
   const [loading, setLoading] = useState(false)
   const [phoneValue, setPhoneValue] = useState('')
   const [importMode, setImportMode] = useState(false)
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkText, setBulkText] = useState('')
   const [importItems, setImportItems] = useState<{
     id: string
     name: string
@@ -42,6 +59,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
   const [importLoading, setImportLoading] = useState(false)
   const contactPickerAvailable = typeof navigator !== 'undefined' && isContactPickerAvailable()
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleAddStudent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -55,7 +73,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       toast({ title: 'تمت الإضافة', description: `تم إضافة ${name}` })
       setOpen(false)
       setPhoneValue('')
-      window.location.reload()
+      router.refresh()
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
@@ -82,8 +100,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
     }
   }
 
-  const handleImportSubmit = async () => {
-    const selected = importItems.filter((i) => i.checked && !i.nameMissing)
+  const handleImportSubmit = async () => {    const selected = importItems.filter((i) => i.checked && !i.nameMissing)
     if (!selected.length) {
       toast({ variant: 'destructive', title: 'خطأ', description: 'لم يتم اختيار أي طالب صالح' })
       return
@@ -97,7 +114,28 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       setOpen(false)
       setImportMode(false)
       setImportItems([])
-      window.location.reload()
+      router.refresh()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
+    }
+    setImportLoading(false)
+  }
+
+  const bulkStudents = parseBulkStudents(bulkText)
+
+  const handleBulkSubmit = async () => {
+    if (!bulkStudents.length) {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'اكتب اسم طالب واحد على الأقل' })
+      return
+    }
+    setImportLoading(true)
+    const result = await addMultipleStudents(bulkStudents)
+    if (result.success) {
+      toast({ title: 'تمت الإضافة', description: `تم إضافة ${bulkStudents.length} طالب` })
+      setOpen(false)
+      setBulkMode(false)
+      setBulkText('')
+      router.refresh()
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
@@ -109,7 +147,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       open={open}
       onOpenChange={(o) => {
         setOpen(o)
-        if (o) { setPhoneValue(''); setImportMode(false); setImportItems([]) }
+        if (o) { setPhoneValue(''); setImportMode(false); setImportItems([]); setBulkMode(false); setBulkText('') }
       }}
     >
       <DialogTrigger asChild>
@@ -118,8 +156,35 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
           إضافة طالب
         </Button>
       </DialogTrigger>
-      <DialogContent className={importMode ? 'max-w-lg' : ''} onOpenAutoFocus={(e) => e.preventDefault()}>
-        {importMode ? (
+      <DialogContent className={importMode || bulkMode ? 'max-w-lg' : ''} onOpenAutoFocus={(e) => e.preventDefault()}>
+        {bulkMode ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>إضافة مجموعة</DialogTitle>
+              <DialogDescription>اسم كل طالب في سطر. للهاتف: الاسم، الرقم</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={'اسم كل طالب في سطر\nمثال:\nأحمد علي\nمحمد حسن, +201234567890'}
+                className="min-h-[160px] text-sm"
+                dir="auto"
+              />
+              {bulkStudents.length > 0 && (
+                <p className="text-xs text-muted-foreground">سيتم إضافة {bulkStudents.length} طالب</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBulkMode(false)}>
+                رجوع
+              </Button>
+              <Button onClick={handleBulkSubmit} disabled={importLoading || bulkStudents.length === 0} className="min-h-[44px]">
+                {importLoading ? 'جاري...' : `إضافة المحدد (${bulkStudents.length})`}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : importMode ? (
           <>
             <DialogHeader>
               <DialogTitle>استيراد من جهات الاتصال</DialogTitle>
@@ -198,16 +263,20 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
                 <Button type="submit" disabled={loading}>{loading ? 'جاري...' : 'إضافة'}</Button>
               </DialogFooter>
             </form>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">أو</span>
+              </div>
+            </div>
+            <Button type="button" variant="secondary" className="w-full gap-2 min-h-[44px]" onClick={() => setBulkMode(true)}>
+              <ListPlus className="w-4 h-4" />
+              إضافة مجموعة
+            </Button>
             {contactPickerAvailable && (
               <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">أو</span>
-                  </div>
-                </div>
                 <Button type="button" variant="secondary" className="w-full gap-2" onClick={handlePickContacts}>
                   <Contact className="w-4 h-4" />
                   استيراد من جهات الاتصال

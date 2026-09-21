@@ -63,5 +63,7 @@ export async function logActivity(opts: LogActivityOptions) {
     }
   }
 
-  await sendDiscordWebhook(opts.actionType, teacherName, desc, fields)
+  // Webhook is fire-and-forget: never block the action waiting on Discord.
+  // (Regression: awaiting this added seconds to every pay toggle / add.)
+  sendDiscordWebhook(opts.actionType, teacherName, desc, fields).catch(() => {})
 }

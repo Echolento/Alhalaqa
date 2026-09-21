@@ -39,12 +39,12 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        <div className="hidden md:block">
           <h1 className="text-3xl font-bold">الطلاب</h1>
           <p className="text-muted-foreground">{monthLabel}</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border">
+        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border self-center md:self-auto">
           <Link href={`/dashboard?month=${prevMonth}`}>
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ChevronRight className="w-5 h-5" />
@@ -87,7 +87,8 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <div className="space-y-4 pt-6">
+      <div className="space-y-4 pt-2 md:pt-6">
+        <div className="md:hidden border-t border-border/60" />
         <StudentList students={students} payments={payments} month={currentMonth} currency={currency} />
       </div>
     </div>

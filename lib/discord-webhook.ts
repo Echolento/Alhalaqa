@@ -29,6 +29,8 @@ export async function sendDiscordWebhook(
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      // Belt-and-braces: even floating, a hung webhook shouldn't linger.
+      signal: AbortSignal.timeout(4000),
       body: JSON.stringify({
         username: 'Alhalaqa',
         embeds: [

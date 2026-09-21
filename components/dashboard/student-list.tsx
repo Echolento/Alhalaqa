@@ -116,7 +116,7 @@ export function StudentList({ students, payments, month, currency }: StudentList
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 bg-muted/40 md:bg-transparent rounded-2xl p-2 md:p-0">
           {filtered.map((student) => {
             const payment = localPayments.find((p) => p.student_id === student.id)
             const isPaid = payment?.paid || false
