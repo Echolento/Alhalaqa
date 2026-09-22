@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, User, Search, Users, DollarSign, Clock } from 'lucide-react'
+import { Check, Clock, Search, Users, DollarSign, Undo2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -159,11 +159,12 @@ export function StudentList({ students, payments, month, currency, initialCollec
               <Card key={student.id} className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg ${status.cardClass}`}>
                 <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 w-full min-w-0">
-                      {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <User className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
+                      {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-bold text-sm md:text-lg truncate">{student.full_name || student.name}</h3>
-                          <Badge variant={status.badgeVariant} className={status.badgeClass}>
+                          <Badge variant={status.badgeVariant} className={`${status.badgeClass} inline-flex items-center gap-1`}>
+                            {status.icon === 'check' ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                             {status.label}
                           </Badge>
                         </div>
@@ -178,13 +179,18 @@ export function StudentList({ students, payments, month, currency, initialCollec
                         <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                           <AlertDialogTrigger asChild>
                             <Button
-                              variant="destructive"
+                              variant="ghost"
                               disabled={loading === student.id}
-                              className="w-full sm:w-[120px] font-bold min-h-[44px]"
+                              className="w-auto font-bold min-h-[44px] ms-auto text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               {loading === student.id ? (
-                                <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
-                              ) : 'تراجع'}
+                                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                              ) : (
+                                <>
+                                  <Undo2 className="w-4 h-4" />
+                                  تراجع
+                                </>
+                              )}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>

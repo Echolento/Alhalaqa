@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Check, User, ChevronRight, Pencil, Trash2, Phone, Wallet, CalendarDays, Receipt, AlertTriangle } from 'lucide-react'
+import { Check, Clock, User, ChevronRight, Pencil, Trash2, Phone, Wallet, CalendarDays, Receipt, AlertTriangle, Undo2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -180,11 +180,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
       <Card className={`overflow-hidden border shadow-sm md:border-none md:shadow-md ${status.cardClass}`}>
         <CardContent className="p-4 md:p-6 flex items-center gap-3">
-          {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <User className="w-7 h-7 text-red-600 shrink-0" />}
+          {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <Clock className="w-7 h-7 text-red-600 shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-lg md:text-2xl truncate">{student.full_name || student.name}</h1>
-              <Badge variant={status.badgeVariant} className={status.badgeClass}>
+              <Badge variant={status.badgeVariant} className={`${status.badgeClass} inline-flex items-center gap-1`}>
+                {status.icon === 'check' ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                 {status.label}
               </Badge>
             </div>
@@ -195,10 +196,17 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           <Button
             onClick={handleToggle}
             disabled={loading}
-            className={`font-bold min-h-[44px] ${isPaid ? '' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-            variant={isPaid ? 'destructive' : 'default'}
+            className={isPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
+            variant={isPaid ? 'ghost' : 'default'}
           >
-            {isPaid ? 'تراجع' : 'تحديد كمدفوع'}
+            {loading ? (
+              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+            ) : isPaid ? (
+              <>
+                <Undo2 className="w-4 h-4" />
+                تراجع
+              </>
+            ) : 'تحديد كمدفوع'}
           </Button>
         </CardContent>
       </Card>

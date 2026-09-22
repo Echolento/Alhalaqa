@@ -1,4 +1,4 @@
-export type PaymentStatusIcon = 'check' | 'user'
+export type PaymentStatusIcon = 'check' | 'clock'
 
 export interface PaymentStatus {
   paid: boolean
@@ -11,8 +11,10 @@ export interface PaymentStatus {
 }
 
 /**
- * Single source of truth for paid=green / unpaid=red language.
- * Both merged list + profile header use this — no drift.
+ * Single source of truth for status-vs-action hierarchy.
+ * Status = subtle light pill + status icon (check / clock).
+ * Actions live outside this helper: solid green primary for mark-paid,
+ * low-emphasis ghost for undo. Both list + profile consume this — no drift.
  */
 export function getPaymentStatus(paid: boolean): PaymentStatus {
   if (paid) {
@@ -23,16 +25,16 @@ export function getPaymentStatus(paid: boolean): PaymentStatus {
       cardClass: 'bg-emerald-50/30 border-r-4 border-r-emerald-500',
       avatarClass: 'text-emerald-600',
       badgeVariant: 'secondary',
-      badgeClass: 'text-[10px] px-2 py-0 bg-emerald-600 text-white hover:bg-emerald-600 border-transparent',
+      badgeClass: 'text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 border-transparent',
     }
   }
   return {
     paid: false,
     label: 'لم يدفع',
-    icon: 'user',
+    icon: 'clock',
     cardClass: 'bg-red-50/30 border-r-4 border-r-red-500',
     avatarClass: 'text-red-600',
     badgeVariant: 'destructive',
-    badgeClass: 'text-[10px] px-2 py-0 bg-red-600 animate-pulse',
+    badgeClass: 'text-[10px] px-2 py-0.5 bg-red-100 text-red-700 border-transparent',
   }
 }

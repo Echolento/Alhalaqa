@@ -84,6 +84,13 @@ describe('StudentList (merged home)', () => {
     expect(screen.queryByText('تراجع عن الدفع')).not.toBeInTheDocument()
   })
 
+  it('undo is low-emphasis ghost, never full-width red', () => {
+    render(<StudentList {...props} />)
+    const btn = screen.getByText('تراجع')
+    expect(btn.className).not.toContain('bg-destructive')
+    expect(btn.className).not.toContain('w-full')
+  })
+
   it('toggle updates totals locally with no second fetch', async () => {
     render(<StudentList {...props} />)
     // pending 200 appears twice (summary card + s2 row readout)
