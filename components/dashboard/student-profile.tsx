@@ -183,7 +183,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <Clock className="w-7 h-7 text-red-600 shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-xl md:text-3xl truncate">{student.full_name || student.name}</h1>
+              <h1 className="font-black text-2xl md:text-4xl truncate">{student.full_name || student.name}</h1>
               <Badge variant={status.badgeVariant} className={status.badgeClass}>
                 {status.label}
               </Badge>

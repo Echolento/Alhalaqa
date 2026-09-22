@@ -162,7 +162,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                       {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-bold text-base md:text-xl truncate">{student.full_name || student.name}</h3>
+                          <h3 className="font-black text-lg md:text-2xl truncate">{student.full_name || student.name}</h3>
                           <Badge variant={status.badgeVariant} className={status.badgeClass}>
                             {status.label}
                           </Badge>
