@@ -39,13 +39,13 @@ export default async function DashboardPage({
           <p className="text-muted-foreground">{monthLabel}</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border self-center md:self-auto">
+        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border w-full md:w-auto justify-center md:justify-start self-center md:self-auto">
           <Link href={`/dashboard?month=${prevMonth}`}>
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ChevronRight className="w-5 h-5" />
             </Button>
           </Link>
-          <div className="px-4 py-1 text-sm font-bold min-w-[120px] text-center">
+          <div className="px-4 py-1 text-sm font-bold min-w-[120px] text-center flex-1 md:flex-none">
             {monthLabel}
           </div>
           <Link href={`/dashboard?month=${nextMonth}`}>

@@ -178,11 +178,9 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         رجوع للقائمة
       </Link>
 
-      <Card className={`overflow-hidden border-none shadow-md ${status.cardClass}`}>
+      <Card className={`overflow-hidden border shadow-sm md:border-none md:shadow-md ${status.cardClass}`}>
         <CardContent className="p-4 md:p-6 flex items-center gap-3">
-          <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 ${status.avatarClass}`}>
-            {status.icon === 'check' ? <Check className="w-6 h-6" /> : <User className="w-6 h-6" />}
-          </div>
+          {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <User className="w-7 h-7 text-red-600 shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-lg md:text-2xl truncate">{student.full_name || student.name}</h1>

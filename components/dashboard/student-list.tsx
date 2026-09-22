@@ -121,7 +121,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div className="flex gap-3 items-center">
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -154,12 +154,10 @@ export function StudentList({ students, payments, month, currency, initialCollec
             const isPaid = payment?.paid || false
             const status = getPaymentStatus(isPaid)
             return (
-              <Card key={student.id} className={`overflow-hidden transition-all duration-300 border-none shadow-md hover:shadow-lg ${status.cardClass}`}>
+              <Card key={student.id} className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg ${status.cardClass}`}>
                 <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 w-full min-w-0">
-                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0 ${status.avatarClass}`}>
-                        {status.icon === 'check' ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <User className="w-5 h-5 md:w-6 md:h-6" />}
-                      </div>
+                      {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <User className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-bold text-sm md:text-lg truncate">{student.full_name || student.name}</h3>
