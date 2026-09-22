@@ -52,9 +52,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
     (s.full_name || s.name || '').toLowerCase().includes(search.toLowerCase()) || !search
   )
 
-  const handleToggle = async (e: React.MouseEvent, studentId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleToggle = async (studentId: string) => {
     setLoading(studentId)
     const payment = localPayments.find((p) => p.student_id === studentId)
     const newPaid = !payment?.paid
@@ -80,6 +78,10 @@ export function StudentList({ students, payments, month, currency, initialCollec
     try {
       const result = await toggleStudentPayment(studentId, month)
       if (result.success) {
+        // Deterministic close: Radix also closes on action-click, but the
+        // controlled `open` prop is the source of truth — a stale undoTarget
+        // reopened the cancel dialog on later mark-paid toggles.
+        setUndoTarget(null)
         toast({ title: '✓ تم التحديث', description: 'تم تغيير حالة الدفع بنجاح' })
       } else {
         revert()
@@ -199,7 +201,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <AlertDialogCancel>إلغاء</AlertDialogCancel>
                               <AlertDialogAction
                                 className="bg-destructive hover:bg-destructive/90"
-                                onClick={(e) => handleToggle(e, student.id)}
+                                onClick={() => handleToggle(student.id)}
                               >
                                 نعم، تراجع
                               </AlertDialogAction>
@@ -209,7 +211,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                       ) : (
                         <Button
                           variant="default"
-                          onClick={(e) => handleToggle(e, student.id)}
+                          onClick={() => handleToggle(student.id)}
                           disabled={loading === student.id}
                           className="w-full sm:w-[120px] font-bold bg-emerald-600 hover:bg-emerald-700 min-h-[44px]"
                         >

@@ -75,6 +75,15 @@ describe('StudentList (merged home)', () => {
     expect(screen.getByText('نعم، تراجع')).toBeInTheDocument()
   })
 
+  it('confirming undo closes the dialog (no haunting later toggles)', async () => {
+    render(<StudentList {...props} />)
+    fireEvent.click(screen.getByText('تراجع'))
+    expect(screen.getByText('تراجع عن الدفع')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('نعم، تراجع'))
+    expect(await screen.findByText('تحديد كمدفوع')).toBeInTheDocument()
+    expect(screen.queryByText('تراجع عن الدفع')).not.toBeInTheDocument()
+  })
+
   it('toggle updates totals locally with no second fetch', async () => {
     render(<StudentList {...props} />)
     // pending 200 appears twice (summary card + s2 row readout)
