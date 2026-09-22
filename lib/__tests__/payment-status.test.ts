@@ -6,6 +6,7 @@ describe('getPaymentStatus', () => {
     const s = getPaymentStatus(true)
     expect(s.label).toBe('مدفوع')
     expect(s.cardClass).toContain('bg-emerald-50')
+    expect(s.cardClass).toContain('border-r-emerald-500')
     expect(s.avatarClass).toContain('emerald')
     expect(s.icon).toBe('check')
     expect(s.badgeClass ?? '').not.toContain('animate-pulse')

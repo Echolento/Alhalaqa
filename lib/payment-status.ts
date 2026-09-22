@@ -20,7 +20,7 @@ export function getPaymentStatus(paid: boolean): PaymentStatus {
       paid: true,
       label: 'مدفوع',
       icon: 'check',
-      cardClass: 'bg-emerald-50/30',
+      cardClass: 'bg-emerald-50/30 border-r-4 border-r-emerald-500',
       avatarClass: 'text-emerald-600',
       badgeVariant: 'secondary',
       badgeClass: 'text-[10px] px-2 py-0 bg-emerald-600 text-white hover:bg-emerald-600 border-transparent',
