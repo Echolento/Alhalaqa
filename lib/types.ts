@@ -10,6 +10,8 @@ export interface Profile {
   updated_at: string;
 }
 
+export type BillingFrequency = 'weekly' | 'biweekly' | 'monthly';
+
 export interface Student {
   id: string;
   teacher_id: string;
@@ -17,6 +19,7 @@ export interface Student {
   phone: string | null;
   monthly_price: number;
   payment_day: number;
+  frequency: BillingFrequency;
   created_at: string;
   updated_at: string;
 }
@@ -61,5 +64,6 @@ export type ActionType =
   | 'student_bulk_add'
   | 'price_update'
   | 'payment_day_update'
+  | 'frequency_update'
   | 'teacher_settings_update'
   | 'onboarding_complete'

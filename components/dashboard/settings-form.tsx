@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { User, Bell, CheckCircle, AlertCircle } from 'lucide-react'
 import { NotificationToggle } from '@/components/dashboard/notification-toggle'
+import { AutoReminderToggle } from '@/components/dashboard/auto-reminder-toggle'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
@@ -17,11 +18,15 @@ import type { Profile } from '@/lib/types'
 import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { CurrencySelect } from '@/components/ui/currency-select'
+import { INSTAPAY_SETTINGS_EXPLAINER } from '@/lib/instapay'
 
 interface TeacherData {
   id: string
   currency: string
   default_monthly_price: number
+  instapay_link?: string | null
+  instapay_handle?: string | null
+  auto_reminders_enabled?: boolean
 }
 
 interface SettingsFormProps {
@@ -177,6 +182,9 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           </CardHeader>
           <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
             <NotificationToggle />
+            <div className="mt-4 border-t pt-4">
+              <AutoReminderToggle defaultEnabled={teacherData?.auto_reminders_enabled ?? true} />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -221,6 +229,38 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   placeholder="0"
                   defaultValue={teacherData?.default_monthly_price || 0}
                 />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2" dir="rtl">
+                <Label>الدفع عبر InstaPay</Label>
+                <p className="text-xs text-muted-foreground leading-6">{INSTAPAY_SETTINGS_EXPLAINER}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instapay_link">رابط InstaPay</Label>
+                <Input
+                  id="instapay_link"
+                  name="instapay_link"
+                  type="url"
+                  dir="ltr"
+                  placeholder="https://ipn.eg/S/..."
+                  defaultValue={teacherData?.instapay_link || ''}
+                />
+                <p className="text-xs text-muted-foreground">الصق رابط المشاركة من تطبيق InstaPay — يجب أن يبدأ بـ https://ipn.eg/S/</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instapay_handle">عنوان InstaPay</Label>
+                <Input
+                  id="instapay_handle"
+                  name="instapay_handle"
+                  dir="ltr"
+                  placeholder="name@instapay"
+                  defaultValue={teacherData?.instapay_handle || ''}
+                />
+                <p className="text-xs text-muted-foreground">مثال: ahmed.ali@instapay</p>
               </div>
 
               <Button type="submit" disabled={loading}>

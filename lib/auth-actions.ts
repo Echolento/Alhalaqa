@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
+import { validateInstapayHandle, validateInstapayLink } from './instapay'
 import { logActivity } from './log-activity'
 import { getSiteUrl } from './auth-redirect'
 
@@ -262,6 +263,22 @@ export async function updateTeacherSettings(formData: FormData) {
 
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
+  const rawLink = ((formData.get('instapay_link') as string) || '').trim()
+  const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
+
+  let instapayLink: string | null = null
+  if (rawLink !== '') {
+    const linkCheck = validateInstapayLink(rawLink)
+    if (!linkCheck.ok) return { error: linkCheck.error }
+    instapayLink = linkCheck.normalized
+  }
+
+  let instapayHandle: string | null = null
+  if (rawHandle !== '') {
+    const handleCheck = validateInstapayHandle(rawHandle)
+    if (!handleCheck.ok) return { error: handleCheck.error }
+    instapayHandle = handleCheck.normalized
+  }
 
   const { error } = await createServiceClient()
     .from('teachers')
@@ -270,6 +287,8 @@ export async function updateTeacherSettings(formData: FormData) {
         profile_id: user.id,
         currency,
         default_monthly_price: defaultMonthlyPrice,
+        instapay_link: instapayLink,
+        instapay_handle: instapayHandle,
       },
       { onConflict: 'profile_id' },
     )
@@ -279,7 +298,7 @@ export async function updateTeacherSettings(formData: FormData) {
   await logActivity({
     actionType: 'teacher_settings_update',
     entityType: 'teacher',
-    details: { currency, default_monthly_price: defaultMonthlyPrice },
+    details: { currency, default_monthly_price: defaultMonthlyPrice, instapay_link: instapayLink, instapay_handle: instapayHandle },
   })
 
   revalidatePath('/dashboard/settings')

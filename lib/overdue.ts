@@ -1,4 +1,4 @@
-import { getBillingMonthKey } from '@/lib/billing-period'
+import { getPeriodDueDate, getPeriodKey, type BillingFrequency } from '@/lib/billing-period'
 
 export interface OverdueStudent {
   id: string
@@ -7,7 +7,7 @@ export interface OverdueStudent {
 }
 
 export function getOverdueStudents(
-  students: Array<{ id: string; name: string; payment_day: number }>,
+  students: Array<{ id: string; name: string; payment_day: number; frequency?: BillingFrequency | null }>,
   payments: Array<{ student_id: string; month: string; paid: boolean }>,
   today: Date = new Date(),
   graceDays: number = 3,
@@ -15,19 +15,15 @@ export function getOverdueStudents(
   const result: OverdueStudent[] = []
 
   for (const student of students) {
-    const billingMonthKey = getBillingMonthKey(today, student.payment_day)
+    const frequency = (student as { frequency?: BillingFrequency | null }).frequency ?? 'monthly'
+    const periodKey = getPeriodKey(today, frequency, student.payment_day)
     const payment = payments.find(
-      p => p.student_id === student.id && p.month === billingMonthKey,
+      p => p.student_id === student.id && p.month === periodKey,
     )
     const isPaid = payment?.paid ?? false
     if (isPaid) continue
 
-    const [yearStr, monthStr] = billingMonthKey.split('-')
-    const year = parseInt(yearStr)
-    const month = parseInt(monthStr)
-    const lastDay = new Date(year, month, 0).getDate()
-    const dueDay = Math.min(student.payment_day, lastDay)
-    const dueDate = new Date(year, month - 1, dueDay)
+    const dueDate = getPeriodDueDate(periodKey, frequency, student.payment_day)
 
     const overdueDate = new Date(dueDate)
     overdueDate.setDate(overdueDate.getDate() + graceDays)

@@ -43,4 +43,17 @@ describe('StudentsTable', () => {
     render(<StudentsTable students={mockStudents} />)
     expect(screen.queryByText('استيراد من جهات الاتصال')).not.toBeInTheDocument()
   })
+
+  it('renders per-student frequency selector with current value', () => {
+    render(<StudentsTable students={[{ ...mockStudents[0], frequency: 'weekly' } as any]} />)
+    const selects = screen.getAllByLabelText('دورة الفوترة')
+    expect(selects.length).toBeGreaterThanOrEqual(1)
+    for (const s of selects) expect((s as HTMLSelectElement).value).toBe('weekly')
+  })
+
+  it('defaults legacy rows without frequency to monthly', () => {
+    render(<StudentsTable students={[mockStudents[0]]} />)
+    const selects = screen.getAllByLabelText('دورة الفوترة')
+    for (const s of selects) expect((s as HTMLSelectElement).value).toBe('monthly')
+  })
 })

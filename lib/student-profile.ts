@@ -40,7 +40,7 @@ export async function getStudentProfile(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, teacher_id, teachers(currency, default_monthly_price)')
+    .select('id, name, phone, monthly_price, payment_day, frequency, teacher_id, teachers(currency, default_monthly_price)')
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return null
@@ -58,6 +58,7 @@ export async function getStudentProfile(studentId: string) {
       phone: (student as any).phone,
       monthly_price: (student as any).monthly_price || teacher?.default_monthly_price || 0,
       payment_day: (student as any).payment_day || 1,
+      frequency: (student as any).frequency === 'weekly' || (student as any).frequency === 'biweekly' ? (student as any).frequency : 'monthly',
     },
     payments,
     currency: teacher?.currency || 'SAR',

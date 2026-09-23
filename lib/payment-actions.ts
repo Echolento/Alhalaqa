@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
-import { getCurrentMonthKey, getBillingMonthKey } from './billing-period'
+import { getCurrentMonthKey, getPeriodKey, normalizeFrequency, type BillingFrequency } from './billing-period'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
 
@@ -24,27 +24,32 @@ export async function getTeacherPayments(month?: string) {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, monthly_price, payment_day')
+    .select('id, name, monthly_price, payment_day, frequency')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
+  const today = new Date()
   const normalizedStudents = (students || []).map(s => {
-    let studentMonthKey = month
-    if (!studentMonthKey) {
-      studentMonthKey = getBillingMonthKey(new Date(), s.payment_day || 1)
+    const frequency = normalizeFrequency((s as any).frequency)
+    let studentMonthKey: string
+    if (month && frequency === 'monthly') {
+      studentMonthKey = month
+    } else if (month) {
+      studentMonthKey = getPeriodKey(today, frequency, s.payment_day || 1)
+    } else {
+      studentMonthKey = getPeriodKey(today, frequency, s.payment_day || 1)
     }
     return {
       id: s.id,
       full_name: s.name || 'طالب',
       monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
       payment_day: s.payment_day || 1,
+      frequency,
       currentMonthKey: studentMonthKey
     }
   })
 
-  const monthKeysToFetch = month
-    ? [month]
-    : Array.from(new Set(normalizedStudents.map(s => s.currentMonthKey)))
+  const monthKeysToFetch = Array.from(new Set(normalizedStudents.map(s => s.currentMonthKey)))
 
   const { data: existingPayments } = await supabase
     .from('student_payments')
@@ -160,12 +165,13 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   if (!monthKey) {
     const { data: student } = await service
       .from('students')
-      .select('payment_day, name')
+      .select('payment_day, frequency, name')
       .eq('id', studentId)
       .maybeSingle()
 
     const day = (student as any)?.payment_day || 1
-    monthKey = getBillingMonthKey(new Date(), day)
+    const freq = normalizeFrequency((student as any)?.frequency)
+    monthKey = getPeriodKey(new Date(), freq, day)
   }
 
   // Independent reads: run together, not one-after-another (toggle latency).
@@ -266,6 +272,51 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
       student_name: student?.name || 'طالب',
       old_day: oldDay,
       new_day: paymentDay,
+    },
+  }, user.id)
+
+  revalidatePath('/dashboard/payments')
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function updateStudentFrequency(studentId: string, frequency: BillingFrequency) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
+
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const next = normalizeFrequency(frequency)
+
+  const { data: student } = await service
+    .from('students')
+    .select('name, frequency')
+    .eq('id', studentId)
+    .maybeSingle()
+
+  const oldFrequency = normalizeFrequency((student as any)?.frequency)
+
+  const { error } = await service
+    .from('students')
+    .update({ frequency: next })
+    .eq('id', studentId)
+
+  if (error) return { error: error.message }
+
+  // Next-cycle-only: never touch current-period student_payments rows.
+  await logActivity({
+    actionType: 'frequency_update',
+    entityType: 'student',
+    entityId: studentId,
+    details: {
+      student_name: (student as any)?.name || 'طالب',
+      old_frequency: oldFrequency,
+      new_frequency: next,
     },
   }, user.id)
 

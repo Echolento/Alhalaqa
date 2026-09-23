@@ -89,4 +89,43 @@ describe('getOverdueStudents', () => {
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('s2')
   })
+
+  it('weekly student overdue on own cycle (no payment for 2024-06-10)', () => {
+    const students = [{ id: 'w1', name: 'Weekly', payment_day: 1, frequency: 'weekly' as const }]
+    const today = new Date('2024-06-15')
+    const result = getOverdueStudents(students, [], today)
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('w1')
+    expect(result[0].daysOverdue).toBe(5)
+  })
+
+  it('weekly student paid for current cycle is excluded', () => {
+    const students = [{ id: 'w1', name: 'Weekly', payment_day: 1, frequency: 'weekly' as const }]
+    const payments = [{ student_id: 'w1', month: '2024-06-10', paid: true }]
+    const result = getOverdueStudents(students, payments, new Date('2024-06-15'))
+    expect(result).toHaveLength(0)
+  })
+
+  it('biweekly overdue uses 14-day cycle start as due date', () => {
+    const students = [{ id: 'b1', name: 'Bi', payment_day: 1, frequency: 'biweekly' as const }]
+    const result = getOverdueStudents(students, [], new Date('2024-06-15'))
+    expect(result).toHaveLength(1)
+    expect(result[0].daysOverdue).toBe(12)
+  })
+
+  it('mixed roster: monthly paid, weekly unpaid -> only weekly overdue', () => {
+    const students = [
+      { id: 'm1', name: 'Monthly', payment_day: 10, frequency: 'monthly' as const },
+      { id: 'w1', name: 'Weekly', payment_day: 1, frequency: 'weekly' as const },
+    ]
+    const payments = [{ student_id: 'm1', month: '2024-06-01', paid: true }]
+    const result = getOverdueStudents(students, payments, new Date('2024-06-15'))
+    expect(result.map(s => s.id)).toEqual(['w1'])
+  })
+
+  it('legacy row without frequency reads as monthly', () => {
+    const students = [{ id: 's1', name: 'Legacy', payment_day: 10 }]
+    const payments = [{ student_id: 's1', month: '2024-06-01', paid: true }]
+    expect(getOverdueStudents(students, payments, new Date('2024-06-15'))).toHaveLength(0)
+  })
 })

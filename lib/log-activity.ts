@@ -56,6 +56,7 @@ export async function logActivity(opts: LogActivityOptions, knownUserId?: string
     student_bulk_add: d => `📥 إضافة ${d.count || 0} طالب/طلاب دفعة واحدة`,
     price_update: d => `💰 تحديث سعر الطالب ${d.student_name || ''}: ${d.old_price} ← ${d.new_price}`,
     payment_day_update: d => `📅 تحديث يوم الدفع للطالب ${d.student_name || ''}: ${d.old_day} ← ${d.new_day}`,
+    frequency_update: d => `🔁 تحديث دورة الفوترة للطالب ${d.student_name || ''}: ${d.old_frequency} ← ${d.new_frequency}`,
     teacher_settings_update: () => `⚙️ تحديث الإعدادات`,
     onboarding_complete: () => `🚀 تم إكمال الإعداد الأولي`,
   }

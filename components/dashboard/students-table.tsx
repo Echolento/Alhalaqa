@@ -35,7 +35,8 @@ import {
   deleteStudent,
   addMultipleStudents,
 } from '@/lib/student-actions'
-import { updateStudentPaymentDay } from '@/lib/payment-actions'
+import { updateStudentPaymentDay, updateStudentFrequency } from '@/lib/payment-actions'
+import type { BillingFrequency } from '@/lib/billing-period'
 import { useToast } from '@/components/ui/use-toast'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -53,6 +54,7 @@ interface Student {
   phone: string | null
   monthly_price: number
   payment_day: number
+  frequency?: BillingFrequency | null
 }
 
 interface StudentsTableProps {
@@ -72,6 +74,7 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
   const [editPhoneValue, setEditPhoneValue] = useState('')
   const [dayPickerOpen, setDayPickerOpen] = useState<string | null>(null)
   const [dayLoading, setDayLoading] = useState(false)
+  const [freqLoading, setFreqLoading] = useState<string | null>(null)
   const [importMode, setImportMode] = useState(false)
   const [importItems, setImportItems] = useState<{
     id: string
@@ -207,6 +210,21 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
     }
     setDayLoading(false)
   }
+
+  const handleSaveFrequency = async (studentId: string, frequency: BillingFrequency) => {
+    setFreqLoading(studentId)
+    const result = await updateStudentFrequency(studentId, frequency)
+    if (result.success) {
+      toast({ title: 'تم الحفظ — يسري من الدورة القادمة' })
+      window.location.reload()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
+    }
+    setFreqLoading(null)
+  }
+
+  const frequencyValue = (s: Student): BillingFrequency =>
+    s.frequency === 'weekly' || s.frequency === 'biweekly' ? s.frequency : 'monthly'
 
   return (
     <Card>
@@ -412,6 +430,21 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
                         </div>
                       </PopoverContent>
                     </Popover>
+                    <span>·</span>
+                    <label className="sr-only" htmlFor={`freq-mobile-${student.id}`}>دورة الفوترة</label>
+                    <select
+                      id={`freq-mobile-${student.id}`}
+                      aria-label="دورة الفوترة"
+                      value={frequencyValue(student)}
+                      disabled={freqLoading === student.id}
+                      onChange={(e) => handleSaveFrequency(student.id, e.target.value as BillingFrequency)}
+                      className="bg-transparent hover:text-primary transition-colors text-xs"
+                      title="يسري التغيير من الدورة القادمة فقط"
+                    >
+                      <option value="weekly">أسبوعي</option>
+                      <option value="biweekly">كل أسبوعين</option>
+                      <option value="monthly">شهري</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -428,13 +461,14 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
                 <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الهاتف</TableHead>
                 <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">السعر</TableHead>
                 <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">يوم الدفع</TableHead>
+                <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الدورة</TableHead>
                 <TableHead className="text-right font-black text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     لا يوجد طلاب
                   </TableCell>
                 </TableRow>
@@ -491,6 +525,22 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
                           </div>
                         </PopoverContent>
                       </Popover>
+                    </TableCell>
+                    <TableCell>
+                      <label className="sr-only" htmlFor={`freq-desktop-${student.id}`}>دورة الفوترة</label>
+                      <select
+                        id={`freq-desktop-${student.id}`}
+                        aria-label="دورة الفوترة"
+                        value={frequencyValue(student)}
+                        disabled={freqLoading === student.id}
+                        onChange={(e) => handleSaveFrequency(student.id, e.target.value as BillingFrequency)}
+                        className="bg-transparent text-xs border rounded-md px-2 py-1"
+                        title="يسري التغيير من الدورة القادمة فقط"
+                      >
+                        <option value="weekly">أسبوعي</option>
+                        <option value="biweekly">كل أسبوعين</option>
+                        <option value="monthly">شهري</option>
+                      </select>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

@@ -355,6 +355,35 @@ describe('getTeacherPayments', () => {
     expect(result.students).toHaveLength(2)
     expect(result.payments).toHaveLength(2)
   })
+
+  it('weekly student keeps own cycle even when dashboard passes a month', async () => {
+    const studentId2 = 'student-2'
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [
+          { id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly' },
+          { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 1, frequency: 'weekly' },
+        ],
+      })
+      b.in = vi.fn().mockReturnValue({
+        ...b,
+        in: vi.fn().mockResolvedValue({ data: [] }),
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2024-06-01')
+    const monthly = result.students.find((s: any) => s.id === studentId) as any
+    const weekly = result.students.find((s: any) => s.id === studentId2) as any
+    expect(monthly?.currentMonthKey).toBe('2024-06-01')
+    expect(weekly?.currentMonthKey).not.toBe('2024-06-01')
+    expect(weekly?.currentMonthKey).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
 })
 
 describe('updateStudentMonthlyPrice', () => {
@@ -390,6 +419,39 @@ describe('updateStudentPaymentDay', () => {
 
     const { updateStudentPaymentDay } = await import('@/lib/data-actions')
     expect((await updateStudentPaymentDay(studentId, 10)).success).toBe(true)
+  })
+})
+
+describe('updateStudentFrequency (next-cycle-only)', () => {
+  it('updates frequency without touching current-period payments', async () => {
+    const touchedTables: string[] = []
+    let capturedFrequency: any
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      if (table === 'students') {
+        b.update = vi.fn().mockImplementation((payload: any) => {
+          capturedFrequency = payload
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+      }
+      if (table === 'student_payments') {
+        b.update = vi.fn().mockImplementation(() => {
+          touchedTables.push('student_payments:update')
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+        b.insert = vi.fn().mockImplementation(() => {
+          touchedTables.push('student_payments:insert')
+          return { error: null }
+        })
+      }
+      return b
+    })
+
+    const { updateStudentFrequency } = await import('@/lib/data-actions')
+    const result = await updateStudentFrequency(studentId, 'weekly')
+    expect(result.success).toBe(true)
+    expect(capturedFrequency).toMatchObject({ frequency: 'weekly' })
+    expect(touchedTables).toEqual([])
   })
 })
 

@@ -15,6 +15,12 @@ vi.mock('@/lib/auth-actions', () => ({
   signOut: vi.fn(),
 }))
 
+vi.mock('@/lib/push-actions', () => ({
+  setAutoRemindersEnabled: vi.fn().mockResolvedValue({ success: true }),
+  registerPushSubscription: vi.fn(),
+  unregisterPushSubscription: vi.fn(),
+}))
+
 const mockProfile = {
   id: 'user-1',
   email: 'test@example.com',
@@ -122,5 +128,10 @@ describe('SettingsForm', () => {
     const saveBtns = screen.getAllByText('حفظ الإعدادات')
     fireEvent.click(saveBtns[0])
     expect(await screen.findByText('فشل حفظ الإعدادات')).toBeInTheDocument()
+  })
+
+  it('renders auto-reminder toggle defaulting to on', () => {
+    render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
+    expect(screen.getByText('التذكير التلقائي مفعل')).toBeInTheDocument()
   })
 })

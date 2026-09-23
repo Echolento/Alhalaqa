@@ -54,3 +54,34 @@ export async function getPushSubscription(profileId: string) {
 
   return data
 }
+
+export async function setAutoRemindersEnabled(enabled: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  // Service-role write scoped to the caller's own teacher row (#25, #29).
+  const service = createServiceClient()
+
+  const { error } = await service
+    .from('teachers')
+    .update({ auto_reminders_enabled: enabled })
+    .eq('profile_id', user.id)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function getAutoRemindersEnabled(): Promise<boolean | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  // Read-own via anon client RLS (Teacher can read own row).
+  const { data } = await supabase
+    .from('teachers')
+    .select('auto_reminders_enabled')
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  const val = (data as { auto_reminders_enabled?: boolean } | null)?.auto_reminders_enabled
+  return val ?? true
+}

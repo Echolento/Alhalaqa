@@ -21,7 +21,7 @@ export async function getTeacherStudents() {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, created_at, updated_at, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, frequency, created_at, updated_at, teacher_id')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
@@ -30,6 +30,7 @@ export async function getTeacherStudents() {
     name: s.name || 'طالب',
     monthly_price: Number(s.monthly_price) || Number(teacher.default_monthly_price) || 0,
     payment_day: Number(s.payment_day) || 1,
+    frequency: (s as any).frequency === 'weekly' || (s as any).frequency === 'biweekly' ? (s as any).frequency : 'monthly',
   }))
 }
 
@@ -64,6 +65,7 @@ export async function addStudent(name: string, phone?: string) {
       phone: phone || null,
       monthly_price: Number(teacher.default_monthly_price) || 0,
       payment_day: 1,
+      frequency: 'monthly',
     })
     .select()
     .single()
@@ -155,6 +157,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     phone: s.phone || null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
     payment_day: 1,
+    frequency: 'monthly',
   }))
 
   const { error } = await service.from('students').insert(inserts)

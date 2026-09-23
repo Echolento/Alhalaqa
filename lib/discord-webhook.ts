@@ -12,6 +12,7 @@ const ACTION_COLORS: Record<string, ColorCode> = {
   student_bulk_add: 0x3b82f6,
   price_update: 0xf59e0b,
   payment_day_update: 0xf59e0b,
+  frequency_update: 0x3b82f6,
   teacher_settings_update: 0x3b82f6,
   onboarding_complete: 0x22c55e,
 }

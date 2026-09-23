@@ -12,4 +12,5 @@ export {
   updateStudentMonthlyPrice,
   toggleStudentPayment,
   updateStudentPaymentDay,
+  updateStudentFrequency,
 } from './payment-actions'

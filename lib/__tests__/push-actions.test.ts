@@ -103,3 +103,40 @@ describe('unregisterPushSubscription', () => {
     expect((await unregisterPushSubscription()).error).toBe('Unauthorized')
   })
 })
+
+describe('setAutoRemindersEnabled', () => {
+  it('writes scoped to caller profile via service client', async () => {
+    let updatePayload: any
+    let updateCol = ''
+    let updateVal = ''
+    mockService.from.mockImplementation((_table?: string) => {
+      const b = createBuilder()
+      b.update = vi.fn().mockImplementation((data: any) => {
+        if (_table === 'teachers') updatePayload = data
+        return {
+          ...b,
+          eq: vi.fn().mockImplementation((col: string, val: string) => {
+            updateCol = col
+            updateVal = val
+            return Promise.resolve({ error: null })
+          }),
+        }
+      })
+      return b
+    })
+
+    const { setAutoRemindersEnabled } = await import('@/lib/push-actions')
+    const result = await setAutoRemindersEnabled(false)
+
+    expect(result.success).toBe(true)
+    expect(updatePayload.auto_reminders_enabled).toBe(false)
+    expect(updateCol).toBe('profile_id')
+    expect(updateVal).toBe('user-1')
+  })
+
+  it('returns error when not authenticated', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+    const { setAutoRemindersEnabled } = await import('@/lib/push-actions')
+    expect((await setAutoRemindersEnabled(true)).error).toBe('Unauthorized')
+  })
+})
