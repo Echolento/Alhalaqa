@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { StudentProfile } from '@/components/dashboard/student-profile'
+import { REMIND_COPY } from '@/lib/remind-copy'
 
 vi.mock('@/lib/student-actions', () => ({
   updateStudent: vi.fn(() => ({ success: true })),
@@ -28,7 +29,7 @@ describe('StudentProfile', () => {
 
   it('every feature is its own row with obvious edit button', () => {
     render(<StudentProfile student={student} payments={payments} month="2025-06-01" currency="SAR" />)
-    for (const label of ['الاسم', 'الهاتف', 'الاشتراك الشهري', 'يوم الدفع', 'سجل المدفوعات']) {
+    for (const label of ['الاسم', REMIND_COPY.payerPhoneRowLabel, 'الاشتراك الشهري', 'يوم الدفع', 'سجل المدفوعات']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
     // one تعديل per editable row (name, phone, price, day) — obvious buttons

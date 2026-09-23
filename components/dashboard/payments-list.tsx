@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { getCurrencySymbol } from '@/lib/currencies'
+import { RemindButton } from '@/components/dashboard/remind-button'
 
 interface PaymentsListProps {
   students: any[]
@@ -271,7 +272,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                   </div>
                 </div>
                 
-                <div className="w-full sm:w-auto">
+                <div className="w-full sm:w-auto flex flex-col gap-2">
                   {isPaid ? (
                     <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                       <AlertDialogTrigger asChild>
@@ -308,16 +309,27 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                       </AlertDialogContent>
                     </AlertDialog>
                   ) : (
-                    <Button
-                      variant="default"
-                      onClick={() => handleToggle(student.id)}
-                      disabled={loading === student.id}
-                      className="w-full sm:w-[120px] font-bold bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      {loading === student.id ? (
-                        <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
-                      ) : "تحديد كمدفوع"}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="default"
+                        onClick={() => handleToggle(student.id)}
+                        disabled={loading === student.id}
+                        className="w-full sm:w-[120px] font-bold bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {loading === student.id ? (
+                          <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                        ) : "تحديد كمدفوع"}
+                      </Button>
+                      <RemindButton
+                        studentId={student.id}
+                        studentName={student.full_name || student.name || 'طالب'}
+                        payerProfileId={student.payer_profile_id ?? student.payerProfileId ?? null}
+                        amount={Number(student.monthly_price) || undefined}
+                        currency={currency}
+                        periodKey={month}
+                        phone={student.phone ?? null}
+                      />
+                    </div>
                   )}
                 </div>
               </CardContent>

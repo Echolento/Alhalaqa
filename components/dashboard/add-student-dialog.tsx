@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { isContactPickerAvailable, pickContacts, findDuplicates } from '@/lib/contacts'
 import { useRouter } from 'next/navigation'
+import { REMIND_COPY } from '@/lib/remind-copy'
 
 interface AddStudentDialogProps {
   students: { name?: string | null; full_name?: string | null; phone?: string | null }[]
@@ -180,20 +181,26 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
           <>
             <DialogHeader>
               <DialogTitle>إضافة طالب جديد</DialogTitle>
-              <DialogDescription>أدخل اسم الطالب ورقم الهاتف (اختياري)</DialogDescription>
+              <DialogDescription>{REMIND_COPY.addStudentDescription}</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddStudent} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">الاسم <span className="text-destructive">*</span></Label>
                 <Input id="name" name="name" required placeholder="أدخل اسم الطالب" />
               </div>
-              <PhoneInput
-                id="phone"
-                name="phone"
-                value={phoneValue}
-                onChange={setPhoneValue}
-                required={false}
-              />
+              <div className="space-y-1.5">
+                <PhoneInput
+                  id="phone"
+                  name="phone"
+                  value={phoneValue}
+                  onChange={setPhoneValue}
+                  required={false}
+                  label={REMIND_COPY.payerPhoneLabel}
+                />
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {REMIND_COPY.payerPhoneHelper}
+                </p>
+              </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
                 <Button type="submit" disabled={loading}>{loading ? 'جاري...' : 'إضافة'}</Button>

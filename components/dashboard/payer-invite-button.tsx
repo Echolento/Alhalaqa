@@ -1,0 +1,148 @@
+'use client'
+
+// components/dashboard/payer-invite-button.tsx
+// #32 slice 2/8 — guardian-only invite entry point.
+// Copy lives in lib/remind-copy.ts (single source, HITL review).
+// "Triggers notifications on claim" is enforced server-side in a later slice;
+// here the copy promises it + the WhatsApp share carries the invite link.
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { UserPlus } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { REMIND_COPY } from '@/lib/remind-copy'
+import { CLAIM_COPY } from '@/lib/claim-copy'
+import { issueClaimLink } from '@/lib/claim-actions'
+import { buildInviteWhatsAppUrl, canWhatsApp } from '@/lib/whatsapp-share'
+
+interface PayerInviteButtonProps {
+  studentId: string
+  studentName: string
+  /** Payer WhatsApp for the wa.me share (optional — dialog still explains claim). */
+  phone?: string | null
+  /** Claim URL for this student (placeholder until payer identity lands). */
+  inviteUrl?: string
+}
+
+export function PayerInviteButton({
+  studentId,
+  studentName,
+  phone,
+  inviteUrl,
+}: PayerInviteButtonProps) {
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+  // #36 slice 8/8 — real claim-link wiring (allowed edit): on dialog open,
+  // mint a single-use 7-day /claim?token= link via issueClaimLink (which
+  // revokes prior live tokens). An explicit inviteUrl prop still wins
+  // (test seam); the ?invite=1 placeholder remains only as a last-resort
+  // fallback when issuance fails. No QR lib in deps — link + copy only.
+  const [issuedUrl, setIssuedUrl] = useState<string | null>(null)
+  const [issuing, setIssuing] = useState(false)
+  const [issueError, setIssueError] = useState(false)
+  useEffect(() => {
+    if (!open || inviteUrl || issuedUrl || issuing || issueError) return
+    let cancelled = false
+    setIssuing(true)
+    issueClaimLink(studentId)
+      .then((result) => {
+        if (cancelled) return
+        if ((result as { claimUrl?: string }).claimUrl) {
+          setIssuedUrl((result as { claimUrl: string }).claimUrl)
+        } else {
+          setIssueError(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIssueError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setIssuing(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, inviteUrl, issuedUrl, issuing, issueError, studentId])
+  const claimUrl = inviteUrl ?? issuedUrl ?? `/pay?student=${encodeURIComponent(studentId)}&invite=1`
+  const shareDisabled = issuing
+  const showWhatsApp = canWhatsApp(phone)
+  const whatsappUrl = showWhatsApp
+    ? buildInviteWhatsAppUrl({ phone: phone as string, studentName, inviteUrl: claimUrl })
+    : null
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(claimUrl)
+      toast({
+        title: REMIND_COPY.inviteCopiedTitle,
+        description: REMIND_COPY.inviteCopiedDescription,
+      })
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: REMIND_COPY.remindFailTitle,
+        description: REMIND_COPY.remindFailDescription,
+      })
+    }
+  }
+
+  return (
+    <div className="space-y-1" dir="rtl">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="secondary" size="sm" className="gap-1.5 min-h-[44px] sm:min-h-0">
+            <UserPlus className="w-4 h-4" />
+            {REMIND_COPY.inviteButtonLabel}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{REMIND_COPY.inviteDialogTitle}</DialogTitle>
+            <DialogDescription>{REMIND_COPY.inviteDialogDescription}</DialogDescription>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {REMIND_COPY.inviteClaimNote}
+          </p>
+          {issuing ? (
+            <p className="text-xs text-muted-foreground">{CLAIM_COPY.inviteIssuingLabel}</p>
+          ) : null}
+          {issueError && !issuedUrl ? (
+            <p className="text-xs text-destructive">{CLAIM_COPY.inviteIssueFailDescription}</p>
+          ) : null}
+          {!issuing ? (
+            <p dir="ltr" className="break-all rounded-md bg-muted/60 px-2 py-1.5 text-[11px]">
+              {claimUrl}
+            </p>
+          ) : null}
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={handleCopy} disabled={shareDisabled}>
+              {REMIND_COPY.inviteCopyLinkLabel}
+            </Button>
+            {whatsappUrl && !issuing ? (
+              <Button type="button" asChild>
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                  {REMIND_COPY.whatsappShareLabel}
+                </a>
+              </Button>
+            ) : null}
+          </DialogFooter>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {CLAIM_COPY.inviteRegeneratedNote}
+          </p>
+        </DialogContent>
+      </Dialog>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        {REMIND_COPY.inviteButtonHelper}
+      </p>
+    </div>
+  )
+}

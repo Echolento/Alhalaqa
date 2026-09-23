@@ -35,6 +35,9 @@ import { PhoneInput } from '@/components/auth/phone-input'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
+import { REMIND_COPY } from '@/lib/remind-copy'
+import { RemindButton } from '@/components/dashboard/remind-button'
+import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
 
 interface StudentProfileProps {
   student: any
@@ -220,7 +223,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         </Row>
         <Row
           icon={Phone}
-          label="الهاتف"
+          label={REMIND_COPY.payerPhoneRowLabel}
           edit={<Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1" onClick={() => setEditField('phone')}><Pencil className="w-4 h-4" />تعديل</Button>}
         >
           <span dir="ltr" className="font-mono">{student.phone || '—'}</span>
@@ -259,6 +262,30 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         >
           يوم {student.payment_day || 1}
         </Row>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3" dir="rtl">
+          {!isPaid ? (
+            <RemindButton
+              studentId={student.id}
+              studentName={student.full_name || student.name || 'طالب'}
+              payerProfileId={student.payer_profile_id ?? student.payerProfileId ?? null}
+              amount={Number(student.monthly_price) || undefined}
+              currency={currency}
+              periodKey={month}
+              phone={student.phone ?? null}
+            />
+          ) : null}
+          <PayerInviteButton
+            studentId={student.id}
+            studentName={student.full_name || student.name || 'طالب'}
+            phone={student.phone ?? null}
+          />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {REMIND_COPY.remindManualNote}
+          </p>
+        </CardContent>
       </Card>
 
       <Card>
@@ -340,8 +367,13 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
       <Dialog open={editField === 'phone'} onOpenChange={(o) => { if (!o) setEditField(null) }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>تعديل الهاتف</DialogTitle></DialogHeader>
-          <PhoneInput id="profile-phone" name="phone" value={phoneVal} onChange={setPhoneVal} required={false} />
+          <DialogHeader><DialogTitle>{REMIND_COPY.editPhoneDialogTitle}</DialogTitle></DialogHeader>
+          <div className="space-y-1.5">
+            <PhoneInput id="profile-phone" name="phone" value={phoneVal} onChange={setPhoneVal} required={false} label={REMIND_COPY.payerPhoneLabel} />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {REMIND_COPY.payerPhoneHelper}
+            </p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditField(null)}>إلغاء</Button>
             <Button onClick={savePhone} disabled={loading} className="min-h-[44px]">حفظ</Button>

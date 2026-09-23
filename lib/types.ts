@@ -67,3 +67,27 @@ export type ActionType =
   | 'frequency_update'
   | 'teacher_settings_update'
   | 'onboarding_complete'
+  | 'claim_link_issued'
+  | 'claim_redeemed'
+
+// #36 slice 8/8 — ADDITIVE-ONLY claim types (existing lines above untouched).
+export type ClaimStatus = 'claimed' | 'unclaimed'
+
+export interface ClaimToken {
+  id: string
+  student_id: string
+  teacher_id: string
+  token_hash: string
+  expires_at: string
+  used_at: string | null
+  revoked_at: string | null
+  used_by_profile_id: string | null
+  created_at: string
+}
+
+export interface ClaimInviteState {
+  status: ClaimStatus
+  claimedBy: string | null
+  hasActiveInvite: boolean
+  inviteExpiresAt: string | null
+}
