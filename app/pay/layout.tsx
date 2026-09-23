@@ -1,20 +1,17 @@
 // app/pay/layout.tsx
-// #35 slice 7/8 — NEW layout wrapper. Renders the payer push-onboarding step
-// above the existing pay screen WITHOUT modifying app/pay/page.tsx (frozen
-// lane): Next.js nests page.tsx as {children} automatically. Amount/period
-// stay server-computed in page.tsx via getPayScreenInfo; this layout only
-// adds the onboarding card on top, width-matched to the page content.
+// #35 slice 7/8 — NEW layout wrapper. Mounts the silent payer push
+// subscriber WITHOUT modifying app/pay/page.tsx (frozen lane): Next.js nests
+// page.tsx as {children} automatically. The subscriber renders nothing —
+// the payer sees only the pay screen (amount → InstaPay → upload).
 
 import type { ReactNode } from 'react'
-import { PushOnboarding } from '@/components/pay/push-onboarding'
+import { SilentPayerPush } from '@/components/pay/push-onboarding'
 
 export default function PayLayout({ children }: { children: ReactNode }) {
   return (
-    <div dir="rtl">
-      <div className="mx-auto w-full max-w-md px-4 pt-4">
-        <PushOnboarding />
-      </div>
+    <>
+      <SilentPayerPush />
       <main>{children}</main>
-    </div>
+    </>
   )
 }
