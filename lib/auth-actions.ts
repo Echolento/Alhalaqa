@@ -112,10 +112,22 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     const isEmailTaken = error.message?.toLowerCase().includes('already registered')
-    return {
-      error: translateAuthError(error.message),
-      ...(isEmailTaken ? { emailTaken: true } : {}),
+    if (isEmailTaken) {
+      // Unconfirmed address re-signing up: skip the login dead-end (login
+      // rejects unconfirmed emails) — re-send the confirmation to the
+      // CURRENT host instead and land back on the check-email panel.
+      const siteUrl = await getRequestSiteUrl()
+      await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            `${siteUrl}/auth/callback`,
+        },
+      })
+      return { success: true, needsEmailConfirm: true, email, resent: true }
     }
+    return { error: translateAuthError(error.message) }
   }
 
   if (data.session) {

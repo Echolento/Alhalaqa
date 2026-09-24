@@ -75,6 +75,7 @@ export default function SignUpPage() {
       // Email confirmation required: stay here and say so — no silent
       // bounce to login. (Auto-login accounts redirect server-side.)
       const doneEmail = (result as any).email || email
+      if ((result as any).resent) setResendOk(true)
       setConfirmedEmail(doneEmail)
       try {
         localStorage.setItem(resendKey(doneEmail), String(Date.now()))

@@ -18,6 +18,7 @@ const mockSupabase = {
   auth: {
     getUser: vi.fn(),
     signUp: vi.fn(),
+    resend: vi.fn().mockResolvedValue({ error: null }),
     signInWithPassword: vi.fn(),
     signOut: vi.fn(),
     resetPasswordForEmail: vi.fn(),
@@ -90,7 +91,7 @@ describe('signUp', () => {
     expect(result.success).toBe(true)
   })
 
-  it('returns error on signup failure', async () => {
+  it('re-sends confirmation instead of erroring on already-registered email', async () => {
     mockSupabase.auth.signUp.mockResolvedValue({
       data: null,
       error: { message: 'Email already registered' },
@@ -100,7 +101,24 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'exists@example.com', password: 'Password123!', fullName: 'Test' })
     )
-    expect((result as { error?: string }).error).toBe('هذا البريد مسجل بالفعل')
+    // No login dead-end: back to the check-email panel with a fresh link.
+    expect(result.success).toBe(true)
+    expect(mockSupabase.auth.resend).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'signup', email: 'exists@example.com' }),
+    )
+  })
+
+  it('returns error on other signup failures', async () => {
+    mockSupabase.auth.signUp.mockResolvedValue({
+      data: null,
+      error: { message: 'Something broke' },
+    })
+
+    const { signUp } = await import('@/lib/auth-actions')
+    const result = await signUp(
+      createFormData({ email: 'fail@example.com', password: 'Password123!', fullName: 'Test' })
+    )
+    expect((result as { error?: string }).error).toBe('Something broke')
   })
 
   it('redirects to welcome if session returned', async () => {
