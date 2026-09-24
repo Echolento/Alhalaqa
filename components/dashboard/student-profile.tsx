@@ -29,7 +29,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
-import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/payment-actions'
+import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay, updateStudentFrequency } from '@/lib/payment-actions'
+import type { BillingFrequency } from '@/lib/billing-period'
 import { updateStudent, deleteStudent } from '@/lib/student-actions'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { FormattedDate } from '@/components/ui/formatted-date'
@@ -131,6 +132,26 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     if ((result as any).success) {
       toast({ title: '✓ تم الحفظ' })
       setEditField(null)
+      refresh()
+    } else {
+      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+    }
+  }
+
+  const FREQUENCY_LABELS: Record<BillingFrequency, string> = {
+    weekly: 'أسبوعي',
+    biweekly: 'كل أسبوعين',
+    monthly: 'شهري',
+  }
+
+  const [freqOpen, setFreqOpen] = useState(false)
+  const saveFrequency = async (frequency: BillingFrequency) => {
+    setLoading(true)
+    const result = await updateStudentFrequency(student.id, frequency)
+    setLoading(false)
+    if ((result as any).success) {
+      toast({ title: '✓ تم الحفظ — يُطبق من الدورة القادمة' })
+      setFreqOpen(false)
       refresh()
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
@@ -262,26 +283,56 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         >
           يوم {student.payment_day || 1}
         </Row>
+        <Row
+          icon={CalendarDays}
+          label="دورة الدفع"
+          edit={
+            <Popover open={freqOpen} onOpenChange={setFreqOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-3" align="start">
+                <div className="flex flex-col gap-1">
+                  {(Object.keys(FREQUENCY_LABELS) as BillingFrequency[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => saveFrequency(f)}
+                      disabled={loading}
+                      className={`min-h-[44px] rounded-lg px-3 text-start text-sm font-bold ${((student.frequency || 'monthly') === f) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                    >
+                      {FREQUENCY_LABELS[f]}
+                    </button>
+                  ))}
+                  <p className="pt-1 text-[11px] text-muted-foreground leading-relaxed">التغيير يُطبق من الدورة القادمة، بدون تعديل الفترة الحالية.</p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          }
+        >
+          {FREQUENCY_LABELS[((student.frequency || 'monthly') as BillingFrequency)] ?? 'شهري'}
+        </Row>
       </Card>
 
       <Card>
         <CardContent className="p-4 space-y-3" dir="rtl">
-          {!isPaid ? (
+          {!isPaid && student.claimed_by ? (
             <RemindButton
               studentId={student.id}
               studentName={student.full_name || student.name || 'طالب'}
-              payerProfileId={student.payer_profile_id ?? student.payerProfileId ?? null}
+              payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
               amount={Number(student.monthly_price) || undefined}
               currency={currency}
               periodKey={month}
               phone={student.phone ?? null}
             />
           ) : null}
-          <PayerInviteButton
-            studentId={student.id}
-            studentName={student.full_name || student.name || 'طالب'}
-            phone={student.phone ?? null}
-          />
+          {!student.claimed_by ? (
+            <PayerInviteButton
+              studentId={student.id}
+              studentName={student.full_name || student.name || 'طالب'}
+              phone={student.phone ?? null}
+            />
+          ) : null}
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {REMIND_COPY.remindManualNote}
           </p>

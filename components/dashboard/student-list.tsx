@@ -227,15 +227,17 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                             ) : 'تحديد كمدفوع'}
                           </Button>
-                          <RemindButton
-                            studentId={student.id}
-                            studentName={student.full_name || student.name || 'طالب'}
-                            payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
-                            amount={Number(student.monthly_price) || undefined}
-                            currency={currency}
-                            periodKey={month}
-                            phone={student.phone ?? null}
-                          />
+                          {student.claimed_by ? (
+                            <RemindButton
+                              studentId={student.id}
+                              studentName={student.full_name || student.name || 'طالب'}
+                              payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
+                              amount={Number(student.monthly_price) || undefined}
+                              currency={currency}
+                              periodKey={month}
+                              phone={student.phone ?? null}
+                            />
+                          ) : null}
                           {!student.claimed_by ? (
                             <PayerInviteButton
                               studentId={student.id}

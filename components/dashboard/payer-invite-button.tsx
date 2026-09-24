@@ -105,11 +105,17 @@ export function PayerInviteButton({
           {issueError && !issuedUrl ? (
             <p className="text-xs text-destructive">{CLAIM_COPY.inviteIssueFailDescription}</p>
           ) : null}
-          {!issuing && whatsappUrl ? (
+          {whatsappUrl && !issuing ? (
             <Button type="button" className="w-full min-h-[44px]" asChild>
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                 {REMIND_COPY.whatsappShareLabel}
               </a>
+            </Button>
+          ) : null}
+          {issuing && canWhatsApp(phone) ? (
+            <Button type="button" className="w-full min-h-[44px]" disabled>
+              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              {CLAIM_COPY.inviteIssuingLabel}
             </Button>
           ) : null}
           {!issuing && !whatsappUrl && !issueError ? (
