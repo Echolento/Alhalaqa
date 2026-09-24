@@ -37,6 +37,7 @@ const baseData: PayScreenData = {
   instapayLink: 'https://ipn.eg/S/abc123',
   instapayHandle: 'ahmed@instapay',
   hasPending: false,
+  isPaidForPeriod: false,
 }
 
 beforeEach(() => {

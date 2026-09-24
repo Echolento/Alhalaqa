@@ -51,6 +51,7 @@ export default async function PayPage({
     instapayLink: string | null
     instapayHandle: string | null
     hasPending: boolean
+    isPaidForPeriod: boolean
   }
 
   const proofs =
@@ -73,6 +74,7 @@ export default async function PayPage({
         instapayLink: good.instapayLink,
         instapayHandle: good.instapayHandle,
         hasPending: good.hasPending,
+        isPaidForPeriod: good.isPaidForPeriod,
       }}
       initialProofs={proofs}
     />

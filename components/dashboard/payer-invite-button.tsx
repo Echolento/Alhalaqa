@@ -29,6 +29,8 @@ interface PayerInviteButtonProps {
   phone?: string | null
   /** Claim URL for this student (placeholder until payer identity lands). */
   inviteUrl?: string
+  /** Compact: hide the helper line (dense dashboard cards). */
+  compact?: boolean
 }
 
 export function PayerInviteButton({
@@ -36,6 +38,7 @@ export function PayerInviteButton({
   studentName,
   phone,
   inviteUrl,
+  compact,
 }: PayerInviteButtonProps) {
   const [open, setOpen] = useState(false)
   // #36 slice 8/8 — real claim-link wiring (allowed edit): on dialog open,
@@ -128,9 +131,11 @@ export function PayerInviteButton({
           </p>
         </DialogContent>
       </Dialog>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">
-        {REMIND_COPY.inviteButtonHelper}
-      </p>
+      {!compact ? (
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {REMIND_COPY.inviteButtonHelper}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -266,6 +266,14 @@ export async function getPayScreenInfo(studentId: string) {
     ? await pendingQuery.maybeSingle()
     : await pendingQuery.eq('payer_profile_id', user.id).maybeSingle()
 
+  const { data: paidRow } = await service
+    .from('student_payments')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('month', due.periodKey)
+    .eq('paid', true)
+    .maybeSingle()
+
   return {
     studentId: s.id,
     studentName: s.name || 'طالب',
@@ -276,5 +284,6 @@ export async function getPayScreenInfo(studentId: string) {
     instapayLink: contract.instapayLink,
     instapayHandle: contract.instapayHandle,
     hasPending: !!pending,
+    isPaidForPeriod: !!paidRow,
   }
 }

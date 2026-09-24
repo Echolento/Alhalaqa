@@ -320,7 +320,14 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
       <Card>
         <CardContent className="p-4 space-y-3" dir="rtl">
-          {!isPaid && student.claimed_by ? (
+          {!isPaid && (student as any).hasPendingProof ? (
+            <Link href={`/dashboard/unpaid?student=${student.id}`}>
+              <Button className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-600 font-bold">
+                مراجعة الإيصال
+              </Button>
+            </Link>
+          ) : null}
+          {!isPaid && !(student as any).hasPendingProof && student.claimed_by ? (
             <RemindButton
               studentId={student.id}
               studentName={student.full_name || student.name || 'طالب'}

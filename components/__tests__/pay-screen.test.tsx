@@ -11,6 +11,7 @@ const baseData: PayScreenData = {
   instapayLink: 'https://ipn.eg/S/abc123',
   instapayHandle: 'ahmed@instapay',
   hasPending: false,
+  isPaidForPeriod: false,
 }
 
 describe('PayScreen', () => {
@@ -25,6 +26,16 @@ describe('PayScreen', () => {
     const link = screen.getByTestId('instapay-link')
     expect(link).toHaveAttribute('href', 'https://ipn.eg/S/abc123')
     expect(screen.getByTestId('instapay-handle')).toHaveTextContent('ahmed@instapay')
+  })
+
+  it('shows a big paid disclaimer and hides pay/upload when period is paid', () => {
+    render(
+      <PayScreen data={{ ...baseData, isPaidForPeriod: true }} proofs={[]} />,
+    )
+    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('مدفوع')
+    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('2026-09-01')
+    expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('receipt-upload')).not.toBeInTheDocument()
   })
 
   it('shows a fallback when the teacher has no InstaPay configured', () => {

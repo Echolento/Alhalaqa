@@ -119,7 +119,7 @@ export function UnpaidQueue(props: {
             <li key={item.id}>
               <Card
                 data-testid={`queue-item-${item.id}`}
-                className={isHighlight ? 'border-primary ring-1 ring-primary' : undefined}
+                className={`shadow-md md:shadow-lg ${isHighlight ? 'border-primary ring-1 ring-primary' : ''}`}
               >
                 <CardContent className="space-y-3 pt-4">
                   <div className="flex items-center justify-between gap-2">
@@ -152,7 +152,7 @@ export function UnpaidQueue(props: {
                       src={item.imageUrl}
                       alt={UNPAID_COPY.receiptAlt(item.studentName)}
                       data-testid={`receipt-image-${item.id}`}
-                      className="w-full rounded-md border object-contain"
+                      className="w-full rounded-md border object-contain md:mx-auto md:w-auto md:max-h-80"
                       loading="lazy"
                     />
                   ) : (

@@ -22,6 +22,7 @@ export interface PayScreenData {
   instapayLink: string | null
   instapayHandle: string | null
   hasPending: boolean
+  isPaidForPeriod: boolean
 }
 
 const STATUS_LABEL: Record<PaymentProof['status'], string> = {
@@ -47,6 +48,22 @@ export function PayScreen(props: {
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4 p-4" dir="rtl">
+      {data.isPaidForPeriod ? (
+        <Card
+          data-testid="paid-disclaimer"
+          className="border-emerald-500 bg-emerald-50 shadow-md"
+        >
+          <CardContent className="flex flex-col items-center gap-1 py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
+              <Check className="h-7 w-7 text-white" />
+            </span>
+            <p className="text-xl font-black text-emerald-800">مدفوع</p>
+            <p className="text-sm text-emerald-700">
+              رسوم {data.studentName} عن فترة {data.periodKey} مدفوعة بالكامل — لا يوجد مبلغ مستحق.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">دفع رسوم {data.studentName}</CardTitle>
@@ -67,7 +84,7 @@ export function PayScreen(props: {
             <span>{data.dueDateLabel}</span>
           </div>
 
-          {data.instapayLink || data.instapayHandle ? (
+          {!data.isPaidForPeriod && (data.instapayLink || data.instapayHandle) ? (
             <div className="space-y-2 pt-2">
               {data.instapayLink && (
                 <Button asChild className="w-full">
@@ -96,6 +113,7 @@ export function PayScreen(props: {
         </CardContent>
       </Card>
 
+      {!data.isPaidForPeriod ? (
       <Card>
         <CardContent className="space-y-3 pt-4">
           <label htmlFor="receipt-upload" className="text-sm font-medium">
@@ -136,6 +154,7 @@ export function PayScreen(props: {
           )}
         </CardContent>
       </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

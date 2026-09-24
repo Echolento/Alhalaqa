@@ -232,7 +232,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                             ) : 'تحديد كمدفوع'}
                           </Button>
-                          {student.claimed_by ? (
+                          {student.claimed_by && !(student as any).hasPendingProof ? (
                             <RemindButton
                               studentId={student.id}
                               studentName={student.full_name || student.name || 'طالب'}
@@ -248,6 +248,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               studentId={student.id}
                               studentName={student.full_name || student.name || 'طالب'}
                               phone={student.phone ?? null}
+                              compact
                             />
                           ) : null}
                         </div>
