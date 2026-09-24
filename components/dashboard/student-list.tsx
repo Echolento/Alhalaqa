@@ -168,6 +168,11 @@ export function StudentList({ students, payments, month, currency, initialCollec
                           <Badge variant={status.badgeVariant} className={status.badgeClass}>
                             {status.label}
                           </Badge>
+                          {student.claimed_by ? (
+                            <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
+                              ولي الأمر مربوط
+                            </Badge>
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
                           <span>الاشتراك: <span className="font-bold text-primary">{student.monthly_price} {currencySymbol}</span></span>

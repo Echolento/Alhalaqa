@@ -99,14 +99,13 @@ export function PayScreen(props: {
       <Card>
         <CardContent className="space-y-3 pt-4">
           <label htmlFor="receipt-upload" className="text-sm font-medium">
-            ارفع الإيصال (كاميرا/معرض)
+            ارفع سكرين شوت الإيصال
           </label>
           <Input
             id="receipt-upload"
             data-testid="receipt-upload"
             type="file"
             accept="image/*"
-            capture="environment"
             disabled={uploading}
             onChange={(e) => {
               const file = e.target.files?.[0]

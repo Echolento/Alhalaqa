@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PayScreen, type PayScreenData } from '@/components/pay/pay-screen'
 import { uploadPaymentProof } from '@/lib/payment-proofs'
+import { prepareReceiptFile } from '@/lib/downscale-image'
 import type { PaymentProof } from '@/lib/payment-proof-validation'
 
 export function PayUploadContainer(props: {
@@ -25,13 +26,14 @@ export function PayUploadContainer(props: {
     setUploading(true)
     setUploadError(null)
     try {
-      const buffer = new Uint8Array(await file.arrayBuffer())
+      // Phone photos exceed the 5MB cap — downscale client-side first.
+      const prepared = await prepareReceiptFile(file)
       const result = await uploadPaymentProof({
         studentId: props.studentId,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        fileBytes: buffer,
+        fileName: prepared.fileName,
+        mimeType: prepared.mimeType,
+        sizeBytes: prepared.sizeBytes,
+        fileBytes: prepared.bytes,
       })
       if ((result as { error?: string }).error) {
         setUploadError((result as { error: string }).error)

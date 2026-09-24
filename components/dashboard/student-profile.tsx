@@ -211,6 +211,11 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
               <Badge variant={status.badgeVariant} className={status.badgeClass}>
                 {status.label}
               </Badge>
+              {student.claimed_by ? (
+                <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent">
+                  ولي الأمر مربوط
+                </Badge>
+              ) : null}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {student.monthly_price} {currencySymbol} · يوم {student.payment_day || 1}
