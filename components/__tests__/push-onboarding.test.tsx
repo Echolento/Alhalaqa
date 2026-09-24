@@ -119,6 +119,38 @@ describe('SilentPayerPush (no payer choice)', () => {
     expect(subscribe).toHaveBeenCalledOnce()
   })
 
+  it('shows a tap-to-retry hint only when blocked, silent otherwise', () => {
+    const subscribe = vi.fn()
+    const { container, rerender } = render(
+      <SilentPayerPush
+        push={{
+          isSubscribed: false,
+          isLoading: false,
+          error: null,
+          subscribe,
+          unsubscribe: vi.fn(),
+        }}
+      />,
+    )
+    expect(container.innerHTML).toBe('')
+
+    rerender(
+      <SilentPayerPush
+        push={{
+          isSubscribed: false,
+          isLoading: false,
+          error: 'denied',
+          subscribe,
+          unsubscribe: vi.fn(),
+        }}
+      />,
+    )
+    const hint = screen.getByTestId('push-blocked-hint')
+    expect(hint).toBeInTheDocument()
+    fireEvent.click(hint)
+    expect(subscribe).toHaveBeenCalled()
+  })
+
   it('live path: stays silent when permission denied', () => {
     vi.stubGlobal('Notification', { permission: 'denied' })
     const { subscribe } = stubPush()

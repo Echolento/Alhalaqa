@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { PAY_PUSH_COPY } from '@/lib/pay-push-copy'
 
 export interface SilentPayerPushState {
   isSubscribed: boolean
@@ -64,6 +65,31 @@ export function SilentPayerPush(props: {
     // push.* intentionally read once per state change, not subscribed fully.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [push.isLoading, push.isSubscribed, push.error])
+
+  function handleRetry() {
+    attemptedRef.current = false
+    try {
+      attemptedRef.current = true
+      void push.subscribe()
+    } catch {
+      // Still silent — the hint stays until subscription succeeds.
+    }
+  }
+
+  // The ONLY payer-visible push UI: a blocked-only retry hint. Everything
+  // else stays silent — no prompt, no choice.
+  if (!push.isLoading && !push.isSubscribed && push.error) {
+    return (
+      <button
+        type="button"
+        data-testid="push-blocked-hint"
+        onClick={handleRetry}
+        className="w-full rounded-md bg-amber-50 px-3 py-2 text-center text-xs text-amber-800"
+      >
+        {PAY_PUSH_COPY.blockedHint}
+      </button>
+    )
+  }
 
   return null
 }

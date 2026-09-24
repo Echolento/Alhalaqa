@@ -57,6 +57,27 @@ export async function getTeacherPayments(month?: string) {
     .in('month', monthKeysToFetch)
     .in('student_id', normalizedStudents.map(s => s.id))
 
+  // Pending-confirmation proofs: a receipt waiting for teacher verification
+  // turns the card amber instead of red (RLS read-own policy covers this).
+  const pendingKeys = new Set<string>()
+  {
+    const ids = normalizedStudents.map(s => s.id)
+    if (ids.length > 0) {
+      const { data: pendingProofs } = await supabase
+        .from('payment_proofs')
+        .select('student_id, period_key')
+        .eq('status', 'pending')
+        .in('student_id', ids)
+        .in('period_key', monthKeysToFetch)
+      for (const proof of pendingProofs || []) {
+        pendingKeys.add(`${(proof as any).student_id}_${(proof as any).period_key}`)
+      }
+    }
+  }
+  for (const s of normalizedStudents) {
+    (s as any).hasPendingProof = pendingKeys.has(`${s.id}_${s.currentMonthKey}`)
+  }
+
   const paymentSet = new Set((existingPayments || []).map(p => `${p.student_id}_${p.month}`))
   const studentsNeedingPaymentRecord = normalizedStudents.filter(s => !paymentSet.has(`${s.id}_${s.currentMonthKey}`))
 

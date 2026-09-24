@@ -162,7 +162,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
         students.map((student) => {
           const payment = localPayments.find((p) => p.student_id === student.id)
           const isPaid = payment?.paid || false
-          const status = getPaymentStatus(isPaid)
+          const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
           const isEditing = editingPrice === student.id
 
           return (

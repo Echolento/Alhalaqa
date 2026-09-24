@@ -31,6 +31,11 @@ export const PAY_PUSH_COPY = {
   loadingLabel: 'جارٍ التحقق…',
 
   // ——— Errors (deniedHelp mirrors the teacher hook wording for consistency) ———
+  // ——— Blocked-only hint: the ONLY payer-visible push UI. Silent everywhere
+  // else; this appears solely when subscribing failed so the payer can fix
+  // it with one tap (retry) instead of wondering why verdicts never arrive.
+  blockedHint:
+    'إشعارات الدفع متوقفة على هذا الجهاز — اضغط هنا لإعادة المحاولة',
   deniedHelp:
     'الإشعارات محظورة في المتصفح. اسمح بها من إعدادات الموقع (أيقونة القفل بجانب الرابط).',
   permissionDeniedLabel: 'لم يتم منح الإذن',

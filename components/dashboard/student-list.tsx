@@ -156,7 +156,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
           {filtered.map((student) => {
             const payment = localPayments.find((p) => p.student_id === student.id)
             const isPaid = payment?.paid || false
-            const status = getPaymentStatus(isPaid)
+            const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
             return (
               <Card key={student.id} className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg ${status.cardClass}`}>
                 <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">

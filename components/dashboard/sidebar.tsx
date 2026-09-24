@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   MessageCircle,
+  Receipt,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
 
 const teacherLinks = [
   { href: '/dashboard', label: 'الطلاب', icon: Users },
+  { href: '/dashboard/unpaid', label: 'بانتظار التأكيد', icon: Receipt },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ]
 

@@ -78,7 +78,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   const currencySymbol = getCurrencySymbol(currency)
   const current = payments.find((p) => p.month === month) || payments[0]
   const isPaid = current?.paid || false
-  const status = getPaymentStatus(isPaid)
+  const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)

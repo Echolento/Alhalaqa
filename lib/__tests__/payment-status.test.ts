@@ -13,6 +13,17 @@ describe('getPaymentStatus', () => {
     expect(s.badgeClass).not.toContain('animate-pulse')
   })
 
+  it('pending proof maps to amber instead of red', () => {
+    const s = getPaymentStatus(false, { pending: true })
+    expect(s.label).toBe('قيد المراجعة')
+    expect(s.icon).toBe('clock')
+    expect(s.cardClass).toContain('bg-amber-50')
+    expect(s.cardClass).toContain('border-r-amber-500')
+    expect(s.badgeClass).toContain('bg-amber-100')
+    // Paid always wins over pending.
+    expect(getPaymentStatus(true, { pending: true }).label).toBe('مدفوع')
+  })
+
   it('unpaid maps to subtle red pill + clock, no solid red', () => {
     const s = getPaymentStatus(false)
     expect(s.label).toBe('لم يدفع')

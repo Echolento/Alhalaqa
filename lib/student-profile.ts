@@ -50,6 +50,14 @@ export async function getStudentProfile(studentId: string) {
 
   const payments = await getStudentPaymentHistory(studentId)
 
+  const { data: pendingProof } = await service
+    .from('payment_proofs')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('status', 'pending')
+    .limit(1)
+    .maybeSingle()
+
   return {
     student: {
       id: (student as any).id,
@@ -60,6 +68,7 @@ export async function getStudentProfile(studentId: string) {
       payment_day: (student as any).payment_day || 1,
       frequency: (student as any).frequency === 'weekly' || (student as any).frequency === 'biweekly' ? (student as any).frequency : 'monthly',
       claimed_by: (student as any).claimed_by ?? null,
+      hasPendingProof: !!pendingProof,
     },
     payments,
     currency: teacher?.currency || 'SAR',
