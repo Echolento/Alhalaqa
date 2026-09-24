@@ -56,13 +56,16 @@ export const REMIND_COPY = {
     amount?: number
     currency?: string
     periodLabel?: string
+    /** Claim link — the share is never naked: the parent taps it and claims. */
+    inviteUrl?: string
   }) => {
     const amountPart =
       params.amount !== undefined
         ? ` — ${params.amount}${params.currency ? ` ${params.currency}` : ''}`
         : ''
     const periodPart = params.periodLabel ? ` (عن فترة ${params.periodLabel})` : ''
-    return `السلام عليكم، تذكير برسوم ${params.studentName}${amountPart}${periodPart}. يرجى الدفع ورفع الإيصال. جزاكم الله خيراً.`
+    const linkPart = params.inviteUrl ? `\nرابط المتابعة والدفع: ${params.inviteUrl}` : ''
+    return `السلام عليكم، تذكير برسوم ${params.studentName}${amountPart}${periodPart}. يرجى الدفع ورفع الإيصال. جزاكم الله خيراً.${linkPart}`
   },
   whatsappInviteText: (params: { studentName: string; inviteUrl: string }) =>
     `السلام عليكم، دعوة لولي أمر ${params.studentName} لمتابعة رسوم الحلقة واستلام إشعارات الدفع: ${params.inviteUrl}`,

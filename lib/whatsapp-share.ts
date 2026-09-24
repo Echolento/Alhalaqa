@@ -25,6 +25,7 @@ export function buildRemindWhatsAppText(params: {
   amount?: number
   currency?: string
   periodLabel?: string
+  inviteUrl?: string
 }): string {
   return REMIND_COPY.whatsappRemindText(params)
 }
@@ -35,6 +36,7 @@ export function buildRemindWhatsAppUrl(params: {
   amount?: number
   currency?: string
   periodLabel?: string
+  inviteUrl?: string
 }): string {
   return buildWhatsAppUrl(params.phone, buildRemindWhatsAppText(params))
 }

@@ -57,6 +57,15 @@ describe('buildRemindWhatsAppUrl', () => {
     expect(url.startsWith('https://wa.me/201012345678?text=')).toBe(true)
     expect(decodeURIComponent(url)).toContain('أحمد')
   })
+
+  it('carries the claim link inside the remind text — never naked', () => {
+    const url = buildRemindWhatsAppUrl({
+      phone: '+201012345678',
+      studentName: 'أحمد',
+      inviteUrl: 'https://x.test/claim?token=clm_abc',
+    })
+    expect(decodeURIComponent(url)).toContain('https://x.test/claim?token=clm_abc')
+  })
 })
 
 describe('buildInviteWhatsAppText/Url', () => {

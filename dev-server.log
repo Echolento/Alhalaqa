@@ -265,3 +265,34 @@ Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1937ms (compile: 34ms, proxy.ts: 379ms, render: 1524ms)
  GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1019ms (compile: 24ms, proxy.ts: 253ms, render: 742ms)
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 913ms (compile: 30ms, proxy.ts: 213ms, render: 670ms)
+ ✓ Compiled in 350ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1714ms (compile: 444ms, proxy.ts: 855ms, render: 415ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 526ms (compile: 21ms, proxy.ts: 262ms, render: 243ms)
+ ✓ Compiled in 388ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 318ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 2.7s (compile: 399ms, proxy.ts: 278ms, render: 1980ms)
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1268ms (compile: 33ms, proxy.ts: 304ms, render: 931ms)
+ ✓ Compiled in 302ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 371ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+D:\Coding\quran-teacher-app\.next\dev\server\chunks\ssr\_4e02a431._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+ ⨯ ReferenceError: showWhatsAppFallback is not defined
+    at RemindButton (D:\Coding\quran-teacher-app\.next\dev\server\chunks\ssr\_4e02a431._.js:1306:13) {
+  digest: '4123859600'
+}
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 2.7s (compile: 426ms, proxy.ts: 313ms, render: 1933ms)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 300ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 2.5s (compile: 392ms, proxy.ts: 237ms, render: 1848ms)

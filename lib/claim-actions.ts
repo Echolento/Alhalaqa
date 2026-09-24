@@ -55,6 +55,25 @@ import { CLAIM_COPY } from '@/lib/claim-copy'
 
 type Service = ReturnType<typeof createServiceClient>
 
+/**
+ * Absolute site base for links shared OUTSIDE the app (WhatsApp). A relative
+ * /claim?token= path is untappable gibberish in a chat — the parent needs a
+ * real https Alhalaqa link. Request host first, env fallback, never throws.
+ */
+async function getShareBaseUrl(): Promise<string> {
+  try {
+    const h = await headers()
+    const host = h.get('x-forwarded-host') ?? h.get('host')
+    if (host) {
+      const proto = h.get('x-forwarded-proto') ?? 'https'
+      return `${proto}://${host}`
+    }
+  } catch {
+    // Fall through to env.
+  }
+  return (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '')
+}
+
 interface ClaimTokenRow {
   id: string
   student_id: string
@@ -200,7 +219,10 @@ export async function issueClaimLink(studentId: string) {
     user.id,
   )
 
-  return { claimUrl: buildClaimUrl(rawToken), expiresAt }
+  const base = await getShareBaseUrl()
+  // Absolute share link (https://site/claim?token=...). buildClaimUrl stays
+  // relative-only for the in-app OTP ?next= path (open-redirect safe).
+  return { claimUrl: `${base}${buildClaimUrl(rawToken)}`, expiresAt }
 }
 
 /** Claim status per student — derivable from students.claimed_by. */

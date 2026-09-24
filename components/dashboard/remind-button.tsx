@@ -7,12 +7,13 @@
 // When no payer is linked yet (payer identity lands later) it takes the test
 // path: logs + toasts, no push transport.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { sendManualRemind } from '@/lib/remind-actions'
+import { issueClaimLink } from '@/lib/claim-actions'
 import { buildRemindWhatsAppUrl, canWhatsApp } from '@/lib/whatsapp-share'
 
 interface RemindButtonProps {
@@ -42,16 +43,51 @@ export function RemindButton({
   className,
 }: RemindButtonProps) {
   const [sending, setSending] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const { toast } = useToast()
   const showWhatsAppFallback = canWhatsApp(phone)
-  const whatsappUrl = showWhatsAppFallback
-    ? buildRemindWhatsAppUrl({
-        phone: phone as string,
+  // Single-flight mint (see payer-invite-button): one tap = one link.
+  const shareInflightRef = useRef<Promise<{ claimUrl?: string; error?: string }> | null>(null)
+
+  const handleWhatsAppShare = async () => {
+    if (!phone || sharing) return
+    setSharing(true)
+    try {
+      if (!shareInflightRef.current) {
+        shareInflightRef.current = issueClaimLink(studentId)
+      }
+      const result = await shareInflightRef.current
+      shareInflightRef.current = null
+      if (!result?.claimUrl) {
+        toast({
+          variant: 'destructive',
+          title: REMIND_COPY.remindFailTitle,
+          description: REMIND_COPY.remindFailDescription,
+        })
+        return
+      }
+      // Absolute Alhalaqa link inside the message — never a naked token:
+      // the parent taps it, claims, and pays.
+      const url = buildRemindWhatsAppUrl({
+        phone,
         studentName,
         amount,
         currency,
+        periodLabel: periodKey,
+        inviteUrl: result.claimUrl,
       })
-    : null
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      shareInflightRef.current = null
+      toast({
+        variant: 'destructive',
+        title: REMIND_COPY.remindFailTitle,
+        description: REMIND_COPY.remindFailDescription,
+      })
+    } finally {
+      setSharing(false)
+    }
+  }
 
   const handleRemind = async () => {
     if (sending) return
@@ -114,17 +150,16 @@ export function RemindButton({
         <BellRing className="w-4 h-4" />
         {sending ? REMIND_COPY.remindButtonLoading : REMIND_COPY.remindButtonLabel}
       </Button>
-      {whatsappUrl ? (
+      {showWhatsAppFallback ? (
         <Button
           variant="ghost"
           size={size}
-          asChild
+          onClick={handleWhatsAppShare}
+          disabled={sharing}
           aria-label={REMIND_COPY.whatsappShareAriaLabel(studentName)}
           className="min-h-[44px] sm:min-h-0 gap-1.5"
         >
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-            {REMIND_COPY.whatsappShareLabel}
-          </a>
+          {sharing ? '…' : REMIND_COPY.whatsappShareLabel}
         </Button>
       ) : null}
     </div>

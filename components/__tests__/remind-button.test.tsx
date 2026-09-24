@@ -17,6 +17,10 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: mockToast,
 }))
 
+vi.mock('@/lib/claim-actions', () => ({
+  issueClaimLink: vi.fn(),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockSend.mockResolvedValue({ success: true, testMode: false })
@@ -54,12 +58,40 @@ describe('RemindButton', () => {
     )
   })
 
-  it('shows the free wa.me fallback when a payer phone exists', () => {
+  it('shares via wa.me with the claim link attached — never naked', async () => {
+    const { issueClaimLink } = await import('@/lib/claim-actions')
+    vi.mocked(issueClaimLink).mockResolvedValue({
+      claimUrl: 'https://x.test/claim?token=clm_abc',
+      expiresAt: 'x',
+    })
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     render(
       <RemindButton studentId="s1" studentName="أحمد" phone="+201012345678" />,
     )
-    const link = screen.getByLabelText(REMIND_COPY.whatsappShareAriaLabel('أحمد'))
-    expect(link).toHaveAttribute('href', expect.stringContaining('https://wa.me/201012345678'))
+    fireEvent.click(screen.getByLabelText(REMIND_COPY.whatsappShareAriaLabel('أحمد')))
+    await waitFor(() => expect(issueClaimLink).toHaveBeenCalledWith('s1'))
+    expect(openSpy).toHaveBeenCalledOnce()
+    const sharedUrl = openSpy.mock.calls[0][0] as string
+    expect(sharedUrl).toContain('https://wa.me/201012345678')
+    // The claim link rides inside the message text.
+    expect(decodeURIComponent(sharedUrl)).toContain('https://x.test/claim?token=clm_abc')
+    openSpy.mockRestore()
+  })
+
+  it('toasts instead of sharing naked when link minting fails', async () => {
+    const { issueClaimLink } = await import('@/lib/claim-actions')
+    vi.mocked(issueClaimLink).mockResolvedValue({ error: 'boom' })
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    render(
+      <RemindButton studentId="s1" studentName="أحمد" phone="+201012345678" />,
+    )
+    fireEvent.click(screen.getByLabelText(REMIND_COPY.whatsappShareAriaLabel('أحمد')))
+    await waitFor(() => expect(issueClaimLink).toHaveBeenCalled())
+    expect(openSpy).not.toHaveBeenCalled()
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: REMIND_COPY.remindFailTitle }),
+    )
+    openSpy.mockRestore()
   })
 
   it('hides the wa.me fallback when no phone is on file', () => {
