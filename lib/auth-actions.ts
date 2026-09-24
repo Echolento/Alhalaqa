@@ -116,8 +116,9 @@ export async function signUp(formData: FormData) {
       // Unconfirmed address re-signing up: skip the login dead-end (login
       // rejects unconfirmed emails) — re-send the confirmation to the
       // CURRENT host instead and land back on the check-email panel.
+      // A failed resend is surfaced, never swallowed as success.
       const siteUrl = await getRequestSiteUrl()
-      await supabase.auth.resend({
+      const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
         email,
         options: {
@@ -125,6 +126,9 @@ export async function signUp(formData: FormData) {
             `${siteUrl}/auth/callback`,
         },
       })
+      if (resendError) {
+        return { error: translateAuthError(resendError.message), emailTaken: true }
+      }
       return { success: true, needsEmailConfirm: true, email, resent: true }
     }
     return { error: translateAuthError(error.message) }
