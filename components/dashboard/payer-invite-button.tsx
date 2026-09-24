@@ -12,13 +12,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { UserPlus } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { issueClaimLink } from '@/lib/claim-actions'
@@ -40,7 +38,6 @@ export function PayerInviteButton({
   inviteUrl,
 }: PayerInviteButtonProps) {
   const [open, setOpen] = useState(false)
-  const { toast } = useToast()
   // #36 slice 8/8 — real claim-link wiring (allowed edit): on dialog open,
   // mint a single-use 7-day /claim?token= link via issueClaimLink (which
   // revokes prior live tokens). An explicit inviteUrl prop still wins
@@ -77,28 +74,13 @@ export function PayerInviteButton({
       cancelled = true
     }
   }, [open, inviteUrl, issuedUrl, issueError, studentId])
-  const claimUrl = inviteUrl ?? issuedUrl ?? `/pay?student=${encodeURIComponent(studentId)}&invite=1`
-  const shareDisabled = issuing
-  const showWhatsApp = canWhatsApp(phone)
+  // The raw /claim?token= link is NEVER shown: it's gibberish to a teacher.
+  // WhatsApp share is the only way out — the parent taps it and claims.
+  const claimUrl = inviteUrl ?? issuedUrl ?? null
+  const showWhatsApp = canWhatsApp(phone) && !!claimUrl
   const whatsappUrl = showWhatsApp
-    ? buildInviteWhatsAppUrl({ phone: phone as string, studentName, inviteUrl: claimUrl })
+    ? buildInviteWhatsAppUrl({ phone: phone as string, studentName, inviteUrl: claimUrl as string })
     : null
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(claimUrl)
-      toast({
-        title: REMIND_COPY.inviteCopiedTitle,
-        description: REMIND_COPY.inviteCopiedDescription,
-      })
-    } catch {
-      toast({
-        variant: 'destructive',
-        title: REMIND_COPY.remindFailTitle,
-        description: REMIND_COPY.remindFailDescription,
-      })
-    }
-  }
 
   return (
     <div className="space-y-1" dir="rtl">
@@ -123,23 +105,18 @@ export function PayerInviteButton({
           {issueError && !issuedUrl ? (
             <p className="text-xs text-destructive">{CLAIM_COPY.inviteIssueFailDescription}</p>
           ) : null}
-          {!issuing ? (
-            <p dir="ltr" className="break-all rounded-md bg-muted/60 px-2 py-1.5 text-[11px]">
-              {claimUrl}
+          {!issuing && whatsappUrl ? (
+            <Button type="button" className="w-full min-h-[44px]" asChild>
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                {REMIND_COPY.whatsappShareLabel}
+              </a>
+            </Button>
+          ) : null}
+          {!issuing && !whatsappUrl && !issueError ? (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {REMIND_COPY.payerPhoneHelper}
             </p>
           ) : null}
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button type="button" variant="outline" onClick={handleCopy} disabled={shareDisabled}>
-              {REMIND_COPY.inviteCopyLinkLabel}
-            </Button>
-            {whatsappUrl && !issuing ? (
-              <Button type="button" asChild>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                  {REMIND_COPY.whatsappShareLabel}
-                </a>
-              </Button>
-            ) : null}
-          </DialogFooter>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {CLAIM_COPY.inviteRegeneratedNote}
           </p>

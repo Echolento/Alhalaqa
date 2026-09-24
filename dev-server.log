@@ -242,3 +242,26 @@ Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 381ms (compile: 23ms, proxy.ts: 110ms, render: 248ms)
  ✓ Compiled in 351ms
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1692ms (compile: 346ms, proxy.ts: 498ms, render: 848ms)
+ ✓ Compiled in 329ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 272ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+D:\Coding\quran-teacher-app\.next\dev\server\chunks\ssr\_0d99c76d._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+ ⨯ ReferenceError: DialogFooter is not defined
+    at PayerInviteButton (D:\Coding\quran-teacher-app\.next\dev\server\chunks\ssr\_0d99c76d._.js:1634:281) {
+  digest: '413334924'
+}
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 2.2s (compile: 347ms, proxy.ts: 271ms, render: 1549ms)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 272ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 2.1s (compile: 370ms, proxy.ts: 221ms, render: 1490ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1937ms (compile: 34ms, proxy.ts: 379ms, render: 1524ms)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1019ms (compile: 24ms, proxy.ts: 253ms, render: 742ms)
