@@ -21,7 +21,7 @@ export async function getTeacherStudents() {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, created_at, updated_at, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, frequency, claimed_by, created_at, updated_at, teacher_id')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 

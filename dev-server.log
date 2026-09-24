@@ -1,0 +1,244 @@
+
+> alhalaqa@0.1.0 dev
+> next dev
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.1.13:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 13.9s
+ ○ Compiling / ...
+D:\Coding\quran-teacher-app\.next\dev\server\chunks\node_modules_@supabase_auth-js_dist_module_b73e6ca7._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+Error [AuthApiError]: Invalid Refresh Token: Refresh Token Not Found
+    at ignore-listed frames {
+  __isAuthError: true,
+  status: 400,
+  code: 'refresh_token_not_found'
+}
+D:\Coding\quran-teacher-app\.next\dev\server\chunks\node_modules_@supabase_auth-js_dist_module_b73e6ca7._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+Error [AuthApiError]: Invalid Refresh Token: Refresh Token Not Found
+    at ignore-listed frames {
+  __isAuthError: true,
+  status: 400,
+  code: 'refresh_token_not_found'
+}
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+D:\Coding\quran-teacher-app\node_modules\next\dist\server\dev\middleware-turbopack.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+D:\Coding\quran-teacher-app\node_modules\next\dist\server\dev\hot-reloader-turbopack.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+D:\Coding\quran-teacher-app\node_modules\next\dist\server\lib\router-server.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+D:\Coding\quran-teacher-app\node_modules\next\dist\server\lib\start-server.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+TypeError: Invalid URL
+    at ignore-listed frames {
+  code: 'ERR_INVALID_URL',
+  input: '//',
+  base: 'http://n'
+}
+ GET / 200 in 13.2s (compile: 11.5s, proxy.ts: 931ms, render: 794ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 4.0s (compile: 1384ms, proxy.ts: 1752ms, render: 872ms)
+ GET / 200 in 240ms (compile: 33ms, proxy.ts: 22ms, render: 185ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /auth/signup 200 in 1766ms (compile: 1675ms, proxy.ts: 15ms, render: 76ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ POST /auth/signup 200 in 2.4s (compile: 14ms, proxy.ts: 12ms, render: 2.4s)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /auth/login?signup_success=true 200 in 1193ms (compile: 971ms, proxy.ts: 13ms, render: 209ms)
+ POST /auth/login?signup_success=true 200 in 434ms (compile: 14ms, proxy.ts: 12ms, render: 408ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /auth/signup 200 in 71ms (compile: 14ms, proxy.ts: 10ms, render: 46ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /auth/signup 200 in 66ms (compile: 15ms, proxy.ts: 11ms, render: 40ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ POST /auth/signup 200 in 1691ms (compile: 13ms, proxy.ts: 9ms, render: 1669ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /auth/login?signup_success=true 200 in 179ms (compile: 19ms, proxy.ts: 12ms, render: 148ms)
+ GET /auth/callback?code=80c87ecf-d152-4440-b044-9c4572912b57 307 in 2.6s (compile: 1104ms, proxy.ts: 7ms, render: 1489ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /welcome. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /welcome 200 in 2.4s (compile: 1459ms, proxy.ts: 111ms, render: 879ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard 200 in 3.5s (compile: 1899ms, proxy.ts: 205ms, render: 1432ms)
+ GET /dashboard 200 in 1207ms (compile: 14ms, proxy.ts: 266ms, render: 927ms)
+ POST /welcome 303 in 6.1s (compile: 12ms, proxy.ts: 745ms, render: 5.4s)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ POST /dashboard 200 in 2.5s (compile: 16ms, proxy.ts: 579ms, render: 1950ms)
+ GET /dashboard 200 in 1793ms (compile: 18ms, proxy.ts: 256ms, render: 1519ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/settings 200 in 1699ms (compile: 1095ms, proxy.ts: 212ms, render: 393ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ POST /dashboard/settings 200 in 2.3s (compile: 14ms, proxy.ts: 655ms, render: 1659ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard 200 in 1267ms (compile: 20ms, proxy.ts: 605ms, render: 642ms)
+ ⨯ ./lib/claim-actions.ts:81:17
+Ecmascript file had an error
+[0m [90m 79 |[39m [90m * request headers, tests pass opts.attemptKey to override.[39m
+ [90m 80 |[39m [90m */[39m
+[31m[1m>[22m[39m[90m 81 |[39m [36mexport[39m [36mfunction[39m buildAttemptKey(parts[33m:[39m string)[33m:[39m string {
+ [90m    |[39m                 [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 82 |[39m   [36mreturn[39m [32m`redeem:${createHash('sha256').update(parts, 'utf8').digest('hex')}`[39m
+ [90m 83 |[39m }
+ [90m 84 |[39m[0m
+
+Server Actions must be async functions.
+
+
+
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 500 in 5.4s (compile: 4.0s, proxy.ts: 998ms, render: 372ms)
+ ⨯ ./lib/claim-actions.ts:81:17
+Ecmascript file had an error
+[0m [90m 79 |[39m [90m * request headers, tests pass opts.attemptKey to override.[39m
+ [90m 80 |[39m [90m */[39m
+[31m[1m>[22m[39m[90m 81 |[39m [36mexport[39m [36mfunction[39m buildAttemptKey(parts[33m:[39m string)[33m:[39m string {
+ [90m    |[39m                 [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 82 |[39m   [36mreturn[39m [32m`redeem:${createHash('sha256').update(parts, 'utf8').digest('hex')}`[39m
+ [90m 83 |[39m }
+ [90m 84 |[39m[0m
+
+Server Actions must be async functions.
+
+
+
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 500 in 297ms (compile: 50ms, proxy.ts: 217ms, render: 31ms)
+ ✓ Compiled in 305ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 134ms (compile: 26ms, proxy.ts: 31ms, render: 77ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard?signup_success=true 200 in 861ms (compile: 16ms, proxy.ts: 644ms, render: 201ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 10.9s (compile: 2.2s, proxy.ts: 319ms, render: 8.4s)
+ ✓ Compiled in 322ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 99ms (compile: 26ms, proxy.ts: 22ms, render: 51ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard?signup_success=true 200 in 318ms (compile: 18ms, proxy.ts: 123ms, render: 178ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1164ms (compile: 360ms, proxy.ts: 447ms, render: 356ms)
+ ✓ Compiled in 402ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 176ms (compile: 37ms, proxy.ts: 39ms, render: 101ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 96ms (compile: 17ms, proxy.ts: 11ms, render: 68ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 109ms (compile: 28ms, proxy.ts: 14ms, render: 67ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 2.6s (compile: 16ms, proxy.ts: 9ms, render: 2.6s)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 194ms (compile: 17ms, proxy.ts: 56ms, render: 121ms)
+ GET /dashboard?signup_success=true 200 in 3.2s (compile: 467ms, proxy.ts: 516ms, render: 2.3s)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 3.7s (compile: 876ms, proxy.ts: 1412ms, render: 1387ms)
+ GET / 200 in 467ms (compile: 22ms, proxy.ts: 15ms, render: 430ms)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 4.6s (compile: 1082ms, proxy.ts: 1356ms, render: 2.1s)
+ GET /dashboard?signup_success=true 200 in 5.1s (compile: 30ms, proxy.ts: 1265ms, render: 3.8s)
+ ✓ Compiled in 354ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 166ms (compile: 50ms, proxy.ts: 33ms, render: 83ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 88ms (compile: 20ms, proxy.ts: 8ms, render: 60ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 2.2s (compile: 14ms, proxy.ts: 8ms, render: 2.2s)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard?signup_success=true 200 in 2.8s (compile: 403ms, proxy.ts: 356ms, render: 2.1s)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 3.0s (compile: 1061ms, proxy.ts: 348ms, render: 1545ms)
+ GET / 200 in 784ms (compile: 83ms, proxy.ts: 298ms, render: 404ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 306ms (compile: 46ms, proxy.ts: 34ms, render: 227ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard?signup_success=true 200 in 3.3s (compile: 30ms, proxy.ts: 1659ms, render: 1604ms)
+ GET / 200 in 127ms (compile: 25ms, proxy.ts: 19ms, render: 84ms)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 3.6s (compile: 437ms, proxy.ts: 1722ms, render: 1487ms)
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1485ms (compile: 34ms, proxy.ts: 406ms, render: 1045ms)
+ ✓ Compiled in 467ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 144ms (compile: 42ms, proxy.ts: 35ms, render: 67ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard?signup_success=true 200 in 719ms (compile: 244ms, proxy.ts: 296ms, render: 179ms)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 729ms (compile: 46ms, proxy.ts: 288ms, render: 395ms)
+ ✓ Compiled in 433ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1806ms (compile: 25ms, proxy.ts: 1434ms, render: 347ms)
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 3.3s (compile: 392ms, proxy.ts: 527ms, render: 2.4s)
+ POST /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1262ms (compile: 38ms, proxy.ts: 224ms, render: 1000ms)
+ ✓ Compiled in 337ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1078ms (compile: 423ms, proxy.ts: 288ms, render: 368ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 456ms (compile: 66ms, proxy.ts: 131ms, render: 259ms)
+ ✓ Compiled in 303ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 511ms (compile: 34ms, proxy.ts: 275ms, render: 202ms)
+ ✓ Compiled in 428ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 1022ms (compile: 399ms, proxy.ts: 240ms, render: 383ms)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard/students/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /dashboard/students/5d48b38c-80a0-4007-a7f5-c69a3e0a716c 200 in 381ms (compile: 23ms, proxy.ts: 110ms, render: 248ms)
+ ✓ Compiled in 351ms

@@ -25,6 +25,7 @@ import { getCurrencySymbol } from '@/lib/currencies'
 import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
+import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
 
 interface StudentListProps {
   students: any[]
@@ -229,12 +230,19 @@ export function StudentList({ students, payments, month, currency, initialCollec
                           <RemindButton
                             studentId={student.id}
                             studentName={student.full_name || student.name || 'طالب'}
-                            payerProfileId={student.payer_profile_id ?? student.payerProfileId ?? null}
+                            payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
                             amount={Number(student.monthly_price) || undefined}
                             currency={currency}
                             periodKey={month}
                             phone={student.phone ?? null}
                           />
+                          {!student.claimed_by ? (
+                            <PayerInviteButton
+                              studentId={student.id}
+                              studentName={student.full_name || student.name || 'طالب'}
+                              phone={student.phone ?? null}
+                            />
+                          ) : null}
                         </div>
                       )}
                     </div>

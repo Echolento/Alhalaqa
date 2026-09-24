@@ -54,6 +54,37 @@ export function WelcomeForm() {
             />
           </div>
 
+          <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+            <div className="space-y-2">
+              <Label htmlFor="instapay_link">رابط الدفع (انستاباي)</Label>
+              <Input
+                id="instapay_link"
+                name="instapay_link"
+                type="url"
+                placeholder="https://ipn.eg/S/..."
+                dir="ltr"
+                className="text-left"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instapay_handle">اسم انستاباي (اختياري)</Label>
+              <Input
+                id="instapay_handle"
+                name="instapay_handle"
+                type="text"
+                placeholder="name@instapay"
+                dir="ltr"
+                className="text-left"
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-5">
+              يظهر هذا الرابط داخل تنبيهات الدفع وشاشة الدفع الخاصة بولي الأمر.
+              يمكنك تغييره لاحقاً من الإعدادات.
+            </p>
+          </div>
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'جاري الحفظ...' : 'حفظ والمتابعة'}
           </Button>

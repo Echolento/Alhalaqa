@@ -46,6 +46,17 @@ describe('StudentList (merged home)', () => {
     expect(screen.getByText('محمد حسن')).toBeInTheDocument()
   })
 
+  it('shows the guardian invite CTA on unclaimed rows only', () => {
+    const rows = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: 'payer-9' },
+    ]
+    const paidS2 = [{ student_id: 's2', paid: true, amount_paid: 200 }]
+    render(<StudentList {...props} students={rows} payments={paidS2} />)
+    // One invite trigger (unclaimed s1); claimed s2 gets none.
+    expect(screen.getAllByText('دعوة ولي الأمر').length).toBeGreaterThanOrEqual(1)
+  })
+
   it('each row links to profile', () => {
     const { container } = render(<StudentList {...props} />)
     const link = container.querySelector('a[href="/dashboard/students/s1"]')

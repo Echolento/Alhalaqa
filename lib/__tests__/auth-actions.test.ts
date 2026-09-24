@@ -100,7 +100,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'exists@example.com', password: 'Password123!', fullName: 'Test' })
     )
-    expect(result.error).toBe('هذا البريد مسجل بالفعل')
+    expect((result as { error?: string }).error).toBe('هذا البريد مسجل بالفعل')
   })
 
   it('redirects to welcome if session returned', async () => {
@@ -123,7 +123,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'test@example.com', password: 'Ab1!', fullName: 'Test' })
     )
-    expect(result.error).toContain('8 أحرف')
+    expect((result as { error?: string }).error).toContain('8 أحرف')
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
   })
 
@@ -132,7 +132,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'test@example.com', password: 'password', fullName: 'Test' })
     )
-    expect(result.error).toContain('ضعيفة جداً')
+    expect((result as { error?: string }).error).toContain('ضعيفة جداً')
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
   })
 
@@ -141,7 +141,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'test@example.com', password: 'lowercase1!', fullName: 'Test' })
     )
-    expect(result.error).toContain('حرف كبير')
+    expect((result as { error?: string }).error).toContain('حرف كبير')
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
   })
 
@@ -150,7 +150,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'test@example.com', password: 'UPPERCASE1!', fullName: 'Test' })
     )
-    expect(result.error).toContain('حرف صغير')
+    expect((result as { error?: string }).error).toContain('حرف صغير')
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
   })
 
@@ -159,7 +159,7 @@ describe('signUp', () => {
     const result = await signUp(
       createFormData({ email: 'test@example.com', password: 'NoDigitsHere!', fullName: 'Test' })
     )
-    expect(result.error).toContain('رقم')
+    expect((result as { error?: string }).error).toContain('رقم')
     expect(mockSupabase.auth.signUp).not.toHaveBeenCalled()
   })
 })
@@ -209,7 +209,7 @@ describe('signIn', () => {
       createFormData({ email: 'wrong@example.com', password: 'bad' })
     )
 
-    expect(result.error).toBe('البريد الإلكتروني أو كلمة المرور غير صحيحة')
+    expect((result as { error?: string }).error).toBe('البريد الإلكتروني أو كلمة المرور غير صحيحة')
   })
 
   it('redirects to welcome on first login when no price set', async () => {
@@ -316,7 +316,7 @@ describe('updateUserProfile', () => {
     const result = await updateUserProfile(
       createFormData({ full_name: 'Test', phone: '123' })
     )
-    expect(result.error).toContain('يرجى إدخال رقم هاتف')
+    expect((result as { error?: string }).error).toContain('يرجى إدخال رقم هاتف')
   })
 
   it('returns error when not authenticated', async () => {
@@ -326,7 +326,7 @@ describe('updateUserProfile', () => {
     const result = await updateUserProfile(
       createFormData({ full_name: 'Test', phone: '' })
     )
-    expect(result.error).toBe('Unauthorized')
+    expect((result as { error?: string }).error).toBe('Unauthorized')
   })
 })
 
@@ -355,7 +355,7 @@ describe('updateTeacherSettings', () => {
     const result = await updateTeacherSettings(
       createFormData({ currency: 'SAR', default_monthly_price: '300' })
     )
-    expect(result.error).toBe('Unauthorized')
+    expect((result as { error?: string }).error).toBe('Unauthorized')
   })
 })
 
@@ -379,7 +379,7 @@ describe('resetPasswordForEmail', () => {
     const result = await resetPasswordForEmail(
       createFormData({ email: 'nonexistent@example.com' })
     )
-    expect(result.error).toBe('المستخدم غير موجود')
+    expect((result as { error?: string }).error).toBe('المستخدم غير موجود')
   })
 })
 
@@ -411,7 +411,7 @@ describe('signInWithGoogle', () => {
 
     const { signInWithGoogle } = await import('@/lib/auth-actions')
     const result = await signInWithGoogle()
-    expect(result.error).toBe('Provider not enabled')
+    expect((result as { error?: string }).error).toBe('Provider not enabled')
   })
 })
 
@@ -434,7 +434,7 @@ describe('updateUserPassword', () => {
     const result = await updateUserPassword(
       createFormData({ password: 'NewPass123!', confirmPassword: 'DifferentPass!' })
     )
-    expect(result.error).toBe('كلمات المرور غير متطابقة')
+    expect((result as { error?: string }).error).toBe('كلمات المرور غير متطابقة')
   })
 
   it('returns error on supabase failure', async () => {
@@ -446,7 +446,7 @@ describe('updateUserPassword', () => {
     const result = await updateUserPassword(
       createFormData({ password: 'Valid1234!', confirmPassword: 'Valid1234!' })
     )
-    expect(result.error).toBe('Password too short')
+    expect((result as { error?: string }).error).toBe('Password too short')
   })
 
   it('returns expiry error when no session exists', async () => {
@@ -457,7 +457,7 @@ describe('updateUserPassword', () => {
       createFormData({ password: 'NewPass123!', confirmPassword: 'NewPass123!' })
     )
     expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
-    expect(result.error).toContain('انتهت صلاحية رابط التعيين')
+    expect((result as { error?: string }).error).toContain('انتهت صلاحية رابط التعيين')
   })
 
   it('rejects weak password on update', async () => {
@@ -465,7 +465,7 @@ describe('updateUserPassword', () => {
     const result = await updateUserPassword(
       createFormData({ password: 'password', confirmPassword: 'password' })
     )
-    expect(result.error).toContain('ضعيفة جداً')
+    expect((result as { error?: string }).error).toContain('ضعيفة جداً')
     expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
   })
 
@@ -474,7 +474,7 @@ describe('updateUserPassword', () => {
     const result = await updateUserPassword(
       createFormData({ password: 'Ab1!', confirmPassword: 'Ab1!' })
     )
-    expect(result.error).toContain('8 أحرف')
+    expect((result as { error?: string }).error).toContain('8 أحرف')
     expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
   })
 })

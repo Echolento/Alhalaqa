@@ -58,6 +58,22 @@ export function hashClaimToken(rawToken: string): string {
   return createHash('sha256').update(rawToken, 'utf8').digest('hex')
 }
 
+/**
+ * Rate-limit key: 'redeem:' + sha256(userId|ip). Raw IPs are never stored —
+ * enforcement lives server-side in lib/claim-actions.ts (DB counters).
+ * Lives here (not the 'use server' module) because server-action files may
+ * only export async functions.
+ */
+export function buildAttemptKey(parts: string): string {
+  return `redeem:${createHash('sha256').update(parts, 'utf8').digest('hex')}`
+}
+
+/** Re-exported doc: enforced rate-limit constants in one place. */
+export const CLAIM_RATE_LIMIT_DOC = {
+  maxAttempts: CLAIM_MAX_ATTEMPTS,
+  windowMs: CLAIM_ATTEMPT_WINDOW_MS,
+} as const
+
 /** Cheap format gate before any hashing/DB lookup (S8). */
 export function isValidClaimTokenFormat(token: unknown): token is string {
   if (typeof token !== 'string') return false

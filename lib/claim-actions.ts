@@ -35,15 +35,14 @@
 //       verdict slice). A true single-statement atomic consume RPC is a
 //       follow-up — see gaps in the slice report.
 
-import { createHash } from 'crypto'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { assertOwnsStudent } from '@/lib/ownership'
+import { assertOwnsStudent, getOwnTeacherId } from '@/lib/ownership'
 import { logActivity } from '@/lib/log-activity'
 import {
   CLAIM_ATTEMPT_WINDOW_MS,
-  CLAIM_MAX_ATTEMPTS,
+  buildAttemptKey,
   buildClaimUrl,
   claimExpiryFromNow,
   evaluateClaimForRedeem,
@@ -71,15 +70,6 @@ interface StudentClaimRow {
   teacher_id: string
   name: string | null
   claimed_by: string | null
-}
-
-/**
- * Rate-limit key: 'redeem:' + sha256(userId|ip). Raw IPs are never stored
- * (R4). Exported for unit tests; production derives it from the session +
- * request headers, tests pass opts.attemptKey to override.
- */
-export function buildAttemptKey(parts: string): string {
-  return `redeem:${createHash('sha256').update(parts, 'utf8').digest('hex')}`
 }
 
 async function deriveAttemptKey(userId: string): Promise<string> {
@@ -163,15 +153,19 @@ export async function issueClaimLink(studentId: string) {
 
   const service = createServiceClient()
 
-  const { data: student } = await service
-    .from('students')
-    .select('id, teacher_id')
-    .eq('id', studentId)
-    .maybeSingle()
+  // One roundtrip instead of two: fetch the row + the caller's teacher id
+  // together, then compare in code (same check as assertOwnsStudent).
+  const [{ data: student }, ownerTeacherId] = await Promise.all([
+    service
+      .from('students')
+      .select('id, teacher_id')
+      .eq('id', studentId)
+      .maybeSingle(),
+    getOwnTeacherId(service, user.id),
+  ])
   if (!student) return { error: 'الطالب غير موجود' }
-
-  const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
-  if (!ownerTeacherId) return { error: 'Forbidden' }
+  const studentTeacherId = (student as { teacher_id: string }).teacher_id
+  if (!ownerTeacherId || ownerTeacherId !== studentTeacherId) return { error: 'Forbidden' }
 
   const nowIso = new Date().toISOString()
 
@@ -427,9 +421,3 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     studentName,
   }
 }
-
-// Re-exported for the report: documents the enforced constants in one place.
-export const CLAIM_RATE_LIMIT_DOC = {
-  maxAttempts: CLAIM_MAX_ATTEMPTS,
-  windowMs: CLAIM_ATTEMPT_WINDOW_MS,
-} as const

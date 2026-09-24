@@ -387,7 +387,7 @@ describe('redeemClaim rejections', () => {
 
 describe('buildAttemptKey (no raw IPs stored)', () => {
   it('is deterministic, prefixed, hex, and hides its input', async () => {
-    const { buildAttemptKey } = await import('@/lib/claim-actions')
+    const { buildAttemptKey } = await import('@/lib/claim-tokens')
     const a = buildAttemptKey('user-1|1.2.3.4')
     expect(a).toBe(buildAttemptKey('user-1|1.2.3.4'))
     expect(a).toMatch(/^redeem:[0-9a-f]{64}$/)

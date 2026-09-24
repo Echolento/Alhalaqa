@@ -6,7 +6,7 @@
 // "Triggers notifications on claim" is enforced server-side in a later slice;
 // here the copy promises it + the WhatsApp share carries the invite link.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -49,15 +49,23 @@ export function PayerInviteButton({
   const [issuedUrl, setIssuedUrl] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [issueError, setIssueError] = useState(false)
+  // Single-flight: React StrictMode (dev) mounts effects twice — without
+  // this ref the dialog would mint TWO links (second revokes the first).
+  const inflightRef = useRef<Promise<{ claimUrl?: string; error?: string }> | null>(null)
   useEffect(() => {
-    if (!open || inviteUrl || issuedUrl || issuing || issueError) return
+    if (!open || inviteUrl || issuedUrl || issueError) return
     let cancelled = false
-    setIssuing(true)
-    issueClaimLink(studentId)
+    if (!inflightRef.current) {
+      setIssuing(true)
+      inflightRef.current = issueClaimLink(studentId).finally(() => {
+        if (!cancelled) setIssuing(false)
+      })
+    }
+    inflightRef.current
       .then((result) => {
         if (cancelled) return
-        if ((result as { claimUrl?: string }).claimUrl) {
-          setIssuedUrl((result as { claimUrl: string }).claimUrl)
+        if (result?.claimUrl) {
+          setIssuedUrl(result.claimUrl)
         } else {
           setIssueError(true)
         }
@@ -65,13 +73,10 @@ export function PayerInviteButton({
       .catch(() => {
         if (!cancelled) setIssueError(true)
       })
-      .finally(() => {
-        if (!cancelled) setIssuing(false)
-      })
     return () => {
       cancelled = true
     }
-  }, [open, inviteUrl, issuedUrl, issuing, issueError, studentId])
+  }, [open, inviteUrl, issuedUrl, issueError, studentId])
   const claimUrl = inviteUrl ?? issuedUrl ?? `/pay?student=${encodeURIComponent(studentId)}&invite=1`
   const shareDisabled = issuing
   const showWhatsApp = canWhatsApp(phone)

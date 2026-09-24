@@ -42,7 +42,18 @@ function translateAuthError(message: string): string {
     'Weak password': 'كلمة المرور ضعيفة جداً',
     'New password should be different from the old password': 'كلمة المرور الجديدة يجب أن تختلف عن القديمة',
   }
-  return map[message] || message
+  if (map[message]) return map[message]
+  const lower = (message || '').toLowerCase()
+  if (lower.includes('rate limit') || lower.includes('too many') || lower.includes('too many requests')) {
+    return 'طلبات كثيرة جداً — انتظر 5 دقائق ثم حاول مجدداً'
+  }
+  if (lower.includes('already confirmed') || lower.includes('already been confirmed')) {
+    return 'هذا البريد مؤكد بالفعل — سجل الدخول مباشرة'
+  }
+  if (lower.includes('email not confirmed')) {
+    return 'البريد الإلكتروني غير مؤكد — تحقق من بريدك أولاً'
+  }
+  return message
 }
 
 const COMMON_WEAK_PASSWORDS = [
@@ -110,6 +121,37 @@ export async function signUp(formData: FormData) {
   if (data.session) {
     revalidatePath('/', 'layout')
     redirect('/welcome')
+  }
+
+  return { success: true, needsEmailConfirm: true, email }
+}
+
+/**
+ * Resend the signup confirmation email. The 5-minute cooldown is enforced
+ * client-side (see signup page); Supabase applies its own rate limits too,
+ * surfaced here in Arabic.
+ */
+export async function resendSignupEmail(email: string) {
+  const supabase = await createClient()
+
+  const clean = (email || '').trim().toLowerCase()
+  if (!clean || !clean.includes('@')) {
+    return { error: 'بريد إلكتروني غير صالح' }
+  }
+
+  const siteUrl = await getRequestSiteUrl()
+
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: clean,
+    options: {
+      emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+        `${siteUrl}/auth/callback`,
+    },
+  })
+
+  if (error) {
+    return { error: translateAuthError(error.message) }
   }
 
   return { success: true }
@@ -316,6 +358,25 @@ export async function completeOnboarding(formData: FormData) {
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
+  // Optional at onboarding — the teacher can set/change these later in
+  // Settings. Invalid values are rejected with an explanation, blanks skip.
+  const rawLink = ((formData.get('instapay_link') as string) || '').trim()
+  const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
+
+  let instapayLink: string | null = null
+  if (rawLink !== '') {
+    const linkCheck = validateInstapayLink(rawLink)
+    if (!linkCheck.ok) return { error: linkCheck.error }
+    instapayLink = linkCheck.normalized
+  }
+
+  let instapayHandle: string | null = null
+  if (rawHandle !== '') {
+    const handleCheck = validateInstapayHandle(rawHandle)
+    if (!handleCheck.ok) return { error: handleCheck.error }
+    instapayHandle = handleCheck.normalized
+  }
+
   const { error } = await createServiceClient()
     .from('teachers')
     .upsert(
@@ -323,6 +384,8 @@ export async function completeOnboarding(formData: FormData) {
         profile_id: user.id,
         currency,
         default_monthly_price: defaultMonthlyPrice,
+        ...(instapayLink ? { instapay_link: instapayLink } : {}),
+        ...(instapayHandle ? { instapay_handle: instapayHandle } : {}),
       },
       { onConflict: 'profile_id' },
     )
