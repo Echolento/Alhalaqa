@@ -43,3 +43,7 @@ dev.log
 test-update.js
 diagnose_db.js
 diagnose_db.cjs
+
+tunnel.log
+tunnel-err.log
+dev-server.log
