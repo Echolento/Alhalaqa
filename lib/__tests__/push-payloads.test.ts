@@ -88,6 +88,10 @@ describe('buildVerdictPayload', () => {
 
     expect(out.payload.title).toContain('مراجعة')
     expect(out.payload.body).toContain('الصورة غير واضحة')
+    // Teacher message leads, quoted — visible even in truncated bodies.
+    expect(out.payload.body.indexOf('قال المعلم')).toBeLessThan(
+      out.payload.body.indexOf('الصورة غير واضحة'),
+    )
     expect(out.payload.url).toBe('/pay?student=stu-2')
   })
 })

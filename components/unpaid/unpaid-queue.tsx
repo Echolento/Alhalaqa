@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, XCircle, Clock } from 'lucide-react'
+import { Check, XCircle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -133,51 +133,50 @@ export function UnpaidQueue(props: {
                 className={`shadow-md md:shadow-lg ${isHighlight ? 'border-primary ring-1 ring-primary' : ''}`}
               >
                 <CardContent className="space-y-3 pt-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm font-medium">
-                      <Clock className="h-4 w-4 text-amber-600" />
-                      {item.studentName}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {isHighlight && (
-                        <Badge variant="secondary">{UNPAID_COPY.highlightHint}</Badge>
-                      )}
-                      <Badge variant="outline" data-testid={`queue-status-${item.id}`}>
-                        {done === 'verified'
-                          ? UNPAID_COPY.verifySuccessTitle
-                          : done === 'rejected'
-                            ? UNPAID_COPY.rejectSuccessTitle
-                            : UNPAID_COPY.statusPending}
-                      </Badge>
-                    </span>
+                  {isHighlight ? (
+                    <div>
+                      <Badge variant="secondary">{UNPAID_COPY.highlightHint}</Badge>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center gap-3">
+                    {item.imageUrl ? (
+                      <button
+                        type="button"
+                        data-testid={`receipt-image-${item.id}`}
+                        onClick={() => setFullImage(item)}
+                        className="h-16 w-16 shrink-0 cursor-zoom-in overflow-hidden rounded-md border"
+                        aria-label={UNPAID_COPY.receiptAlt(item.studentName)}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl}
+                          alt={UNPAID_COPY.receiptAlt(item.studentName)}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </button>
+                    ) : (
+                      <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground">
+                        —
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{item.studentName}</p>
+                      <p
+                        className="text-xs text-muted-foreground"
+                        data-testid={`queue-period-${item.id}`}
+                      >
+                        {item.periodLabel ?? item.periodKey}
+                      </p>
+                    </div>
+                    <Badge variant="outline" data-testid={`queue-status-${item.id}`}>
+                      {done === 'verified'
+                        ? UNPAID_COPY.verifySuccessTitle
+                        : done === 'rejected'
+                          ? UNPAID_COPY.rejectSuccessTitle
+                          : UNPAID_COPY.statusPending}
+                    </Badge>
                   </div>
-
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-muted-foreground">{UNPAID_COPY.periodLabel}</span>
-                    <span data-testid={`queue-period-${item.id}`}>
-                      {item.periodLabel ?? item.periodKey}
-                    </span>
-                  </div>
-
-                  {item.imageUrl ? (
-                    <button
-                      type="button"
-                      data-testid={`receipt-image-${item.id}`}
-                      onClick={() => setFullImage(item)}
-                      className="block w-full cursor-zoom-in"
-                      aria-label={UNPAID_COPY.receiptAlt(item.studentName)}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.imageUrl}
-                        alt={UNPAID_COPY.receiptAlt(item.studentName)}
-                        className="max-h-40 w-full rounded-md border object-cover md:mx-auto md:w-auto md:max-h-48"
-                        loading="lazy"
-                      />
-                    </button>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">—</p>
-                  )}
 
                   <div className="flex gap-2">
                     <Button

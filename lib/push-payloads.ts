@@ -109,7 +109,9 @@ export function buildVerdictPayload(params: {
         }
       : {
           title: `يحتاج الإيصال إلى مراجعة — ${params.studentName}`,
-          body: `لم يتم قبول إيصال ${params.studentName}.${params.note ? ` ${params.note}` : ''} يرجى رفع إيصال أوضح.`,
+          body: params.note
+            ? `قال المعلم: "${params.note}" — ارفع إيصال أوضح لـ ${params.studentName}.`
+            : `لم يتم قبول إيصال ${params.studentName}. يرجى رفع إيصال أوضح.`,
           url: payScreenUrl(params.studentId, params.periodKey),
         },
   }
