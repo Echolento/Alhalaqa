@@ -30,7 +30,14 @@ export interface PaymentProof {
   status: ProofStatus
   teacher_note: string | null
   created_at: string
+  /** Short-lived signed view URL (1h). Present when the reader may view it. */
+  imageUrl?: string | null
+  /** Human period label (month / batch / week). Falls back to period_key. */
+  periodLabel?: string
 }
+
+/** Payer log shows the 8 most recent receipts. */
+export const PROOF_HISTORY_LIMIT = 8
 
 export type ProofFileValidation =
   | { ok: true; normalizedMime: string; extension: string }

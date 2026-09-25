@@ -14,6 +14,12 @@ import { Input } from '@/components/ui/input'
 import { ExternalLink, Upload, Clock, Check, XCircle } from 'lucide-react'
 import type { PaymentProof } from '@/lib/payment-proof-validation'
 import { PAY_PUSH_COPY } from '@/lib/pay-push-copy'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export interface PayScreenData {
   studentName: string
@@ -52,6 +58,8 @@ export function PayScreen(props: {
   // Staged file: preview FIRST, upload only on confirm — never fires on
   // select, so a wrong screenshot can be swapped before anything sends.
   const [staged, setStaged] = useState<{ file: File; url: string } | null>(null)
+  // Saved-receipt viewer: history rows open the full image (up to 8 kept).
+  const [viewProof, setViewProof] = useState<PaymentProof | null>(null)
 
   function stageFile(file: File) {
     setStaged((prev) => {
@@ -236,10 +244,14 @@ export function PayScreen(props: {
           ) : (
             <ul className="space-y-2" data-testid="proof-history">
               {proofs.map((proof) => (
-                <li
-                  key={proof.id}
-                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-                >
+                <li key={proof.id}>
+                  <button
+                    type="button"
+                    data-testid={`proof-row-${proof.id}`}
+                    disabled={!proof.imageUrl}
+                    onClick={() => proof.imageUrl && setViewProof(proof)}
+                    className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm text-start enabled:cursor-zoom-in enabled:hover:bg-muted/50 disabled:cursor-default"
+                  >
                   <span className="flex items-center gap-2">
                     {proof.status === 'pending' ? (
                       <Clock className="h-4 w-4 text-amber-600" />
@@ -248,7 +260,7 @@ export function PayScreen(props: {
                     ) : (
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}
-                    <span>{proof.period_key}</span>
+                    <span>{proof.periodLabel ?? proof.period_key}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     {proof.teacher_note && proof.status === 'rejected' && (
@@ -261,12 +273,33 @@ export function PayScreen(props: {
                       {proofStatusLabel(proof.status)}
                     </Badge>
                   </span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
+
+      {/* Saved-receipt viewer: tap a log row to see the full image. */}
+      <Dialog open={!!viewProof} onOpenChange={(open) => { if (!open) setViewProof(null) }}>
+        <DialogContent dir="rtl" className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {viewProof ? `إيصال ${viewProof.periodLabel ?? viewProof.period_key}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          {viewProof?.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={viewProof.imageUrl}
+              alt="إيصال محفوظ"
+              data-testid="proof-full-image"
+              className="max-h-[75vh] w-full rounded-md border object-contain"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

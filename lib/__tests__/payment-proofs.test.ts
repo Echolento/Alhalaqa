@@ -77,6 +77,7 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     order: vi.fn(() => builder),
+    limit: vi.fn(() => builder),
     insert: vi.fn((row: any) => {
       if (table === 'payment_proofs') ctx.lastInsert = row
       return builder
@@ -111,9 +112,12 @@ const mockSupabase = {
 }
 
 const mockUpload = vi.fn()
+const mockSignedUrl = vi.fn()
 const mockService: any = {
   from: vi.fn(),
-  storage: { from: vi.fn(() => ({ upload: mockUpload })) },
+  storage: {
+    from: vi.fn(() => ({ upload: mockUpload, createSignedUrl: mockSignedUrl })),
+  },
 }
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -158,6 +162,7 @@ beforeEach(() => {
   mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'payer-1' } } })
   mockService.from.mockImplementation((table: string) => createBuilder(table, ctx))
   mockUpload.mockResolvedValue({ data: { path: 't1/stu-1/x.jpg' }, error: null })
+  mockSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed.example/x.jpg' } })
   mockSendPush.mockResolvedValue(true)
 })
 
@@ -280,6 +285,45 @@ describe('ownership checks', () => {
       'verified',
       'rejected',
     ])
+  })
+
+  it('attaches signed view URLs so the log opens full receipts', async () => {
+    ctx.history = [
+      { id: 'p1', student_id: 'stu-1', period_key: '2026-09-01', storage_path: 'a', status: 'verified', teacher_note: null, created_at: '2026-09-02T00:00:00Z' },
+    ]
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'teacher-user-1' } } })
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder(table, ctx)
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 't1' } })
+      }
+      return b
+    })
+    const { listProofHistory } = await import('@/lib/payment-proofs')
+
+    const result = await listProofHistory('stu-1')
+
+    expect((result as any).proofs[0].imageUrl).toBe('https://signed.example/x.jpg')
+    expect(mockSignedUrl).toHaveBeenCalledWith('a', 3600)
+  })
+
+  it('labels history rows human-readable (month, never raw key)', async () => {
+    ctx.history = [
+      { id: 'p1', student_id: 'stu-1', period_key: '2026-09-01', storage_path: 'a', status: 'verified', teacher_note: null, created_at: '2026-09-02T00:00:00Z' },
+    ]
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'teacher-user-1' } } })
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder(table, ctx)
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 't1' } })
+      }
+      return b
+    })
+    const { listProofHistory } = await import('@/lib/payment-proofs')
+
+    const result = await listProofHistory('stu-1')
+
+    expect((result as any).proofs[0].periodLabel).toContain('سبتمبر')
   })
 })
 

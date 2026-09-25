@@ -78,6 +78,34 @@ describe('PayScreen', () => {
     expect(screen.getByTestId('pending-banner')).toHaveTextContent('قيد المراجعة')
   })
 
+  it('shows human period labels in history rows, never raw keys', () => {
+    render(
+      <PayScreen
+        data={baseData}
+        proofs={[
+          { id: 'p1', student_id: 'stu-1', period_key: '2026-09-01', periodLabel: 'سبتمبر 2026', storage_path: 'a', status: 'verified', teacher_note: null, created_at: '2026-09-02T00:00:00Z', imageUrl: 'https://signed.example/a.jpg' },
+        ]}
+      />,
+    )
+    expect(screen.getByTestId('proof-row-p1')).toHaveTextContent('سبتمبر 2026')
+    expect(screen.getByTestId('proof-row-p1')).not.toHaveTextContent('2026-09-01')
+  })
+
+  it('opens the full saved receipt from a history row', () => {
+    render(
+      <PayScreen
+        data={baseData}
+        proofs={[
+          { id: 'p1', student_id: 'stu-1', period_key: '2026-09-01', storage_path: 'a', status: 'verified', teacher_note: null, created_at: '2026-09-02T00:00:00Z', imageUrl: 'https://signed.example/a.jpg' },
+        ]}
+      />,
+    )
+    expect(screen.queryByTestId('proof-full-image')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('proof-row-p1'))
+    const full = screen.getByTestId('proof-full-image') as HTMLImageElement
+    expect(full.src).toBe('https://signed.example/a.jpg')
+  })
+
   it('lists submission history with all three statuses and the teacher note', () => {
     render(
       <PayScreen

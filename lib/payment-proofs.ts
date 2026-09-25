@@ -23,6 +23,7 @@ import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
 import { sendPushNotification } from '@/lib/push'
 import {
   PAYMENT_PROOFS_BUCKET,
+  PROOF_HISTORY_LIMIT,
   validateProofFile,
   buildProofStoragePath,
   type PaymentProof,
@@ -168,10 +169,12 @@ export async function listProofHistory(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id')
+    .select('id, teacher_id, frequency')
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return { error: 'الطالب غير موجود' }
+
+  const frequency = (student as { frequency?: string | null }).frequency ?? 'monthly'
 
   const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
 
@@ -181,11 +184,39 @@ export async function listProofHistory(studentId: string) {
     .eq('student_id', studentId)
 
   const { data, error } = ownerTeacherId
-    ? await base.order('created_at', { ascending: false })
-    : await base.eq('payer_profile_id', user.id).order('created_at', { ascending: false })
+    ? await base.limit(PROOF_HISTORY_LIMIT).order('created_at', { ascending: false })
+    : await base
+        .eq('payer_profile_id', user.id)
+        .limit(PROOF_HISTORY_LIMIT)
+        .order('created_at', { ascending: false })
 
   if (error) return { error: error.message }
-  return { proofs: (data ?? []) as PaymentProof[] }
+
+  // Signed view URLs so the log opens full receipts (1h expiry, service-side),
+  // plus human period labels (month / batch / week — never raw keys).
+  const proofs = (data ?? []) as PaymentProof[]
+  const withUrls = await Promise.all(
+    proofs.map(async (proof) => {
+      let imageUrl: string | null = null
+      try {
+        const { data: signed } = await service.storage
+          .from(PAYMENT_PROOFS_BUCKET)
+          .createSignedUrl(proof.storage_path, 3600)
+        imageUrl = ((signed as { signedUrl?: string } | null)?.signedUrl ?? null) as string | null
+      } catch {
+        imageUrl = null
+      }
+      return {
+        ...proof,
+        imageUrl,
+        periodLabel: describePeriod(
+          proof.period_key,
+          frequency as 'weekly' | 'biweekly' | 'monthly',
+        ).payerLabel,
+      }
+    }),
+  )
+  return { proofs: withUrls }
 }
 
 /** Teacher-only queue read. Wrong teacher => Forbidden. */
