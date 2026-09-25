@@ -33,6 +33,7 @@ const baseData: PayScreenData = {
   amount: 200,
   currency: 'EGP',
   periodKey: '2026-09-01',
+  periodLabel: 'سبتمبر 2026',
   dueDateLabel: '5 سبتمبر 2026',
   instapayLink: 'https://ipn.eg/S/abc123',
   instapayHandle: 'ahmed@instapay',
@@ -74,7 +75,7 @@ describe('PayPortalOnboarding (no payer choice)', () => {
 
     // Frequency-aware due surfaced as-is from getPayScreenInfo.
     expect(screen.getByTestId('amount-due')).toHaveTextContent('200')
-    expect(screen.getByTestId('period-key')).toHaveTextContent('2026-09-01')
+    expect(screen.getByTestId('period-key')).toHaveTextContent('سبتمبر 2026')
   })
 
   it('pay → upload in one screen', () => {

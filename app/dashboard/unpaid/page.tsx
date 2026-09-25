@@ -1,5 +1,6 @@
 import { getTeacherProofQueue } from '@/lib/payment-proofs'
 import { getUnpaidQueue, getProofReceipt } from '@/lib/payment-proof-verdict'
+import { describePeriod } from '@/lib/period-label'
 import { UNPAID_COPY } from '@/lib/unpaid-queue-copy'
 import { UnpaidQueue } from '@/components/unpaid/unpaid-queue'
 import { Card, CardContent } from '@/components/ui/card'
@@ -60,10 +61,15 @@ export default async function UnpaidPage({
       studentId: string
       studentName: string
       periodKey: string
+      periodLabel?: string
       storagePath: string
       imageUrl: string | null
       createdAt: string
-    }> }).items ?? []).slice()
+    }> }).items ?? []).map((it) => ({
+      ...it,
+      periodLabel:
+        it.periodLabel ?? describePeriod(it.periodKey).teacherLabel,
+    })).slice()
 
   // Student-scoped reuse: restrict the enriched global list to proofs the
   // per-student teacher queue returns (pending only). Keeps screenshots
@@ -88,6 +94,7 @@ export default async function UnpaidPage({
         studentId: String(full.student_id ?? studentFilter ?? ''),
         studentName: 'طالب',
         periodKey: String(full.period_key ?? ''),
+        periodLabel: describePeriod(String(full.period_key ?? '')).teacherLabel,
         storagePath: String(full.storage_path ?? ''),
         imageUrl: null,
         createdAt: String(full.created_at ?? ''),
@@ -116,6 +123,7 @@ export default async function UnpaidPage({
           studentId: entry.student_id,
           studentName: entry.studentName ?? 'طالب',
           periodKey: entry.period_key,
+          periodLabel: describePeriod(entry.period_key).teacherLabel,
           storagePath: entry.storage_path ?? '',
           imageUrl: entry.imageUrl ?? null,
           createdAt: '',

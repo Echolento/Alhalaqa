@@ -7,6 +7,7 @@ const baseData: PayScreenData = {
   amount: 200,
   currency: 'EGP',
   periodKey: '2026-09-01',
+  periodLabel: 'سبتمبر 2026',
   dueDateLabel: '5 سبتمبر 2026',
   instapayLink: 'https://ipn.eg/S/abc123',
   instapayHandle: 'ahmed@instapay',
@@ -15,10 +16,11 @@ const baseData: PayScreenData = {
 }
 
 describe('PayScreen', () => {
-  it('shows the amount due from getDuePeriodInfo', () => {
+  it('shows the human period label, not the raw key', () => {
     render(<PayScreen data={baseData} proofs={[]} />)
     expect(screen.getByTestId('amount-due')).toHaveTextContent('200')
-    expect(screen.getByTestId('period-key')).toHaveTextContent('2026-09-01')
+    expect(screen.getByTestId('period-key')).toHaveTextContent('سبتمبر 2026')
+    expect(screen.getByTestId('period-key')).not.toHaveTextContent('2026-09-01')
   })
 
   it('renders the teacher InstaPay link button from getInstaPayContract', () => {
@@ -33,7 +35,7 @@ describe('PayScreen', () => {
       <PayScreen data={{ ...baseData, isPaidForPeriod: true }} proofs={[]} />,
     )
     expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('مدفوع')
-    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('2026-09-01')
+    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('سبتمبر 2026')
     expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
     expect(screen.queryByTestId('receipt-upload')).not.toBeInTheDocument()
   })

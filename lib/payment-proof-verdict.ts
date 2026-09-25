@@ -22,6 +22,7 @@ import { buildVerdictPayload } from '@/lib/push-payloads'
 import { sendPushNotification } from '@/lib/push'
 import { logActivity } from '@/lib/log-activity'
 import { PAYMENT_PROOFS_BUCKET } from '@/lib/payment-proof-validation'
+import { describePeriod } from '@/lib/period-label'
 import { revalidatePath } from 'next/cache'
 
 interface ProofRow {
@@ -294,6 +295,8 @@ export interface UnpaidQueueItem {
   studentId: string
   studentName: string
   periodKey: string
+  /** Teacher-facing human label (month, batch + range, or week range). */
+  periodLabel: string
   storagePath: string
   imageUrl: string | null
   status: 'pending'
@@ -333,13 +336,15 @@ export async function getUnpaidQueue() {
     new Set(proofs.map((p) => p['student_id']).filter(Boolean)),
   ) as string[]
   let nameById = new Map<string, string>()
+  let frequencyById = new Map<string, string>()
   if (studentIds.length > 0) {
     const { data: students } = await service
       .from('students')
-      .select('id, name')
+      .select('id, name, frequency')
       .in('id', studentIds)
-    for (const s of ((students ?? []) as Array<{ id: string; name: string | null }>) ?? []) {
+    for (const s of ((students ?? []) as Array<{ id: string; name: string | null; frequency?: string | null }>) ?? []) {
       nameById.set(s.id, s.name || 'طالب')
+      frequencyById.set(s.id, s.frequency || 'monthly')
     }
   }
 
@@ -360,6 +365,10 @@ export async function getUnpaidQueue() {
       studentId: String(p['student_id']),
       studentName: nameById.get(String(p['student_id'])) ?? 'طالب',
       periodKey: String(p['period_key']),
+      periodLabel: describePeriod(
+        String(p['period_key']),
+        (frequencyById.get(String(p['student_id'])) ?? 'monthly') as 'weekly' | 'biweekly' | 'monthly',
+      ).teacherLabel,
       storagePath,
       imageUrl,
       status: 'pending',

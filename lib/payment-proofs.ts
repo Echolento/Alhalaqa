@@ -9,6 +9,7 @@
 // never real delivery) and deep-links via the frozen queue-item URL
 // contract buildReceiptUploadedPayload from lib/push-payloads.ts.
 
+import { describePeriod } from '@/lib/period-label'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from '@/lib/ownership'
@@ -278,6 +279,7 @@ export async function getPayScreenInfo(studentId: string) {
     studentId: s.id,
     studentName: s.name || 'طالب',
     periodKey: due.periodKey,
+    periodLabel: describePeriod(due.periodKey, s.frequency as 'weekly' | 'biweekly' | 'monthly' | null).payerLabel,
     amount: due.amount,
     dueDate: due.dueDate.toISOString(),
     currency: t.currency || 'EGP',

@@ -20,6 +20,8 @@ export interface PayScreenData {
   amount: number
   currency: string
   periodKey: string
+  /** Human label (month/year, batch, or week range) — display this, not periodKey. */
+  periodLabel: string
   dueDateLabel: string
   instapayLink: string | null
   instapayHandle: string | null
@@ -78,7 +80,7 @@ export function PayScreen(props: {
             </span>
             <p className="text-xl font-black text-emerald-800">مدفوع</p>
             <p className="text-sm text-emerald-700">
-              رسوم {data.studentName} عن فترة {data.periodKey} مدفوعة بالكامل — لا يوجد مبلغ مستحق.
+              رسوم {data.studentName} عن {data.periodLabel} مدفوعة بالكامل — لا يوجد مبلغ مستحق.
             </p>
           </CardContent>
         </Card>
@@ -101,7 +103,7 @@ export function PayScreen(props: {
           </div>
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-muted-foreground">الفترة</span>
-            <span data-testid="period-key">{data.periodKey}</span>
+            <span data-testid="period-key">{data.periodLabel}</span>
           </div>
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-muted-foreground">تاريخ الاستحقاق</span>

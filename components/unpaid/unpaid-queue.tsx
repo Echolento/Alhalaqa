@@ -29,6 +29,7 @@ export interface UnpaidQueueViewItem {
   studentId: string
   studentName: string
   periodKey: string
+  periodLabel?: string
   storagePath: string
   imageUrl: string | null
   createdAt: string
@@ -156,7 +157,9 @@ export function UnpaidQueue(props: {
 
                   <div className="flex items-baseline justify-between text-sm">
                     <span className="text-muted-foreground">{UNPAID_COPY.periodLabel}</span>
-                    <span data-testid={`queue-period-${item.id}`}>{item.periodKey}</span>
+                    <span data-testid={`queue-period-${item.id}`}>
+                      {item.periodLabel ?? item.periodKey}
+                    </span>
                   </div>
 
                   {item.imageUrl ? (
