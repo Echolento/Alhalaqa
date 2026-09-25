@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { User, Bell, CheckCircle, AlertCircle } from 'lucide-react'
 import { NotificationToggle } from '@/components/dashboard/notification-toggle'
-import { AutoReminderToggle } from '@/components/dashboard/auto-reminder-toggle'
+
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
@@ -182,9 +182,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           </CardHeader>
           <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
             <NotificationToggle />
-            <div className="mt-4 border-t pt-4">
-              <AutoReminderToggle defaultEnabled={teacherData?.auto_reminders_enabled ?? true} />
-            </div>
           </CardContent>
         </Card>
       )}

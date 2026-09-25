@@ -115,6 +115,67 @@ export function buildVerdictPayload(params: {
   }
 }
 
+/**
+ * Escalation (overdue day 3+, daily): the payer kept getting nags, now the
+ * teacher gets told too. Toggle is dead — automation always on.
+ */
+export function buildOverdueEscalationPayload(params: {
+  teacherProfileId: string
+  overdue: Array<{ name: string; daysOverdue: number }>
+}): PushTarget | null {
+  if (params.overdue.length === 0) return null
+  const bits = params.overdue.slice(0, 3).map((o) => `${o.name} (${o.daysOverdue} أيام)`)
+  const remaining = params.overdue.length - 3
+  const body =
+    remaining > 0
+      ? `${bits.join('، ')} +${remaining} آخرين — التذكير اليومي لم يكفِ`
+      : `${bits.join('، ')} — التذكير اليومي لم يكفِ`
+  return {
+    profileId: params.teacherProfileId,
+    payload: {
+      title: `متأخرات تحتاج تدخلك — ${params.overdue.length}`,
+      body,
+      url: PUSH_URLS.DASHBOARD,
+    },
+  }
+}
+
+/**
+ * Twice-daily teacher digest (8am + 8pm Cairo): pending receipts waiting +
+ * overdue names + unreachable (unclaimed) count.
+ */
+export function buildDailyDigestPayload(params: {
+  teacherProfileId: string
+  pendingCount: number
+  overdueNames: string[]
+  unclaimedCount: number
+  evening?: boolean
+}): PushTarget | null {
+  if (
+    params.pendingCount === 0 &&
+    params.overdueNames.length === 0 &&
+    params.unclaimedCount === 0
+  ) {
+    return null
+  }
+  const parts: string[] = []
+  if (params.pendingCount > 0) parts.push(`إيصالات بانتظارك: ${params.pendingCount}`)
+  if (params.overdueNames.length > 0) {
+    const names = params.overdueNames.slice(0, 3).join('، ')
+    const more = params.overdueNames.length > 3 ? ` +${params.overdueNames.length - 3}` : ''
+    parts.push(`متأخرون: ${names}${more}`)
+  }
+  if (params.unclaimedCount > 0) parts.push(`بلا ولي مربوط: ${params.unclaimedCount}`)
+  return {
+    profileId: params.teacherProfileId,
+    payload: {
+      title: params.evening ? 'ملخص المساء' : 'ملخص الصباح',
+      body: parts.join(' • '),
+      url: PUSH_URLS.UNPAID_QUEUE,
+    },
+  }
+}
+
 export function buildTeacherDigestPayload(params: {
   teacherProfileId: string
   overdueNames: string[]

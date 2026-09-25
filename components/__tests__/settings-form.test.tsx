@@ -130,8 +130,9 @@ describe('SettingsForm', () => {
     expect(await screen.findByText('فشل حفظ الإعدادات')).toBeInTheDocument()
   })
 
-  it('renders auto-reminder toggle defaulting to on', () => {
+  it('shows the notifications card without any auto toggle (toggle killed)', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('التذكير التلقائي مفعل')).toBeInTheDocument()
+    expect(screen.getByText('الإشعارات')).toBeInTheDocument()
+    expect(screen.queryByText('التذكير التلقائي مفعل')).not.toBeInTheDocument()
   })
 })
