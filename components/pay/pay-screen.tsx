@@ -6,6 +6,7 @@
 // InstaPay contract via getInstaPayContract). Upload wiring lives in the
 // container; this component only reports the chosen File upward.
 
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,6 +46,23 @@ export function PayScreen(props: {
   const { data, proofs, uploading, uploadError, onFileSelected } = props
   const showPendingBanner =
     data.hasPending || proofs.some((p) => p.status === 'pending')
+  // Staged file: preview FIRST, upload only on confirm — never fires on
+  // select, so a wrong screenshot can be swapped before anything sends.
+  const [staged, setStaged] = useState<{ file: File; url: string } | null>(null)
+
+  function stageFile(file: File) {
+    setStaged((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url)
+      return { file, url: URL.createObjectURL(file) }
+    })
+  }
+
+  function clearStaged() {
+    setStaged((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url)
+      return null
+    })
+  }
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4 p-4" dir="rtl">
@@ -125,19 +143,62 @@ export function PayScreen(props: {
             type="file"
             accept="image/*"
             disabled={uploading}
+            className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
-              if (file) onFileSelected?.(file)
+              if (file) stageFile(file)
+              e.currentTarget.value = ''
             }}
           />
-          <Button
-            className="w-full"
-            disabled={uploading}
-            onClick={() => document.getElementById('receipt-upload')?.click()}
-          >
-            <Upload className="h-4 w-4" />
-            {uploading ? 'جارٍ الرفع…' : 'اختر صورة الإيصال'}
-          </Button>
+          {!staged ? (
+            <Button
+              className="w-full"
+              disabled={uploading}
+              onClick={() => document.getElementById('receipt-upload')?.click()}
+            >
+              <Upload className="h-4 w-4" />
+              {uploading ? 'جارٍ الرفع…' : 'اختر صورة الإيصال'}
+            </Button>
+          ) : (
+            <div className="space-y-2" data-testid="upload-preview">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={staged.url}
+                alt="معاينة الإيصال"
+                data-testid="upload-preview-image"
+                className="mx-auto max-h-64 rounded-md border object-contain"
+              />
+              <p className="truncate text-center text-xs text-muted-foreground" dir="ltr">
+                {staged.file.name}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={uploading}
+                  data-testid="upload-confirm"
+                  onClick={() => {
+                    onFileSelected?.(staged.file)
+                    clearStaged()
+                  }}
+                >
+                  <Check className="h-4 w-4" />
+                  {uploading ? 'جارٍ الرفع…' : 'تأكيد الإرسال'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={uploading}
+                  data-testid="upload-retake"
+                  onClick={() => {
+                    clearStaged()
+                    document.getElementById('receipt-upload')?.click()
+                  }}
+                >
+                  إعادة الاختيار
+                </Button>
+              </div>
+            </div>
+          )}
           {uploadError && (
             <p role="alert" className="text-sm text-destructive">
               {uploadError}

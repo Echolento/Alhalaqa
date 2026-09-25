@@ -29,7 +29,8 @@ export const UNPAID_COPY = {
   verifySuccessDescription: (studentName: string) =>
     `تم تسجيل دفعة ${studentName} وإشعار ولي الأمر.`,
 
-  // ——— Reject (note required) ———
+  // ——— Reject (note required, modal-only) ———
+  rejectCancelLabel: 'إلغاء',
   rejectButtonLabel: 'رفض',
   rejectingLabel: 'جارٍ الرفض…',
   rejectAriaLabel: (studentName: string) => `رفض إيصال ${studentName}`,

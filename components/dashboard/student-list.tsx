@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ interface StudentListProps {
 }
 
 export function StudentList({ students, payments, month, currency, initialCollected, initialExpected }: StudentListProps) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [undoTarget, setUndoTarget] = useState<string | null>(null)
@@ -158,7 +160,11 @@ export function StudentList({ students, payments, month, currency, initialCollec
             const isPaid = payment?.paid || false
             const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
             return (
-              <Card key={student.id} className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg ${status.cardClass}`}>
+              <Card
+                key={student.id}
+                onClick={() => router.push(`/dashboard/students/${student.id}`)}
+                className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg cursor-pointer ${status.cardClass}`}
+              >
                 <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 w-full min-w-0">
                       {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
@@ -180,7 +186,10 @@ export function StudentList({ students, payments, month, currency, initialCollec
                         </div>
                       </div>
                     </Link>
-                    <div className="w-full sm:w-auto flex flex-col gap-2">
+                    <div
+                      className="w-full sm:w-auto flex flex-col gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isPaid ? (
                         <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                           <AlertDialogTrigger asChild>

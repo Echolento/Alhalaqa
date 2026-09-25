@@ -12,8 +12,15 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Check, XCircle, Clock } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { verifyProof, rejectProof } from '@/lib/payment-proof-verdict'
 import { UNPAID_COPY } from '@/lib/unpaid-queue-copy'
 
@@ -33,7 +40,9 @@ export function UnpaidQueue(props: {
 }) {
   const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [rejectTarget, setRejectTarget] = useState<UnpaidQueueViewItem | null>(null)
+  const [rejectNote, setRejectNote] = useState('')
+  const [fullImage, setFullImage] = useState<UnpaidQueueViewItem | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [doneIds, setDoneIds] = useState<Record<string, 'verified' | 'rejected'>>({})
 
@@ -55,12 +64,14 @@ export function UnpaidQueue(props: {
     }
   }
 
-  async function handleReject(item: UnpaidQueueViewItem) {
-    const note = (notes[item.id] ?? '').trim()
+  async function handleReject() {
+    if (!rejectTarget) return
+    const note = rejectNote.trim()
     if (!note) {
       setFormError(UNPAID_COPY.noteRequiredError)
       return
     }
+    const item = rejectTarget
     setBusyId(item.id)
     setFormError(null)
     try {
@@ -69,6 +80,8 @@ export function UnpaidQueue(props: {
         setFormError((result as { error: string }).error)
       } else {
         setDoneIds((prev) => ({ ...prev, [item.id]: 'rejected' }))
+        setRejectTarget(null)
+        setRejectNote('')
         router.refresh()
       }
     } catch {
@@ -147,14 +160,21 @@ export function UnpaidQueue(props: {
                   </div>
 
                   {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.imageUrl}
-                      alt={UNPAID_COPY.receiptAlt(item.studentName)}
+                    <button
+                      type="button"
                       data-testid={`receipt-image-${item.id}`}
-                      className="w-full rounded-md border object-contain md:mx-auto md:w-auto md:max-h-80"
-                      loading="lazy"
-                    />
+                      onClick={() => setFullImage(item)}
+                      className="block w-full cursor-zoom-in"
+                      aria-label={UNPAID_COPY.receiptAlt(item.studentName)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.imageUrl}
+                        alt={UNPAID_COPY.receiptAlt(item.studentName)}
+                        className="max-h-40 w-full rounded-md border object-cover md:mx-auto md:w-auto md:max-h-48"
+                        loading="lazy"
+                      />
+                    </button>
                   ) : (
                     <p className="text-xs text-muted-foreground">—</p>
                   )}
@@ -176,29 +196,81 @@ export function UnpaidQueue(props: {
                       disabled={busy}
                       aria-label={UNPAID_COPY.rejectAriaLabel(item.studentName)}
                       data-testid={`reject-${item.id}`}
-                      onClick={() => handleReject(item)}
+                      onClick={() => {
+                        setRejectNote('')
+                        setFormError(null)
+                        setRejectTarget(item)
+                      }}
                     >
                       <XCircle className="h-4 w-4" />
                       {busy ? UNPAID_COPY.rejectingLabel : UNPAID_COPY.rejectButtonLabel}
                     </Button>
                   </div>
-
-                  <Input
-                    value={notes[item.id] ?? ''}
-                    onChange={(e) =>
-                      setNotes((prev) => ({ ...prev, [item.id]: e.target.value }))
-                    }
-                    placeholder={UNPAID_COPY.notePlaceholder}
-                    aria-label={UNPAID_COPY.notePlaceholder}
-                    data-testid={`reject-note-${item.id}`}
-                    dir="rtl"
-                  />
                 </CardContent>
               </Card>
             </li>
           )
         })}
       </ul>
+
+      {/* Reject-reason modal: note lives ONLY here, never inline. */}
+      <Dialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) setRejectTarget(null) }}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              {rejectTarget ? UNPAID_COPY.rejectAriaLabel(rejectTarget.studentName) : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            placeholder={UNPAID_COPY.notePlaceholder}
+            aria-label={UNPAID_COPY.notePlaceholder}
+            data-testid="reject-note"
+            dir="rtl"
+            rows={3}
+          />
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="destructive"
+              className="flex-1"
+              disabled={busyId !== null}
+              data-testid="reject-confirm"
+              onClick={handleReject}
+            >
+              {UNPAID_COPY.rejectButtonLabel}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              data-testid="reject-cancel"
+              onClick={() => setRejectTarget(null)}
+            >
+              {UNPAID_COPY.rejectCancelLabel ?? 'إلغاء'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full receipt modal: queue shows a small preview, tap for full. */}
+      <Dialog open={!!fullImage} onOpenChange={(open) => { if (!open) setFullImage(null) }}>
+        <DialogContent dir="rtl" className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {fullImage ? UNPAID_COPY.receiptAlt(fullImage.studentName) : ''}
+            </DialogTitle>
+          </DialogHeader>
+          {fullImage?.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fullImage.imageUrl}
+              alt={UNPAID_COPY.receiptAlt(fullImage.studentName)}
+              data-testid="receipt-full-image"
+              className="max-h-[75vh] w-full rounded-md border object-contain"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

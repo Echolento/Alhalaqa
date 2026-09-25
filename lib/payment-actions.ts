@@ -24,7 +24,7 @@ export async function getTeacherPayments(month?: string) {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, monthly_price, payment_day, claimed_by')
+    .select('id, name, phone, monthly_price, payment_day, claimed_by')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
@@ -43,6 +43,7 @@ export async function getTeacherPayments(month?: string) {
       id: s.id,
       full_name: s.name || 'طالب',
       monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
+      phone: (s as any).phone ?? null,
       payment_day: s.payment_day || 1,
       claimed_by: (s as any).claimed_by ?? null,
       currentMonthKey: studentMonthKey

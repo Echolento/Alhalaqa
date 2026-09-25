@@ -93,13 +93,22 @@ describe('PayScreen', () => {
     expect(screen.getByText('الصورة غير واضحة')).toBeInTheDocument()
   })
 
-  it('reports the chosen file upward for upload', () => {
+  it('previews first, uploads only on confirm (wrong pic swappable)', () => {
     const onFileSelected = vi.fn()
     render(<PayScreen data={baseData} proofs={[]} onFileSelected={onFileSelected} />)
     const input = screen.getByTestId('receipt-upload') as HTMLInputElement
     const file = new File(['bytes'], 'receipt.jpg', { type: 'image/jpeg' })
     fireEvent.change(input, { target: { files: [file] } })
+    // Staged, NOT sent.
+    expect(onFileSelected).not.toHaveBeenCalled()
+    expect(screen.getByTestId('upload-preview')).toBeInTheDocument()
+    // Retake swaps without sending.
+    const wrong = new File(['nope'], 'wrong.jpg', { type: 'image/jpeg' })
+    fireEvent.change(input, { target: { files: [wrong] } })
+    expect(onFileSelected).not.toHaveBeenCalled()
+    // Confirm sends the staged file.
+    fireEvent.click(screen.getByTestId('upload-confirm'))
     expect(onFileSelected).toHaveBeenCalledOnce()
-    expect(onFileSelected.mock.calls[0][0].name).toBe('receipt.jpg')
+    expect(onFileSelected.mock.calls[0][0].name).toBe('wrong.jpg')
   })
 })

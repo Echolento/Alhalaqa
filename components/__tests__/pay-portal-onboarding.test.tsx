@@ -91,6 +91,8 @@ describe('PayPortalOnboarding (no payer choice)', () => {
     const input = screen.getByTestId('receipt-upload') as HTMLInputElement
     const file = new File(['bytes'], 'receipt.jpg', { type: 'image/jpeg' })
     fireEvent.change(input, { target: { files: [file] } })
+    expect(screen.getByTestId('upload-preview')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('upload-confirm'))
     expect(onFileSelected).toHaveBeenCalledOnce()
     expect(onFileSelected.mock.calls[0][0].name).toBe('receipt.jpg')
   })
