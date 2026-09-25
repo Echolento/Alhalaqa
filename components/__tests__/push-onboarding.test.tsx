@@ -105,16 +105,13 @@ describe('SilentPayerPush (no payer choice)', () => {
     expect(subscribe).toHaveBeenCalledOnce()
   })
 
-  it('live path: waits for first tap when permission undecided', () => {
+  it('live path: asks on mount even when permission undecided', () => {
     vi.stubGlobal('Notification', { permission: 'default' })
     const { subscribe } = stubPush()
     render(<SilentPayerPush />)
-    expect(subscribe).not.toHaveBeenCalled()
-
-    fireEvent.pointerDown(document.body)
     expect(subscribe).toHaveBeenCalledOnce()
 
-    // Once only — second tap is a no-op.
+    // Once only — rerenders never re-ask.
     fireEvent.pointerDown(document.body)
     expect(subscribe).toHaveBeenCalledOnce()
   })

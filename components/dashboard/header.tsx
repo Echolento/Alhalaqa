@@ -24,6 +24,7 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SilentTeacherPush } from '@/components/pay/push-onboarding'
 
 interface HeaderProps {
   profile: Profile
@@ -43,6 +44,7 @@ export function DashboardHeader({ profile }: HeaderProps) {
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6">
+      <SilentTeacherPush />
       <div className="flex items-center gap-3 md:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

@@ -21,20 +21,11 @@ export interface SilentPayerPushState {
   unsubscribe: () => void | Promise<void>
 }
 
-function permissionGranted(): boolean {
-  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
-    return false
-  }
-  try {
-    return Notification.permission === 'granted'
-  } catch {
-    return false
-  }
-}
-
 export function SilentPayerPush(props: {
   /** Test seam. Production omits it and the live hook is used. */
   push?: SilentPayerPushState
+  /** Teacher flavor: never render even the blocked hint (Settings owns UI). */
+  hideBlockedHint?: boolean
 }) {
   const live = usePushNotifications()
   const push: SilentPayerPushState = props.push ?? live
@@ -55,13 +46,11 @@ export function SilentPayerPush(props: {
       }
     }
 
-    if (props.push !== undefined || permissionGranted()) {
-      attempt()
-      return
-    }
-
-    window.addEventListener('pointerdown', attempt, { once: true })
-    return () => window.removeEventListener('pointerdown', attempt)
+    // Ask right away. Desktop prompts on load. Mobile browsers that
+    // suppress prompt-without-gesture land in error state → the blocked
+    // hint appears → tapping it IS a gesture, so retry succeeds there.
+    attempt()
+    return undefined
     // push.* intentionally read once per state change, not subscribed fully.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [push.isLoading, push.isSubscribed, push.error])
@@ -78,7 +67,7 @@ export function SilentPayerPush(props: {
 
   // The ONLY payer-visible push UI: a blocked-only retry hint. Everything
   // else stays silent — no prompt, no choice.
-  if (!push.isLoading && !push.isSubscribed && push.error) {
+  if (!push.isLoading && !push.isSubscribed && push.error && !props.hideBlockedHint) {
     return (
       <button
         type="button"
@@ -92,4 +81,14 @@ export function SilentPayerPush(props: {
   }
 
   return null
+}
+
+/**
+ * Teacher twin: same silent auto-ask, zero UI ever — the Settings switch
+ * already shows state + errors. Mount once in the dashboard header so the
+ * native prompt appears on first dashboard visit instead of waiting for
+ * the teacher to discover the switch. Denied → silent as usual.
+ */
+export function SilentTeacherPush() {
+  return <SilentPayerPush hideBlockedHint />
 }
