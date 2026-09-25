@@ -6,8 +6,7 @@
 
 export const UNPAID_COPY = {
   // ——— Page / queue header ———
-  pageTitle: 'الإيصالات المعلقة',
-  queueTitle: 'قائمة المراجعة',
+  pageTitle: 'الإيصالات',
   // Must state both halves of the contract: verifying marks the period paid
   // AND notifies the payer. Shown at the top of /dashboard/unpaid (RTL).
   queueHeaderNote:

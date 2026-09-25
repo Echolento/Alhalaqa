@@ -18,7 +18,7 @@ interface SidebarProps {
 
 const teacherLinks = [
   { href: '/dashboard', label: 'الطلاب', icon: Users },
-  { href: '/dashboard/unpaid', label: 'بانتظار التأكيد', icon: Receipt },
+  { href: '/dashboard/unpaid', label: 'الإيصالات', icon: Receipt },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ]
 

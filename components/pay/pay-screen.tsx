@@ -110,6 +110,11 @@ export function PayScreen(props: {
             <span>{data.dueDateLabel}</span>
           </div>
 
+          {!data.isPaidForPeriod && !(data.instapayLink || data.instapayHandle) ? (
+            <p className="pt-2 text-center text-sm text-muted-foreground">
+              تواصل مع المعلم لمعرفة طريقة الدفع
+            </p>
+          ) : null}
           {!data.isPaidForPeriod && (data.instapayLink || data.instapayHandle) ? (
             <div className="space-y-2 pt-2">
               {data.instapayLink && (
@@ -131,11 +136,7 @@ export function PayScreen(props: {
                 </p>
               )}
             </div>
-          ) : (
-            <p className="pt-2 text-center text-sm text-muted-foreground">
-              تواصل مع المعلم لمعرفة طريقة الدفع
-            </p>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

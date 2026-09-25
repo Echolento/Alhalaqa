@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -107,10 +107,7 @@ export function UnpaidQueue(props: {
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4 p-4" dir="rtl">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{UNPAID_COPY.queueTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1">
+        <CardContent className="space-y-1 pt-4">
           <p className="text-sm text-muted-foreground">{UNPAID_COPY.queueHeaderNote}</p>
           <p className="text-xs text-muted-foreground" data-testid="queue-count">
             {UNPAID_COPY.queueCount(props.items.length)}
