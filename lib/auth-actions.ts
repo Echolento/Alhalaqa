@@ -374,6 +374,18 @@ export async function completeOnboarding(formData: FormData) {
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
 
+  // Optional payday default (1-31): new students inherit it in addStudent.
+  // Blank = leave unset; out-of-range = rejected with an explanation.
+  const rawPaymentDay = ((formData.get('default_payment_day') as string) || '').trim()
+  let defaultPaymentDay: number | null = null
+  if (rawPaymentDay !== '') {
+    const day = Number(rawPaymentDay)
+    if (!Number.isInteger(day) || day < 1 || day > 31) {
+      return { error: 'يوم الدفع الافتراضي يجب أن يكون رقماً بين 1 و 31' }
+    }
+    defaultPaymentDay = day
+  }
+
   // Optional at onboarding — the teacher can set/change these later in
   // Settings. Invalid values are rejected with an explanation, blanks skip.
   const rawLink = ((formData.get('instapay_link') as string) || '').trim()
@@ -402,6 +414,7 @@ export async function completeOnboarding(formData: FormData) {
         default_monthly_price: defaultMonthlyPrice,
         ...(instapayLink ? { instapay_link: instapayLink } : {}),
         ...(instapayHandle ? { instapay_handle: instapayHandle } : {}),
+        ...(defaultPaymentDay ? { default_payment_day: defaultPaymentDay } : {}),
       },
       { onConflict: 'profile_id' },
     )

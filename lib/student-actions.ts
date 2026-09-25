@@ -42,7 +42,7 @@ export async function addStudent(name: string, phone?: string) {
 
   let { data: teacher } = await service
     .from('teachers')
-    .select('id, default_monthly_price')
+    .select('id, default_monthly_price, default_payment_day')
     .eq('profile_id', user.id)
     .maybeSingle()
 
@@ -50,7 +50,7 @@ export async function addStudent(name: string, phone?: string) {
     const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
-      .select('id, default_monthly_price')
+      .select('id, default_monthly_price, default_payment_day')
       .single()
 
     if (createError || !newTeacher) return { error: 'Teacher not found' }
@@ -64,7 +64,7 @@ export async function addStudent(name: string, phone?: string) {
       name,
       phone: phone || null,
       monthly_price: Number(teacher.default_monthly_price) || 0,
-      payment_day: 1,
+      payment_day: Number(teacher.default_payment_day) || 1,
       frequency: 'monthly',
     })
     .select()

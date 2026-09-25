@@ -54,6 +54,21 @@ export function WelcomeForm() {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="default_payment_day">يوم الدفع الافتراضي (اختياري)</Label>
+            <Input
+              id="default_payment_day"
+              name="default_payment_day"
+              type="number"
+              min={1}
+              max={31}
+              placeholder="مثال: 5"
+            />
+            <p className="text-xs text-muted-foreground leading-5">
+              يُستخدم كيوم افتراضي لكل طالب جديد — ويمكن تغييره لكل طالب لاحقاً.
+            </p>
+          </div>
+
           <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
             <div className="space-y-2">
               <Label htmlFor="instapay_link">رابط الدفع (انستاباي)</Label>

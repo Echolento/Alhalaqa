@@ -130,7 +130,8 @@ export function UnpaidQueue(props: {
             <li key={item.id}>
               <Card
                 data-testid={`queue-item-${item.id}`}
-                className={`shadow-md md:shadow-lg ${isHighlight ? 'border-primary ring-1 ring-primary' : ''}`}
+                onClick={() => setFullImage(item)}
+                className={`cursor-zoom-in shadow-md md:shadow-lg ${isHighlight ? 'border-primary ring-1 ring-primary' : ''}`}
               >
                 <CardContent className="space-y-3 pt-4">
                   {isHighlight ? (
@@ -184,7 +185,10 @@ export function UnpaidQueue(props: {
                       disabled={busy}
                       aria-label={UNPAID_COPY.verifyAriaLabel(item.studentName)}
                       data-testid={`verify-${item.id}`}
-                      onClick={() => handleVerify(item)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleVerify(item)
+                      }}
                     >
                       <Check className="h-4 w-4" />
                       {busy ? UNPAID_COPY.verifyingLabel : UNPAID_COPY.verifyButtonLabel}
@@ -195,7 +199,8 @@ export function UnpaidQueue(props: {
                       disabled={busy}
                       aria-label={UNPAID_COPY.rejectAriaLabel(item.studentName)}
                       data-testid={`reject-${item.id}`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setRejectNote('')
                         setFormError(null)
                         setRejectTarget(item)
