@@ -21,7 +21,11 @@ export const PAY_PUSH_COPY = {
   typeVerdictDescription:
     'نخبرك فور قبول الإيصال، أو عند الحاجة لرفع إيصال أوضح.',
 
-  // ——— Subscribe / unsubscribe ———
+  // ——— Prompt primer: one static line, no buttons, no choice. It exists
+  // solely so the native browser prompt doesn't arrive unexplained (which
+  // is what gets it dismissed or blocked).
+  promptPrimer:
+    'سنطلب إذن الإشعارات لمرة واحدة — ليصلك قبول الإيصال فور تحقق المعلم.',
   subscribeCta: 'تفعيل الإشعارات',
   subscribeAriaLabel: 'تفعيل إشعارات الدفع',
   subscribedLabel: 'الإشعارات مفعّلة',

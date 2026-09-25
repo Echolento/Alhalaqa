@@ -45,6 +45,10 @@ describe('PAY_PUSH_COPY (single source of truth, HITL review)', () => {
     expect(PAY_PUSH_COPY.iosCoachNote).toContain('الأيقونة')
   })
 
+  it('exposes the one-line prompt primer', () => {
+    expect(PAY_PUSH_COPY.promptPrimer).toContain('الإشعارات')
+  })
+
   it('exposes the dismiss label', () => {
     expect(PAY_PUSH_COPY.skipLabel).toContain('لاحقاً')
     expect(PAY_PUSH_COPY.skipAriaLabel.length).toBeGreaterThan(0)

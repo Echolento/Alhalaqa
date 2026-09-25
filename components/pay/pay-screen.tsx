@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ExternalLink, Upload, Clock, Check, XCircle } from 'lucide-react'
 import type { PaymentProof } from '@/lib/payment-proof-validation'
+import { PAY_PUSH_COPY } from '@/lib/pay-push-copy'
 
 export interface PayScreenData {
   studentName: string
@@ -85,6 +86,11 @@ export function PayScreen(props: {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">دفع رسوم {data.studentName}</CardTitle>
+          {!data.isPaidForPeriod ? (
+            <p className="pt-1 text-xs text-muted-foreground" data-testid="push-primer">
+              {PAY_PUSH_COPY.promptPrimer}
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex items-baseline justify-between">
