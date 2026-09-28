@@ -23,6 +23,8 @@ import { sendPushNotification } from '@/lib/push'
 import { logActivity } from '@/lib/log-activity'
 import { PAYMENT_PROOFS_BUCKET } from '@/lib/payment-proof-validation'
 import { describePeriod } from '@/lib/period-label'
+import { advanceDueDate } from '@/lib/billing-next'
+import { normalizeFrequency } from '@/lib/billing-period'
 import { revalidatePath } from 'next/cache'
 
 interface ProofRow {
@@ -39,7 +41,31 @@ interface StudentPriceRow {
   id: string
   name: string | null
   monthly_price: number | null
+  frequency?: unknown
+  next_due_date?: string | null
   teacher_id?: string
+}
+
+/**
+ * Settle advancement (next-due engine): after a period is paid, the
+ * student's next_due_date moves one interval past the SETTLED period due —
+ * never the pay date, so late payment never drifts the rhythm. One-way
+ * ratchet: when the stored date already passed the settled period (second
+ * proof, same cycle), it is left alone — never retreated.
+ */
+export async function advanceStudentCycle(
+  service: ReturnType<typeof createServiceClient>,
+  studentId: string,
+  settledPeriodKey: string,
+  frequency: unknown,
+  currentNextDue: string | null | undefined,
+): Promise<string | null> {
+  if (!currentNextDue || currentNextDue <= settledPeriodKey) {
+    const next = advanceDueDate(settledPeriodKey, normalizeFrequency(frequency as never))
+    await service.from('students').update({ next_due_date: next }).eq('id', studentId)
+    return next
+  }
+  return null
 }
 
 interface TeacherPriceRow {
@@ -122,7 +148,7 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
   const [{ data: student }, { data: teacher }] = await Promise.all([
     service
       .from('students')
-      .select('id, name, monthly_price')
+      .select('id, name, monthly_price, frequency, next_due_date')
       .eq('id', proof.student_id)
       .maybeSingle(),
     service
@@ -178,6 +204,14 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
     })) as unknown as { error: { message: string } | null }
     if (payError) return { error: payError.message }
   }
+
+  await advanceStudentCycle(
+    service,
+    proof.student_id,
+    proof.period_key,
+    (s as { frequency?: unknown } | null)?.frequency,
+    (s as { next_due_date?: string | null } | null)?.next_due_date,
+  )
 
   await logActivity(
     {

@@ -137,12 +137,15 @@ test('push dispatch proof: claim → upload → verify → verdict', async () =>
     await teacher.locator('button[type="submit"]').click()
     await teacher.waitForURL(/\/welcome$|\/welcome\?|\/dashboard/, { timeout: 15000 })
 
-    if (teacher.url().includes('/welcome')) {
+    if (teacher.url().includes('/welcome') && !teacher.url().includes('/welcome/instapay')) {
       await teacher.locator('#default_monthly_price').fill('200')
+      await teacher.getByRole('button', { name: 'متابعة' }).click()
+      await teacher.waitForURL(/\/welcome\/instapay/, { timeout: 15000 })
+    }
+    if (teacher.url().includes('/welcome/instapay')) {
       await teacher.locator('#instapay_link').fill('https://ipn.eg/S/e2e123')
       await teacher.locator('#instapay_handle').fill('e2e@instapay')
-      await teacher.locator('#default_payment_day').fill('5')
-      await teacher.getByRole('button', { name: 'حفظ والمتابعة' }).click()
+      await teacher.getByRole('button', { name: 'إنهاء الإعداد' }).click()
       await teacher.waitForURL(/\/dashboard/, { timeout: 15000 })
     }
     await expect(teacher.getByText('المبالغ المستلمة')).toBeVisible({ timeout: 15000 })
@@ -237,9 +240,11 @@ test('push dispatch proof: claim → upload → verify → verdict', async () =>
     await expect(teacher.getByText(/تم التحقق/)).toBeVisible({ timeout: 15000 })
     step('teacher verified')
 
-    // ---- payer: paid hero + verdict push DELIVERED? ----
+    // ---- payer: next cycle + verdict push DELIVERED? ----
+    // Prepay engine: settling advances the cycle, so the screen shows the
+    // NEXT bill (not a paid hero); the verdict push is the confirmation.
     await payer.goto(`${BASE_URL}/pay?student=${studentId}`)
-    await expect(payer.getByTestId('paid-disclaimer')).toBeVisible({ timeout: 15000 })
+    await expect(payer.getByTestId('amount-due')).toBeVisible({ timeout: 15000 })
     await payer.waitForTimeout(8000)
     const payerNotes = await listedNotifications(payer)
     const verdictNote = payerNotes.find(

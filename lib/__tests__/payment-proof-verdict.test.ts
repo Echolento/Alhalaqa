@@ -77,6 +77,8 @@ beforeEach(() => {
     teacher_id: 't1',
     name: 'أحمد',
     monthly_price: 200,
+    frequency: 'monthly',
+    next_due_date: '2026-09-01',
   }
   ctx.teacher = { id: 't1', default_monthly_price: 250 }
   ctx.subscription = { endpoint: 'https://push.example/payer', p256dh: 'p', auth: 'a' }
@@ -86,6 +88,7 @@ beforeEach(() => {
   ctx.lastPaymentInsert = null
   ctx.lastPaymentUpdate = null
   ctx.paymentWriteCount = 0
+  ctx.lastStudentUpdate = null
 
   mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'teacher-user-1' } } })
 
@@ -102,6 +105,10 @@ beforeEach(() => {
     if (table === 'students') {
       return {
         select: vi.fn(() => selectChain(ctx.student)),
+        update: vi.fn((payload: any) => {
+          ctx.lastStudentUpdate = payload
+          return { eq: vi.fn().mockResolvedValue({ error: null }) }
+        }),
       }
     }
     if (table === 'teachers') {
@@ -237,6 +244,36 @@ describe('wrong-teacher isolation', () => {
     expect((result as { error?: string }).error).toBe('Forbidden')
     expect(ctx.lastProofUpdate).toBeNull()
     expect(mockSendPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('verifyProof advances the next-due cycle', () => {
+  it('moves next_due_date one interval past the settled period due', async () => {
+    const { verifyProof } = await import('@/lib/payment-proof-verdict')
+
+    const result = await verifyProof('proof-1')
+
+    expect(result).toMatchObject({ success: true })
+    expect(ctx.lastStudentUpdate).toMatchObject({ next_due_date: '2026-10-01' })
+  })
+
+  it('weekly settlement advances 7 days from the period due', async () => {
+    ctx.student = { ...ctx.student, frequency: 'weekly', next_due_date: '2026-09-20' }
+    ctx.proof = { ...ctx.proof, period_key: '2026-09-20' }
+    const { verifyProof } = await import('@/lib/payment-proof-verdict')
+
+    await verifyProof('proof-1')
+
+    expect(ctx.lastStudentUpdate).toMatchObject({ next_due_date: '2026-09-27' })
+  })
+
+  it('never retreats an already-advanced date (double settle, same period)', async () => {
+    ctx.student = { ...ctx.student, next_due_date: '2026-11-01' }
+    const { verifyProof } = await import('@/lib/payment-proof-verdict')
+
+    await verifyProof('proof-1')
+
+    expect(ctx.lastStudentUpdate).toBeNull()
   })
 })
 

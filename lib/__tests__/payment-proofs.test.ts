@@ -142,9 +142,9 @@ beforeEach(() => {
     id: 'stu-1',
     teacher_id: 't1',
     name: 'أحمد',
-    payment_day: 5,
     frequency: 'monthly',
     monthly_price: 200,
+    next_due_date: '2026-10-01',
   }
   ctx.teacher = {
     id: 't1',
@@ -167,9 +167,9 @@ beforeEach(() => {
 })
 
 describe('uploadPaymentProof', () => {
-  it('computes the period key server-side via getPeriodKey and creates a pending proof', async () => {
+  it('keys the proof to the outstanding next-due cycle (never the wall clock)', async () => {
     const { uploadPaymentProof } = await import('@/lib/payment-proofs')
-    const { getPeriodKey, normalizeFrequency } = await import('@/lib/billing-period')
+    const { duePeriodKey } = await import('@/lib/billing-next')
 
     const result = await uploadPaymentProof({
       studentId: 'stu-1',
@@ -180,8 +180,7 @@ describe('uploadPaymentProof', () => {
     })
 
     expect(result.success).toBe(true)
-    const expectedPeriod = getPeriodKey(new Date(), normalizeFrequency('monthly'), 5)
-    expect(ctx.lastInsert.period_key).toBe(expectedPeriod)
+    expect(ctx.lastInsert.period_key).toBe(duePeriodKey('2026-10-01', 'monthly'))
     expect(ctx.lastInsert.status).toBe('pending')
     expect(ctx.lastInsert.payer_profile_id).toBe('payer-1')
   })
@@ -328,16 +327,29 @@ describe('ownership checks', () => {
 })
 
 describe('getPayScreenInfo', () => {
-  it('returns amount due via getDuePeriodInfo plus the InstaPay contract', async () => {
+  it('bills the outstanding next-due cycle at the per-cycle price', async () => {
     const { getPayScreenInfo } = await import('@/lib/payment-proofs')
-    const { getDuePeriodInfo, normalizeFrequency } = await import('@/lib/billing-period')
 
     const result = await getPayScreenInfo('stu-1')
-    const expected = getDuePeriodInfo(new Date(), normalizeFrequency('monthly'), 5, 200)
 
-    expect((result as any).amount).toBe(expected.amount)
-    expect((result as any).periodKey).toBe(expected.periodKey)
+    expect((result as any).amount).toBe(200)
+    expect((result as any).periodKey).toBe('2026-10-01')
+    const dueDate = new Date((result as any).dueDate)
+    expect(dueDate.getFullYear()).toBe(2026)
+    expect(dueDate.getMonth()).toBe(9)
+    expect(dueDate.getDate()).toBe(1)
+    expect((result as any).periodLabel).toContain('أكتوبر')
     expect((result as any).instapayLink).toBe('https://ipn.eg/S/abc123')
     expect((result as any).instapayHandle).toBe('ahmed@instapay')
+  })
+
+  it('falls back to the 1st of next month when no next-due is stored', async () => {
+    ctx.student = { ...ctx.student, next_due_date: null }
+    const { getPayScreenInfo } = await import('@/lib/payment-proofs')
+    const { firstOfNextMonth } = await import('@/lib/billing-next')
+
+    const result = await getPayScreenInfo('stu-1')
+
+    expect((result as any).periodKey).toBe(firstOfNextMonth(new Date()))
   })
 })

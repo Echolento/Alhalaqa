@@ -48,12 +48,15 @@ async function passwordLogin(page: Page, email: string) {
 }
 
 async function onboardTeacher(page: Page) {
-  if (page.url().includes('/welcome')) {
+  if (page.url().includes('/welcome') && !page.url().includes('/welcome/instapay')) {
     await page.locator('#default_monthly_price').fill('200')
+    await page.getByRole('button', { name: 'متابعة' }).click()
+    await page.waitForURL(/\/welcome\/instapay/, { timeout: 30000 })
+  }
+  if (page.url().includes('/welcome/instapay')) {
     await page.locator('#instapay_link').fill('https://ipn.eg/S/pwa123')
     await page.locator('#instapay_handle').fill('pwa@instapay')
-    await page.locator('#default_payment_day').fill('5')
-    await page.getByRole('button', { name: 'حفظ والمتابعة' }).click()
+    await page.getByRole('button', { name: 'إنهاء الإعداد' }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 30000 })
   }
   await expect(page.getByText('المبالغ المستلمة')).toBeVisible({ timeout: 30000 })
@@ -349,8 +352,12 @@ test.describe('PWA invite UX + old-flow regression', () => {
     await teacher.goto(`${BASE_URL}/dashboard/unpaid?student=${sid}`)
     await teacher.getByTestId(/verify-/).first().click()
     await expect(teacher.getByText(/تم التحقق/)).toBeVisible({ timeout: 30000 })
+    // Prepay engine: settling October advances the cycle — the screen now
+    // shows the NEXT bill (November), not a paid hero. The verdict push
+    // (asserted in push-proof.spec.ts) is the payment confirmation.
     await payer.goto(`${BASE_URL}/pay?student=${sid}`)
-    await expect(payer.getByTestId('paid-disclaimer')).toBeVisible({ timeout: 30000 })
+    await expect(payer.getByTestId('amount-due')).toBeVisible({ timeout: 30000 })
+    await expect(payer.getByTestId('period-key')).toContainText('نوفمبر')
     step('classic loop ok')
 
     await tCtx.close()

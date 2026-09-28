@@ -5,6 +5,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
+import { normalizeFrequency, type BillingFrequency } from './billing-period'
+import { firstOfNextMonth, isValidDueDate } from './billing-next'
 
 export async function getTeacherStudents() {
   const supabase = await createClient()
@@ -21,7 +23,7 @@ export async function getTeacherStudents() {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, claimed_by, created_at, updated_at, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by, created_at, updated_at, teacher_id')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
@@ -30,19 +32,63 @@ export async function getTeacherStudents() {
     name: s.name || 'طالب',
     monthly_price: Number(s.monthly_price) || Number(teacher.default_monthly_price) || 0,
     payment_day: Number(s.payment_day) || 1,
-    frequency: (s as any).frequency === 'weekly' || (s as any).frequency === 'biweekly' ? (s as any).frequency : 'monthly',
+    frequency: normalizeFrequency((s as any).frequency),
+    next_due_date: ((s as any).next_due_date ?? null) as string | null,
   }))
 }
 
-export async function addStudent(name: string, phone?: string) {
+/**
+ * Form defaults for add-student: teacher billing frequency + price, and the
+ * systemic first-bill date (1st of next month). Never throws — the form
+ * stays usable even when the teacher row is missing pieces.
+ */
+export async function getBillingDefaults() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const fallback = { frequency: 'monthly' as const, price: 0, nextDueDate: firstOfNextMonth() }
+  if (!user) return fallback
+  const service = createServiceClient()
+  const teacherId = await getOwnTeacherId(service, user.id)
+  if (!teacherId) return fallback
+  const { data: teacher } = await service
+    .from('teachers')
+    .select('default_monthly_price, default_frequency')
+    .eq('id', teacherId)
+    .maybeSingle()
+  if (!teacher) return fallback
+  return {
+    frequency: normalizeFrequency((teacher as { default_frequency?: unknown }).default_frequency),
+    price: Number((teacher as { default_monthly_price?: unknown }).default_monthly_price) || 0,
+    nextDueDate: firstOfNextMonth(),
+  }
+}
+
+export interface NewStudentInput {
+  phone?: string
+  /** Per-cycle price (what the parent pays each time). Falls back to the teacher default. */
+  price?: number
+  frequency?: BillingFrequency
+  /** First bill date (YYYY-MM-DD). Garbage falls back to the 1st of next month. */
+  nextDueDate?: string
+}
+
+function normalizeNewStudentInput(input?: string | NewStudentInput): NewStudentInput {
+  if (!input) return {}
+  if (typeof input === 'string') return { phone: input }
+  return input
+}
+
+export async function addStudent(name: string, input?: string | NewStudentInput) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
   const service = createServiceClient()
 
+  const opts = normalizeNewStudentInput(input)
+
   let { data: teacher } = await service
     .from('teachers')
-    .select('id, default_monthly_price, default_payment_day')
+    .select('id, default_monthly_price, default_frequency')
     .eq('profile_id', user.id)
     .maybeSingle()
 
@@ -50,22 +96,32 @@ export async function addStudent(name: string, phone?: string) {
     const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
-      .select('id, default_monthly_price, default_payment_day')
+      .select('id, default_monthly_price, default_frequency')
       .single()
 
     if (createError || !newTeacher) return { error: 'Teacher not found' }
     teacher = newTeacher
   }
 
+  const frequency = normalizeFrequency(
+    (opts as { frequency?: unknown }).frequency ?? (teacher as { default_frequency?: unknown }).default_frequency,
+  )
+  const price = Number((opts as { price?: unknown }).price) || Number(teacher.default_monthly_price) || 0
+  const nextDueDate =
+    typeof (opts as { nextDueDate?: unknown }).nextDueDate === 'string' &&
+    isValidDueDate((opts as { nextDueDate?: string }).nextDueDate)
+      ? ((opts as { nextDueDate?: string }).nextDueDate as string)
+      : firstOfNextMonth()
+
   const { data, error } = await service
     .from('students')
     .insert({
       teacher_id: teacher.id,
       name,
-      phone: phone || null,
-      monthly_price: Number(teacher.default_monthly_price) || 0,
-      payment_day: Number(teacher.default_payment_day) || 1,
-      frequency: 'monthly',
+      phone: opts.phone || null,
+      monthly_price: price,
+      frequency,
+      next_due_date: nextDueDate,
     })
     .select()
     .single()
@@ -82,6 +138,41 @@ export async function addStudent(name: string, phone?: string) {
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
   return { success: true, student: data }
+}
+
+/**
+ * Teacher's date lever: correct or reschedule the outstanding bill.
+ * Strict date gate — garbage never writes. Ownership-checked.
+ */
+export async function updateStudentNextDue(studentId: string, nextDueDate: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+  const service = createServiceClient()
+
+  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  if (!isValidDueDate(nextDueDate)) return { error: 'تاريخ غير صالح — استخدم YYYY-MM-DD.' }
+
+  const { error } = await service
+    .from('students')
+    .update({ next_due_date: nextDueDate })
+    .eq('id', studentId)
+
+  if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'next_due_update' as never,
+    entityType: 'student',
+    entityId: studentId,
+    details: { next_due_date: nextDueDate },
+  } as never, user.id)
+
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
+  return { success: true }
 }
 
 export async function updateStudent(studentId: string, name: string, phone?: string) {
@@ -135,7 +226,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   if (teacherId) {
     const { data } = await service
       .from('teachers')
-      .select('id, default_monthly_price')
+      .select('id, default_monthly_price, default_frequency')
       .eq('id', teacherId)
       .maybeSingle()
     teacher = data as { id: string; default_monthly_price: unknown } | null
@@ -145,19 +236,22 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
-      .select('id, default_monthly_price')
+      .select('id, default_monthly_price, default_frequency')
       .single()
     if (createError || !newTeacher) return { error: 'Teacher not found' }
     teacher = newTeacher as { id: string; default_monthly_price: unknown }
   }
 
+  const bulkFrequency = normalizeFrequency(
+    (teacher as unknown as { default_frequency?: unknown })?.default_frequency,
+  )
   const inserts = students.map((s) => ({
     teacher_id: teacher!.id,
     name: s.name,
     phone: s.phone || null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
-    payment_day: 1,
-    frequency: 'monthly',
+    frequency: bulkFrequency,
+    next_due_date: firstOfNextMonth(),
   }))
 
   const { error } = await service.from('students').insert(inserts)

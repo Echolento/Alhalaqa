@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
 import { CLAIM_COPY } from '@/lib/claim-copy'
+import { formatDueDateAr } from '@/lib/billing-next'
 
 interface StudentListProps {
   students: any[]
@@ -192,7 +193,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
                           <span>الاشتراك: <span className="font-bold text-primary">{student.monthly_price} {currencySymbol}</span></span>
-                          <span>يوم {student.payment_day || 1}</span>
+                          <span>الاستحقاق {formatDueDateAr((student as any).next_due_date)}</span>
                         </div>
                       </div>
                     </Link>

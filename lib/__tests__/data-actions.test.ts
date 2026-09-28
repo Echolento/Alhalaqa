@@ -167,13 +167,16 @@ describe('addStudent', () => {
     expect(result.student.name).toBe('Ali')
   })
 
-  it('defaults payment_day to 1', async () => {
+  it('inherits teacher defaults (frequency + first-of-next-month) and stops writing payment_day', async () => {
     let capturedInsert: any
+    const { firstOfNextMonth } = await import('@/lib/billing-next')
     mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
         ...b,
-        maybeSingle: vi.fn().mockResolvedValue({ data: { id: teacherId, default_monthly_price: 200 } }),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 200, default_frequency: 'weekly' },
+        }),
       })
       b.insert = vi.fn().mockImplementation((data: any) => {
         if (_tableName === 'students') capturedInsert = data
@@ -191,7 +194,78 @@ describe('addStudent', () => {
     const { addStudent } = await import('@/lib/data-actions')
     const result = await addStudent('Ali', '+201022222222')
     expect(result.success).toBe(true)
-    expect(capturedInsert.payment_day).toBe(1)
+    expect(capturedInsert.frequency).toBe('weekly')
+    expect(capturedInsert.next_due_date).toBe(firstOfNextMonth(new Date()))
+    expect(capturedInsert.monthly_price).toBe(200)
+    expect('payment_day' in capturedInsert).toBe(false)
+  })
+
+  it('accepts explicit price + frequency + next date', async () => {
+    let capturedInsert: any
+    mockService.from.mockImplementation((_tableName?: string) => {
+      const b = createBuilder()
+      b.eq = vi.fn().mockReturnValue({
+        ...b,
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 200, default_frequency: 'monthly' },
+        }),
+      })
+      b.insert = vi.fn().mockImplementation((data: any) => {
+        if (_tableName === 'students') capturedInsert = data
+        return {
+          ...b,
+          select: vi.fn().mockReturnValue({
+            ...b,
+            single: vi.fn().mockResolvedValue({ data: { ...data, id: studentId }, error: null }),
+          }),
+        }
+      })
+      return b
+    })
+
+    const { addStudent } = await import('@/lib/data-actions')
+    const result = await addStudent('Ali', {
+      phone: '+201022222222',
+      price: 150,
+      frequency: 'biweekly',
+      nextDueDate: '2026-11-03',
+    })
+    expect(result.success).toBe(true)
+    expect(capturedInsert).toMatchObject({
+      monthly_price: 150,
+      frequency: 'biweekly',
+      next_due_date: '2026-11-03',
+    })
+  })
+
+  it('falls back to first-of-next-month on a garbage next date (never writes it)', async () => {
+    let capturedInsert: any
+    const { firstOfNextMonth } = await import('@/lib/billing-next')
+    mockService.from.mockImplementation((_tableName?: string) => {
+      const b = createBuilder()
+      b.eq = vi.fn().mockReturnValue({
+        ...b,
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 200, default_frequency: 'monthly' },
+        }),
+      })
+      b.insert = vi.fn().mockImplementation((data: any) => {
+        if (_tableName === 'students') capturedInsert = data
+        return {
+          ...b,
+          select: vi.fn().mockReturnValue({
+            ...b,
+            single: vi.fn().mockResolvedValue({ data: { ...data, id: studentId }, error: null }),
+          }),
+        }
+      })
+      return b
+    })
+
+    const { addStudent } = await import('@/lib/data-actions')
+    const result = await addStudent('Ali', { nextDueDate: 'not-a-date' })
+    expect(result.success).toBe(true)
+    expect(capturedInsert.next_due_date).toBe(firstOfNextMonth(new Date()))
   })
 
   it('returns error when not authenticated', async () => {
@@ -199,6 +273,87 @@ describe('addStudent', () => {
     const { addStudent } = await import('@/lib/data-actions')
     const result = await addStudent('Ali')
     expect(result.error).toBe('Unauthorized')
+  })
+})
+
+describe('updateStudentNextDue', () => {
+  function nextDueService(studentRow: any) {
+    const updates: any[] = []
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder()
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: teacherId } })
+        return b
+      }
+      if (table === 'students') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: studentRow })
+        b.update = vi.fn((payload: any) => {
+          updates.push(payload)
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+        return b
+      }
+      return b
+    })
+    return updates
+  }
+
+  it('stores a valid date for the owner', async () => {
+    const updates = nextDueService({ id: studentId, teacher_id: teacherId, name: 'S' })
+    const { updateStudentNextDue } = await import('@/lib/data-actions')
+    expect((await updateStudentNextDue(studentId, '2026-11-03')).success).toBe(true)
+    expect(updates).toContainEqual({ next_due_date: '2026-11-03' })
+  })
+
+  it('rejects garbage without writing', async () => {
+    const updates = nextDueService({ id: studentId, teacher_id: teacherId, name: 'S' })
+    const { updateStudentNextDue } = await import('@/lib/data-actions')
+    expect((await updateStudentNextDue(studentId, 'tomorrow-ish')).error).toBeTruthy()
+    expect(updates).toHaveLength(0)
+  })
+
+  it('denies a student owned by another teacher', async () => {
+    nextDueService({ id: studentId, teacher_id: 'other-teacher', name: 'S' })
+    const { updateStudentNextDue } = await import('@/lib/data-actions')
+    expect((await updateStudentNextDue(studentId, '2026-11-03')).error).toBe('الطالب غير موجود')
+  })
+})
+
+describe('getBillingDefaults', () => {
+  it('returns teacher frequency + price + first-of-next-month for the form', async () => {
+    const { firstOfNextMonth } = await import('@/lib/billing-next')
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder()
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({
+          data: { id: teacherId, default_monthly_price: 250, default_frequency: 'weekly' },
+        })
+        return b
+      }
+      return b
+    })
+
+    const { getBillingDefaults } = await import('@/lib/data-actions')
+    const result = await getBillingDefaults()
+
+    expect(result).toMatchObject({
+      frequency: 'weekly',
+      price: 250,
+      nextDueDate: firstOfNextMonth(new Date()),
+    })
+  })
+
+  it('falls back to monthly + 0 when the teacher row is missing pieces', async () => {
+    mockService.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({ data: null })
+      return b
+    })
+
+    const { getBillingDefaults } = await import('@/lib/data-actions')
+    const result = await getBillingDefaults()
+
+    expect(result.frequency).toBe('monthly')
   })
 })
 
@@ -320,6 +475,74 @@ describe('toggleStudentPayment', () => {
 
     const { toggleStudentPayment } = await import('@/lib/data-actions')
     expect((await toggleStudentPayment(studentId)).success).toBe(true)
+  })
+
+  it('settles the outstanding next-due cycle and advances one interval on pay', async () => {
+    const studentUpdates: any[] = []
+    let paymentInsert: any = null
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder()
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: teacherId } })
+        return b
+      }
+      if (table === 'students') {
+        b.maybeSingle = vi.fn().mockResolvedValue({
+          data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-10-01' },
+        })
+        b.update = vi.fn((payload: any) => {
+          studentUpdates.push(payload)
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+        return b
+      }
+      if (table === 'student_payments') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: null })
+        b.single = vi.fn().mockResolvedValue({ data: null })
+        b.insert = vi.fn((payload: any) => {
+          paymentInsert = payload
+          return Promise.resolve({ error: null })
+        })
+        return b
+      }
+      return b
+    })
+
+    const { toggleStudentPayment } = await import('@/lib/data-actions')
+    expect((await toggleStudentPayment(studentId)).success).toBe(true)
+    expect(paymentInsert).toMatchObject({ student_id: studentId, month: '2026-10-01', paid: true })
+    expect(studentUpdates).toContainEqual({ next_due_date: '2026-11-01' })
+  })
+
+  it('undo to unpaid never moves the next-due date', async () => {
+    const studentUpdates: any[] = []
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder()
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: teacherId } })
+        return b
+      }
+      if (table === 'students') {
+        b.maybeSingle = vi.fn().mockResolvedValue({
+          data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-11-01' },
+        })
+        b.update = vi.fn((payload: any) => {
+          studentUpdates.push(payload)
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+        return b
+      }
+      if (table === 'student_payments') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
+        b.single = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
+        return b
+      }
+      return b
+    })
+
+    const { toggleStudentPayment } = await import('@/lib/data-actions')
+    expect((await toggleStudentPayment(studentId)).success).toBe(true)
+    expect(studentUpdates.some((u) => 'next_due_date' in (u ?? {}))).toBe(false)
   })
 })
 
@@ -477,14 +700,15 @@ describe('addMultipleStudents', () => {
     expect(result.success).toBe(true)
   })
 
-  it('defaults payment_day to 1 for all students', async () => {
+  it('defaults frequency + first-of-next-month for all students (no payment_day)', async () => {
     let capturedPayload: any
+    const { firstOfNextMonth } = await import('@/lib/billing-next')
     mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
         ...b,
         maybeSingle: vi.fn().mockResolvedValue({
-          data: { id: teacherId, default_monthly_price: 150 },
+          data: { id: teacherId, default_monthly_price: 150, default_frequency: 'biweekly' },
         }),
       })
       b.insert = vi.fn().mockImplementation((data: any) => {
@@ -501,8 +725,9 @@ describe('addMultipleStudents', () => {
     ])
     expect(result.success).toBe(true)
     expect(capturedPayload).toHaveLength(2)
-    expect(capturedPayload[0].payment_day).toBe(1)
-    expect(capturedPayload[1].payment_day).toBe(1)
+    expect(capturedPayload[0].frequency).toBe('biweekly')
+    expect(capturedPayload[0].next_due_date).toBe(firstOfNextMonth(new Date()))
+    expect('payment_day' in capturedPayload[0]).toBe(false)
   })
 
   it('returns error when unauthorized', async () => {

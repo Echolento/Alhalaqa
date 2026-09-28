@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { PaymentsList } from '@/components/dashboard/payments-list'
 import { toggleStudentPayment } from '@/lib/payment-actions'
 
 vi.mock('@/lib/payment-actions', () => ({
   toggleStudentPayment: vi.fn(() => ({ success: true })),
   updateStudentMonthlyPrice: vi.fn(() => ({ success: true })),
-  updateStudentPaymentDay: vi.fn(() => ({ success: true })),
+}))
+vi.mock('@/lib/student-actions', () => ({
+  updateStudentNextDue: vi.fn(() => ({ success: true })),
 }))
 
 const mockStudents = [
-  { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5 },
-  { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10 },
+  { id: 's1', full_name: 'أحمد علي', monthly_price: 100, next_due_date: '2026-10-05' },
+  { id: 's2', full_name: 'محمد حسن', monthly_price: 200, next_due_date: '2026-10-10' },
 ]
 
 const mockPayments = [
@@ -111,10 +113,17 @@ describe('PaymentsList', () => {
     expect(container.querySelector('.lucide-check.text-emerald-600')).toBeInTheDocument()
   })
 
-  it('shows payment day for each student', () => {
+  it('shows the next-due date for each student, editable via date input', async () => {
+    const { updateStudentNextDue } = await import('@/lib/student-actions')
     render(<PaymentsList students={mockStudents} payments={mockPayments} month="2025-06" currency="SAR" />)
-    expect(screen.getByText('5')).toBeInTheDocument()
-    expect(screen.getByText('10')).toBeInTheDocument()
+    expect(screen.getAllByText(/الاستحقاق:/)).toHaveLength(2)
+    fireEvent.click(screen.getAllByText(/الاستحقاق:/)[0]!)
+    const input = await screen.findByTestId('next-due-input-s1')
+    fireEvent.change(input, { target: { value: '2026-11-03' } })
+    fireEvent.click(screen.getByTestId('next-due-save-s1'))
+    await waitFor(() =>
+      expect(vi.mocked(updateStudentNextDue)).toHaveBeenCalledWith('s1', '2026-11-03'),
+    )
   })
 
   it('shows loading spinner on toggle button during loading', () => {

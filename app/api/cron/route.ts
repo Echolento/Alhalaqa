@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getOverdueStudents } from '@/lib/overdue'
-import { getPeriodKey } from '@/lib/billing-period'
+import { normalizeFrequency } from '@/lib/billing-period'
+import { duePeriodKey, firstOfNextMonth } from '@/lib/billing-next'
 import { sendOverdueEmail } from '@/lib/email-actions'
 import {
   buildAutoDuePayload,
@@ -109,20 +110,21 @@ export async function GET(request: Request) {
 
     const { data: students } = await supabase
       .from('students')
-      .select('id, name, phone, monthly_price, payment_day, frequency, claimed_by')
+      .select('id, name, phone, monthly_price, frequency, next_due_date, claimed_by')
       .eq('teacher_id', teacher.id)
       .eq('is_active', true)
 
     if (!students || students.length === 0) continue
 
     const today = new Date()
-    const months = [
-      ...new Set(
-        students.map((s) =>
-          getPeriodKey(today, (s as any).frequency ?? 'monthly', (s as any).payment_day || 1),
-        ),
-      ),
-    ]
+    // Outstanding cycle key per student — from next_due_date, never the
+    // wall clock. Legacy rows without a date bill the 1st of next month.
+    const cycleKeyFor = (row: any): string =>
+      duePeriodKey(
+        (row.next_due_date as string | null) ?? firstOfNextMonth(today),
+        normalizeFrequency(row.frequency ?? 'monthly'),
+      )
+    const months = [...new Set(students.map((s) => cycleKeyFor(s)))]
 
     const [{ data: payments }, { data: pendingProofs }] = await Promise.all([
       supabase
@@ -146,12 +148,7 @@ export async function GET(request: Request) {
     const nagTargets = overdue.filter((o) => {
       const row = (students as any[]).find((s) => s.id === o.id)
       if (!row?.claimed_by) return false
-      const periodKey = getPeriodKey(
-        today,
-        row.frequency ?? 'monthly',
-        row.payment_day || 1,
-      )
-      if (pendingKeys.has(`${o.id}_${periodKey}`)) return false
+      if (pendingKeys.has(`${o.id}_${cycleKeyFor(row)}`)) return false
       return true
     })
     const unclaimedCount = (students as any[]).filter((s) => !s.claimed_by).length
@@ -163,11 +160,7 @@ export async function GET(request: Request) {
         const skipped: string[] = []
         for (const target of nagTargets) {
           const row = (students as any[]).find((s) => s.id === target.id)
-          const periodKey = getPeriodKey(
-            today,
-            row.frequency ?? 'monthly',
-            row.payment_day || 1,
-          )
+          const periodKey = cycleKeyFor(row)
           const amount =
             Number(row.monthly_price) || Number(teacher.default_monthly_price) || 0
           const built = buildAutoDuePayload({

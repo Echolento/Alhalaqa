@@ -13,11 +13,12 @@ import { describePeriod } from '@/lib/period-label'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from '@/lib/ownership'
+import { normalizeFrequency } from '@/lib/billing-period'
 import {
-  getPeriodKey,
-  getDuePeriodInfo,
-  normalizeFrequency,
-} from '@/lib/billing-period'
+  duePeriodKey,
+  firstOfNextMonth,
+  parseISODate,
+} from '@/lib/billing-next'
 import { getInstaPayContract } from '@/lib/instapay'
 import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
 import { sendPushNotification } from '@/lib/push'
@@ -35,9 +36,14 @@ interface StudentBillingRow {
   id: string
   teacher_id: string
   name: string | null
-  payment_day: number | null
   frequency: unknown
   monthly_price: number | null
+  next_due_date: string | null
+}
+
+/** Outstanding cycle due date; legacy rows without one bill the 1st of next month. */
+function outstandingDueISO(s: Pick<StudentBillingRow, 'next_due_date'>): string {
+  return s.next_due_date ?? firstOfNextMonth()
 }
 
 interface TeacherBillingRow {
@@ -73,19 +79,16 @@ export async function uploadPaymentProof(params: {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, payment_day, frequency, monthly_price')
+    .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
     .eq('id', params.studentId)
     .maybeSingle()
 
   const s = student as StudentBillingRow | null
   if (!s) return { error: 'الطالب غير موجود' }
 
-  // Period key is server-computed via getPeriodKey — never trusted from client.
-  const periodKey = getPeriodKey(
-    new Date(),
-    normalizeFrequency(s.frequency),
-    s.payment_day || 1,
-  )
+  // Period key is server-computed from the OUTSTANDING next-due cycle —
+  // never the wall clock, never trusted from the client.
+  const periodKey = duePeriodKey(outstandingDueISO(s), normalizeFrequency(s.frequency))
 
   const storagePath = buildProofStoragePath({
     teacherId: s.teacher_id,
@@ -243,9 +246,10 @@ export async function getTeacherProofQueue(studentId: string) {
 }
 
 /**
- * Pay-screen data: amount due via getDuePeriodInfo + teacher InstaPay
- * contract via getInstaPayContract. Requires auth; the link is shared with
- * payers through the frozen /pay URL contract (see payScreenUrl).
+ * Pay-screen data: the OUTSTANDING next-due cycle at the per-cycle price +
+ * teacher InstaPay contract via getInstaPayContract. Requires auth; the link
+ * is shared with payers through the frozen /pay URL contract (see
+ * payScreenUrl). Prepay model: next_due_date opens the period being paid for.
  */
 export async function getPayScreenInfo(studentId: string) {
   const supabase = await createClient()
@@ -258,7 +262,7 @@ export async function getPayScreenInfo(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, payment_day, frequency, monthly_price')
+    .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
     .eq('id', studentId)
     .maybeSingle()
 
@@ -275,12 +279,9 @@ export async function getPayScreenInfo(studentId: string) {
   if (!t) return { error: 'الطالب غير موجود' }
 
   const effectivePrice = Number(s.monthly_price) || Number(t.default_monthly_price) || 0
-  const due = getDuePeriodInfo(
-    new Date(),
-    normalizeFrequency(s.frequency),
-    s.payment_day || 1,
-    effectivePrice,
-  )
+  const freq = normalizeFrequency(s.frequency)
+  const dueISO = outstandingDueISO(s)
+  const periodKey = duePeriodKey(dueISO, freq)
   const contract = getInstaPayContract({
     instapay_link: t.instapay_link,
     instapay_handle: t.instapay_handle,
@@ -291,7 +292,7 @@ export async function getPayScreenInfo(studentId: string) {
     .from('payment_proofs')
     .select('id')
     .eq('student_id', studentId)
-    .eq('period_key', due.periodKey)
+    .eq('period_key', periodKey)
     .eq('status', 'pending')
 
   const { data: pending } = ownerTeacherId
@@ -302,17 +303,17 @@ export async function getPayScreenInfo(studentId: string) {
     .from('student_payments')
     .select('id')
     .eq('student_id', studentId)
-    .eq('month', due.periodKey)
+    .eq('month', periodKey)
     .eq('paid', true)
     .maybeSingle()
 
   return {
     studentId: s.id,
     studentName: s.name || 'طالب',
-    periodKey: due.periodKey,
-    periodLabel: describePeriod(due.periodKey, s.frequency as 'weekly' | 'biweekly' | 'monthly' | null).payerLabel,
-    amount: due.amount,
-    dueDate: due.dueDate.toISOString(),
+    periodKey,
+    periodLabel: describePeriod(periodKey, s.frequency as 'weekly' | 'biweekly' | 'monthly' | null).payerLabel,
+    amount: effectivePrice,
+    dueDate: parseISODate(dueISO).toISOString(),
     currency: t.currency || 'EGP',
     instapayLink: contract.instapayLink,
     instapayHandle: contract.instapayHandle,

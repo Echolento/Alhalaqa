@@ -29,9 +29,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
-import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay, updateStudentFrequency } from '@/lib/payment-actions'
+import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentFrequency } from '@/lib/payment-actions'
 import type { BillingFrequency } from '@/lib/billing-period'
-import { updateStudent, deleteStudent } from '@/lib/student-actions'
+import { formatDueDateAr } from '@/lib/billing-next'
+import { updateStudent, deleteStudent, updateStudentNextDue } from '@/lib/student-actions'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { useRouter } from 'next/navigation'
@@ -158,9 +159,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     }
   }
 
-  const saveDay = async (day: number) => {
+  const [nextDueVal, setNextDueVal] = useState(
+    (student.next_due_date as string | null) ?? '',
+  )
+  const saveNextDue = async () => {
     setLoading(true)
-    const result = await updateStudentPaymentDay(student.id, day)
+    const result = await updateStudentNextDue(student.id, nextDueVal)
     setLoading(false)
     if ((result as any).success) {
       toast({ title: '✓ تم الحفظ' })
@@ -218,7 +222,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {student.monthly_price} {currencySymbol} · يوم {student.payment_day || 1}
+              {student.monthly_price} {currencySymbol} · الاستحقاق {formatDueDateAr(student.next_due_date)}
             </p>
           </div>
           <Button
@@ -263,30 +267,35 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         </Row>
         <Row
           icon={CalendarDays}
-          label="يوم الدفع"
+          label="تاريخ الاستحقاق"
           edit={
-            <Popover open={dayOpen} onOpenChange={setDayOpen}>
+            <Popover open={dayOpen} onOpenChange={(o) => { setDayOpen(o); if (o) setNextDueVal((student.next_due_date as string | null) ?? '') }}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-3" align="start">
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => saveDay(d)}
-                      disabled={loading}
-                      className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full text-sm font-medium ${d === (student.payment_day || 1) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
+              <PopoverContent className="w-72 p-3 space-y-2" align="start">
+                <Label htmlFor="profile-next-due">تاريخ أول فاتورة مستحقة</Label>
+                <Input
+                  id="profile-next-due"
+                  data-testid="profile-next-due"
+                  type="date"
+                  value={nextDueVal}
+                  onChange={(e) => setNextDueVal(e.target.value)}
+                  className="min-h-[44px]"
+                />
+                <Button
+                  onClick={saveNextDue}
+                  disabled={loading}
+                  data-testid="profile-next-due-save"
+                  className="w-full min-h-[44px]"
+                >
+                  حفظ
+                </Button>
               </PopoverContent>
             </Popover>
           }
         >
-          يوم {student.payment_day || 1}
+          الاستحقاق {formatDueDateAr(student.next_due_date)}
         </Row>
         <Row
           icon={CalendarDays}

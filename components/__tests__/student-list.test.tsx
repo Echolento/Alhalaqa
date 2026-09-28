@@ -75,10 +75,14 @@ describe('StudentList (merged home)', () => {
     expect(link).toBeInTheDocument()
   })
 
-  it('row shows price + pay-day readouts and shared green/red status', () => {
-    const { container } = render(<StudentList {...props} />)
+  it('row shows price + next-due readouts and shared green/red status', () => {
+    const rows = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01' },
+    ]
+    const { container } = render(<StudentList {...props} students={rows} />)
     expect(screen.getAllByText('100 ر.س').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/يوم 5/)).toBeInTheDocument()
+    expect(screen.getAllByText(/الاستحقاق/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('مدفوع').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('لم يدفع').length).toBeGreaterThanOrEqual(1)
     expect(container.querySelector('[class*="bg-emerald-50"]')).toBeInTheDocument()

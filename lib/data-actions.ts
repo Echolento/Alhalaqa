@@ -2,8 +2,10 @@
 
 export {
   getTeacherStudents,
+  getBillingDefaults,
   addStudent,
   updateStudent,
+  updateStudentNextDue,
   deleteStudent,
 } from './student-actions'
 

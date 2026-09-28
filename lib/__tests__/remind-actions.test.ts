@@ -12,6 +12,22 @@ vi.mock('@/lib/log-activity', () => ({
   logActivity: (...args: unknown[]) => mockLog(...args),
 }))
 
+const mockServiceRow: { row: any } = {
+  row: { id: 'stu-1', frequency: 'monthly', next_due_date: '2026-10-01' },
+}
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: mockServiceRow.row })),
+        })),
+      })),
+    })),
+  })),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockTrigger.mockResolvedValue({ success: true })
@@ -53,6 +69,19 @@ describe('sendManualRemind routing (reuses slice-1 trigger + payload builder)', 
     })
     expect(result.success).toBe(true)
     expect(mockTrigger).toHaveBeenCalledOnce()
+  })
+
+  it('resolves an omitted periodKey from the outstanding next-due cycle', async () => {
+    const { sendManualRemind } = await import('@/lib/remind-actions')
+    const result = await sendManualRemind({
+      studentId: 'stu-1',
+      studentName: 'أحمد',
+      payerProfileId: 'payer-1',
+    })
+    expect(result.success).toBe(true)
+    expect(mockTrigger).toHaveBeenCalledWith(
+      expect.objectContaining({ periodKey: '2026-10-01' }),
+    )
   })
 
   it('takes the test path (log + toast, no transport) when no payer is linked', async () => {

@@ -10,6 +10,32 @@
 import { triggerManualRemind } from '@/lib/push-triggers'
 import { logActivity } from '@/lib/log-activity'
 import { REMIND_COPY } from '@/lib/remind-copy'
+import { createServiceClient } from '@/lib/supabase/service'
+import { normalizeFrequency } from '@/lib/billing-period'
+import { duePeriodKey, firstOfNextMonth } from '@/lib/billing-next'
+
+/**
+ * Outstanding cycle key for a manual nudge: the student's next-due date,
+ * never whatever month grid the teacher happens to be viewing. Legacy rows
+ * without a date bill the 1st of next month.
+ */
+async function outstandingCycleKey(studentId: string): Promise<string> {
+  try {
+    const service = createServiceClient()
+    const { data } = await service
+      .from('students')
+      .select('frequency, next_due_date')
+      .eq('id', studentId)
+      .maybeSingle()
+    const row = (data ?? null) as { frequency?: unknown; next_due_date?: string | null } | null
+    return duePeriodKey(
+      row?.next_due_date ?? firstOfNextMonth(),
+      normalizeFrequency(row?.frequency),
+    )
+  } catch {
+    return duePeriodKey(firstOfNextMonth(), 'monthly')
+  }
+}
 
 export interface SendManualRemindParams {
   studentId: string
@@ -49,13 +75,14 @@ export async function sendManualRemind(
     return { success: false, reason: 'no_payer_yet', testMode: true }
   }
 
+  const periodKey = params.periodKey ?? (await outstandingCycleKey(params.studentId))
   const result = (await triggerManualRemind({
     studentId: params.studentId,
     payerProfileId: params.payerProfileId,
     studentName: params.studentName,
     amount: params.amount,
     currency: params.currency,
-    periodKey: params.periodKey,
+    periodKey,
   })) as { success?: boolean; reason?: string; error?: string }
 
   if (result.error) {

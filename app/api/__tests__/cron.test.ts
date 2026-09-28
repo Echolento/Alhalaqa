@@ -103,8 +103,8 @@ function baseData(): TableData {
         name: 'أحمد',
         phone: '+2010',
         monthly_price: 200,
-        payment_day: 5,
         frequency: 'monthly',
+        next_due_date: '2026-09-05',
         claimed_by: 'payer-1',
       },
     ],
@@ -171,8 +171,8 @@ describe('GET /api/cron (timing engine)', () => {
         name: 'ليلى',
         phone: '+2011',
         monthly_price: 200,
-        payment_day: 5,
         frequency: 'monthly',
+        next_due_date: '2026-09-05',
         claimed_by: 'payer-2',
       },
     ]
@@ -192,7 +192,7 @@ describe('GET /api/cron (timing engine)', () => {
 
   it('10:00 escalates to the teacher from overdue day 3', async () => {
     vi.setSystemTime(AT_10)
-    // payment_day 5, today Sep 24 → 19 days overdue. Default fixture suffices.
+    // next_due Sep 5, today Sep 24 → 19 days overdue. Default fixture suffices.
     const { GET } = await import('@/app/api/cron/route')
     const body = await (await GET(authedReq())).json()
 

@@ -22,7 +22,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentPaymentDay } from '@/lib/payment-actions'
+import { toggleStudentPayment, updateStudentMonthlyPrice } from '@/lib/payment-actions'
+import { updateStudentNextDue } from '@/lib/student-actions'
+import { formatDueDateAr } from '@/lib/billing-next'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -136,17 +138,20 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
     }
   }
 
-  const handleDaySelect = async (studentId: string, day: number) => {
+  const [nextDueDraft, setNextDueDraft] = useState('')
+  const handleNextDueSave = async (studentId: string) => {
     setLoading(studentId)
     try {
-      const result = await updateStudentPaymentDay(studentId, day)
-      if (result.success) {
+      const result = await updateStudentNextDue(studentId, nextDueDraft)
+      if ((result as any).success) {
         setEditingDay(null)
         router.refresh()
-        toast({ title: '✓ تم الحفظ', description: 'تم تحديث يوم الدفع بنجاح' })
+        toast({ title: '✓ تم الحفظ', description: 'تم تحديث تاريخ الاستحقاق بنجاح' })
+      } else {
+        toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
       }
     } catch (error) {
-      toast({ variant: 'destructive', title: 'خطأ', description: 'فشل تحديث يوم الدفع' })
+      toast({ variant: 'destructive', title: 'خطأ', description: 'فشل تحديث تاريخ الاستحقاق' })
     } finally {
       setLoading(null)
     }
@@ -225,41 +230,37 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                         )}
                       </div>
 
-                      {/* Payment Day Setting */}
+                      {/* Next-due Setting */}
                       <Popover open={editingDay === student.id} onOpenChange={(open) => { if (!open) setEditingDay(null) }}>
                         <PopoverTrigger asChild>
                           <button
-                            onClick={() => setEditingDay(student.id)}
+                            onClick={() => { setEditingDay(student.id); setNextDueDraft(student.next_due_date ?? '') }}
                             className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/50 px-2 py-1.5 rounded-md border border-muted-foreground/10 hover:border-muted-foreground/20 hover:text-primary transition-colors"
                           >
                             <CalendarIcon className="w-3.5 h-3.5" />
-                            <span>يوم الدفع:</span>
-                            <span className="font-bold text-slate-700">{student.payment_day || 1}</span>
+                            <span>الاستحقاق:</span>
+                            <span className="font-bold text-slate-700">{formatDueDateAr(student.next_due_date)}</span>
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-72 p-3" align="start">
-                          <p className="text-xs text-muted-foreground leading-relaxed mb-3 text-center">
-                            اليوم المحدد للدفع كل شهر. يتم احتساب دورة الفوترة من هذا اليوم إلى نفس اليوم من الشهر التالي.
+                        <PopoverContent className="w-72 p-3 space-y-2" align="start">
+                          <p className="text-xs text-muted-foreground leading-relaxed text-center">
+                            تاريخ أول فاتورة مستحقة. بعد السداد يتقدم تلقائياً حسب نظام الدفع.
                           </p>
-                          <div className="grid grid-cols-7 gap-1">
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
-                              const isSelected = d === (student.payment_day || 1)
-                              return (
-                                <button
-                                  key={d}
-                                  onClick={() => handleDaySelect(student.id, d)}
-                                  disabled={loading === student.id}
-                                  className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
-                                    isSelected
-                                      ? 'bg-primary text-primary-foreground shadow-sm'
-                                      : 'hover:bg-muted text-foreground'
-                                  }`}
-                                >
-                                  {d}
-                                </button>
-                              )
-                            })}
-                          </div>
+                          <Input
+                            type="date"
+                            value={nextDueDraft}
+                            onChange={(e) => setNextDueDraft(e.target.value)}
+                            data-testid={`next-due-input-${student.id}`}
+                            className="min-h-[44px]"
+                          />
+                          <Button
+                            onClick={() => handleNextDueSave(student.id)}
+                            disabled={loading === student.id}
+                            data-testid={`next-due-save-${student.id}`}
+                            className="w-full min-h-[44px]"
+                          >
+                            حفظ
+                          </Button>
                         </PopoverContent>
                       </Popover>
 

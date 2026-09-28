@@ -9,6 +9,7 @@ import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 import { validateInstapayHandle, validateInstapayLink } from './instapay'
 import { logActivity } from './log-activity'
 import { getSiteUrl } from './auth-redirect'
+import { normalizeFrequency } from './billing-period'
 
 /**
  * Prefer the actual request host over env vars. NEXT_PUBLIC_SITE_URL on
@@ -363,6 +364,12 @@ export async function updateTeacherSettings(formData: FormData) {
   return { success: true }
 }
 
+/**
+ * Onboarding step 1 (/welcome): billing basics — currency, per-cycle price,
+ * billing frequency. Next-due defaults stay systemic (1st of next month,
+ * stated in UI) and InstaPay moves to step 2. payment_day is legacy and no
+ * longer read here even if a stale form posts it.
+ */
 export async function completeOnboarding(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -373,21 +380,45 @@ export async function completeOnboarding(formData: FormData) {
 
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
+  const defaultFrequency = normalizeFrequency(formData.get('default_frequency') as string | null)
 
-  // Optional payday default (1-31): new students inherit it in addStudent.
-  // Blank = leave unset; out-of-range = rejected with an explanation.
-  const rawPaymentDay = ((formData.get('default_payment_day') as string) || '').trim()
-  let defaultPaymentDay: number | null = null
-  if (rawPaymentDay !== '') {
-    const day = Number(rawPaymentDay)
-    if (!Number.isInteger(day) || day < 1 || day > 31) {
-      return { error: 'يوم الدفع الافتراضي يجب أن يكون رقماً بين 1 و 31' }
-    }
-    defaultPaymentDay = day
+  const { error } = await createServiceClient()
+    .from('teachers')
+    .upsert(
+      {
+        profile_id: user.id,
+        currency,
+        default_monthly_price: defaultMonthlyPrice,
+        default_frequency: defaultFrequency,
+      },
+      { onConflict: 'profile_id' },
+    )
+
+  if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'onboarding_complete',
+    entityType: 'teacher',
+    details: { currency, default_monthly_price: defaultMonthlyPrice, default_frequency: defaultFrequency },
+  })
+
+  revalidatePath('/', 'layout')
+  redirect('/welcome/instapay')
+}
+
+/**
+ * Onboarding step 2 (/welcome/instapay): InstaPay contract, fully optional —
+ * blanks skip (set later from Settings). Invalid values are rejected with
+ * an explanation. Always finishes to the dashboard.
+ */
+export async function completeInstapayOnboarding(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized' }
   }
 
-  // Optional at onboarding — the teacher can set/change these later in
-  // Settings. Invalid values are rejected with an explanation, blanks skip.
   const rawLink = ((formData.get('instapay_link') as string) || '').trim()
   const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
 
@@ -410,22 +441,13 @@ export async function completeOnboarding(formData: FormData) {
     .upsert(
       {
         profile_id: user.id,
-        currency,
-        default_monthly_price: defaultMonthlyPrice,
         ...(instapayLink ? { instapay_link: instapayLink } : {}),
         ...(instapayHandle ? { instapay_handle: instapayHandle } : {}),
-        ...(defaultPaymentDay ? { default_payment_day: defaultPaymentDay } : {}),
       },
       { onConflict: 'profile_id' },
     )
 
   if (error) return { error: error.message }
-
-  await logActivity({
-    actionType: 'onboarding_complete',
-    entityType: 'teacher',
-    details: { currency, default_monthly_price: defaultMonthlyPrice },
-  })
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { WelcomeForm } from '@/components/welcome/welcome-form'
+import { OnboardingSteps } from '@/components/onboarding/onboarding-steps'
+import { ONBOARDING_COPY } from '@/lib/onboarding-copy'
 import Image from 'next/image'
 
 export default async function WelcomePage() {
@@ -18,7 +20,7 @@ export default async function WelcomePage() {
     .single()
 
   if (teacher?.default_monthly_price && teacher?.currency) {
-    redirect('/dashboard')
+    redirect('/welcome/instapay')
   }
 
   return (
@@ -37,7 +39,10 @@ export default async function WelcomePage() {
             </div>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight">أهلاً بك في الحلقة</h1>
-          <p className="text-muted-foreground mt-1.5 font-medium">قم بتحديد إعداداتك الأولية للمتابعة</p>
+          <p className="text-muted-foreground mt-1.5 font-medium">{ONBOARDING_COPY.basicsSubtitle}</p>
+        </div>
+        <div className="mb-6">
+          <OnboardingSteps active={1} />
         </div>
         <WelcomeForm />
       </div>

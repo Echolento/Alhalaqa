@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
 import { getCurrentMonthKey, getPeriodKey, normalizeFrequency, type BillingFrequency } from './billing-period'
+import { duePeriodKey, firstOfNextMonth } from './billing-next'
+import { advanceStudentCycle } from './payment-proof-verdict'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
 
@@ -24,7 +26,7 @@ export async function getTeacherPayments(month?: string) {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, claimed_by')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by')
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
@@ -183,18 +185,18 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     return { error: 'الطالب غير موجود' }
   }
 
-  let monthKey = month
-  if (!monthKey) {
-    const { data: student } = await service
-      .from('students')
-      .select('payment_day, frequency, name')
-      .eq('id', studentId)
-      .maybeSingle()
+  // Outstanding cycle when the teacher taps blind (no month): the student's
+  // next-due date, never the wall clock. Cycle info is always read — paid
+  // taps advance it below (undo never moves it: one-way ratchet).
+  const { data: cycleRow } = await service
+    .from('students')
+    .select('frequency, name, next_due_date')
+    .eq('id', studentId)
+    .maybeSingle()
 
-    const day = (student as any)?.payment_day || 1
-    const freq = normalizeFrequency((student as any)?.frequency)
-    monthKey = getPeriodKey(new Date(), freq, day)
-  }
+  const cycleFrequency = normalizeFrequency((cycleRow as any)?.frequency)
+  const cycleDue = ((cycleRow as any)?.next_due_date ?? null) as string | null
+  const monthKey = month ?? duePeriodKey(cycleDue ?? firstOfNextMonth(), cycleFrequency)
 
   // Independent reads: run together, not one-after-another (toggle latency).
   const [{ data: existing }, { data: student }] = await Promise.all([
@@ -241,6 +243,10 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       })
       .eq('id', existing.id)
     if (error) return { error: error.message }
+  }
+
+  if (newPaid) {
+    await advanceStudentCycle(service, studentId, monthKey, cycleFrequency, cycleDue)
   }
 
   await logActivity({

@@ -496,3 +496,84 @@ describe('updateUserPassword', () => {
     expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled()
   })
 })
+
+describe('onboarding split (basics → instapay)', () => {
+  function captureUpsert() {
+    let payload: any = null
+    mockService.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.upsert = vi.fn((row: any) => {
+        payload = row
+        return Promise.resolve({ error: null })
+      })
+      return b
+    })
+    return () => payload
+  }
+
+  it('completeOnboarding stores basics + frequency and moves to instapay', async () => {
+    const read = captureUpsert()
+    const { completeOnboarding } = await import('@/lib/auth-actions')
+    const { default: redirectMock } = await import('next/navigation').then(
+      (m) => ({ default: (m as any).redirect }),
+    )
+
+    await completeOnboarding(
+      createFormData({
+        currency: 'EGP',
+        default_monthly_price: '300',
+        default_frequency: 'weekly',
+        // Legacy/ignored fields never persist from this step:
+        default_payment_day: '5',
+        instapay_link: 'https://ipn.eg/S/x',
+      }),
+    )
+
+    expect(read()).toMatchObject({
+      currency: 'EGP',
+      default_monthly_price: 300,
+      default_frequency: 'weekly',
+    })
+    expect(read()).not.toHaveProperty('instapay_link')
+    expect(read()).not.toHaveProperty('default_payment_day')
+    expect(redirectMock).toHaveBeenCalledWith('/welcome/instapay')
+  })
+
+  it('completeOnboarding defaults unknown frequencies to monthly', async () => {
+    const read = captureUpsert()
+    const { completeOnboarding } = await import('@/lib/auth-actions')
+
+    await completeOnboarding(createFormData({ currency: 'EGP', default_monthly_price: '300' }))
+
+    expect(read()).toMatchObject({ default_frequency: 'monthly' })
+  })
+
+  it('completeInstapayOnboarding stores the contract and finishes to dashboard', async () => {
+    const read = captureUpsert()
+    const { completeInstapayOnboarding } = await import('@/lib/auth-actions')
+    const { default: redirectMock } = await import('next/navigation').then(
+      (m) => ({ default: (m as any).redirect }),
+    )
+
+    await completeInstapayOnboarding(
+      createFormData({ instapay_link: 'https://ipn.eg/S/abc', instapay_handle: 'teach@instapay' }),
+    )
+
+    expect(read()).toMatchObject({
+      instapay_link: 'https://ipn.eg/S/abc',
+      instapay_handle: 'teach@instapay',
+    })
+    expect(redirectMock).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('completeInstapayOnboarding accepts blanks (later from settings)', async () => {
+    const { completeInstapayOnboarding } = await import('@/lib/auth-actions')
+    const { default: redirectMock } = await import('next/navigation').then(
+      (m) => ({ default: (m as any).redirect }),
+    )
+
+    await completeInstapayOnboarding(createFormData({}))
+
+    expect(redirectMock).toHaveBeenCalledWith('/dashboard')
+  })
+})
