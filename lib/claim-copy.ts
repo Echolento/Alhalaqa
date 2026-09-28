@@ -47,6 +47,56 @@ export const CLAIM_COPY = {
   claimRateLimitedTitle: 'محاولات كثيرة جداً',
   claimRateLimitedDescription: 'تجاوزت عدد المحاولات المسموح — انتظر قليلاً ثم حاول مرة أخرى.',
 
+  // ——— Post-claim phone confirm (A2: reachability before coaching) ———
+  claimPhoneConfirmTitle: 'رقم التواصل',
+  claimPhoneConfirmDescription: (phone: string) =>
+    `هنوصلك على ${phone} — الرقم صحيح؟`,
+  claimPhoneMissingDescription: 'سجّل رقم هاتفك — المعلم يستخدمه للتواصل معك.',
+  claimPhoneCorrectButton: 'الرقم صحيح',
+  claimPhoneEditButton: 'تعديل الرقم',
+  claimPhoneInputLabel: 'رقم الهاتف',
+  claimPhonePlaceholder: '01xxxxxxxxx',
+  claimPhoneSaveButton: 'حفظ الرقم',
+  claimPhoneSaving: 'جاري الحفظ…',
+  claimPhoneSaved: 'تم حفظ الرقم',
+  claimPhoneInvalid: 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678).',
+  claimPhoneSaveFail: 'تعذر حفظ الرقم — حاول مرة أخرى.',
+
+  // ——— Install coach (A2: claim-success → installed PWA) ———
+  installCoachTitle: 'ثبّت التطبيق لتصلك التذكيرات',
+  installCoachDescription: 'التثبيت يضمن وصول إشعارات الدفع حتى والمتصفح مغلق.',
+  installCoachAndroidHint: 'اضغط الزر أدناه لتثبيت التطبيق على جهازك.',
+  installCoachIosStep1: 'اضغط زر المشاركة أسفل المتصفح',
+  installCoachIosStep2: 'اختر «إضافة إلى الشاشة الرئيسية»',
+  installCoachIosStep3: 'اضغط «إضافة» ثم افتح التطبيق من الأيقونة',
+  installCoachGenericHint: 'من قائمة المتصفح اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».',
+  installCoachLater: 'لاحقاً',
+
+  // ——— Payer home hub (A3: /pay without ?student=) ———
+  hubTitle: 'الرسوم المستحقة',
+  hubEmptyTitle: 'لا توجد رسوم مربوطة بعد',
+  hubEmptyDescription: 'اطلب رابط الدعوة من المعلم وافتحه بنفس هذا البريد لربط الطالب.',
+  hubClaimAnother: 'عندك طالب آخر؟ افتح رابط دعوته بنفس البريد وسيظهر هنا.',
+  hubPayButton: 'عرض الدفع',
+
+  // ——— Generic payer login (A3: /pay without a session) ———
+  payerLoginTitle: 'دخول متابعة الرسوم',
+  payerLoginDescription: 'أدخل بريدك الإلكتروني — نرسل لك رابط دخول لمرة واحدة.',
+  payerLoginEmailLabel: 'البريد الإلكتروني',
+  payerLoginEmailPlaceholder: 'example@email.com',
+  payerLoginSendButton: 'إرسال رابط الدخول',
+  payerLoginSending: 'جاري إرسال الرابط…',
+  payerLoginSent: 'تفقد بريدك — اضغط رابط الدخول ثم ارجع إلى هنا.',
+  payerLoginInvalidEmail: 'يرجى إدخال بريد إلكتروني صحيح.',
+  payerLoginFail: 'تعذر إرسال رابط الدخول — حاول مرة أخرى.',
+
+  // ——— Teacher-as-payer shortcut + install nudges (B) ———
+  myPaymentsLabel: 'مدفوعاتي',
+  myPaymentsDescription: 'الرسوم المربوطة ببريدك كمتابع.',
+  installBannerTitle: 'ثبّت التطبيق لتصلك التذكيرات حتى والمتصفح مغلق',
+  installBannerInstall: 'تثبيت',
+  installNudgeTitle: 'ثبّت التطبيق على جهازك',
+
   // ——— Invite-link issue states (payer-invite-button wiring) ———
   inviteIssuingLabel: 'جاري تجهيز رابط الدعوة…',
   inviteIssueFailTitle: 'تعذر تجهيز الرابط',

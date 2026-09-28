@@ -102,4 +102,24 @@ describe('GET /auth/callback', () => {
     )
     expect(locationOf(res)).toBe('https://x.test/welcome')
   })
+
+  it('payer flow (next=/pay) never bootstraps teacher identity', async () => {
+    profileResult = { role: 'student' }
+    const { GET } = await import('@/app/auth/callback/route')
+    const res = await GET(new Request('https://x.test/auth/callback?code=ok&next=/pay'))
+    expect(locationOf(res)).toBe('https://x.test/pay')
+    const tables = mockService.from.mock.calls.map((c) => c[0] as string)
+    expect(tables).not.toContain('teachers')
+  })
+
+  it('claim flow (next=/claim) never bootstraps teacher identity', async () => {
+    profileResult = { role: 'student' }
+    const { GET } = await import('@/app/auth/callback/route')
+    const res = await GET(
+      new Request('https://x.test/auth/callback?code=ok&next=/claim%3Ftoken%3Dabc'),
+    )
+    expect(locationOf(res)).toBe('https://x.test/claim?token=abc')
+    const tables = mockService.from.mock.calls.map((c) => c[0] as string)
+    expect(tables).not.toContain('teachers')
+  })
 })

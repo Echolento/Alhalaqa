@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsForm } from '@/components/dashboard/settings-form'
+import { InstallNudge } from '@/components/pwa/install-nudge'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
         <p className="text-muted-foreground">إدارة حسابك وتفضيلاتك</p>
       </div>
       <SettingsForm profile={profile} teacherData={teacherData} email={user.email || ''} />
+      <InstallNudge />
     </div>
   )
 }

@@ -32,22 +32,30 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/auth/error?reason=no_session`)
   }
 
+  // Payer flows (/pay hub login, /claim invite redeem) must NEVER mint
+  // teacher identity: a parent logging in is not a teacher. Teacher
+  // bootstrap runs only for teacher-destination flows (/welcome, …).
+  const isPayerFlow =
+    next === '/pay' || next.startsWith('/pay?') || next === '/claim' || next.startsWith('/claim?')
+
   // Service writes scoped to the session user (#25: no anon-key writes).
   const service = createServiceClient()
 
-  const { data: profile } = await service
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  if (!isPayerFlow) {
+    const { data: profile } = await service
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-  if (profile && (profile as { role: string }).role !== 'teacher') {
-    await service.from('profiles').update({ role: 'teacher' }).eq('id', user.id)
+    if (profile && (profile as { role: string }).role !== 'teacher') {
+      await service.from('profiles').update({ role: 'teacher' }).eq('id', user.id)
+    }
+
+    await service
+      .from('teachers')
+      .upsert({ profile_id: user.id }, { onConflict: 'profile_id' })
   }
-
-  await service
-    .from('teachers')
-    .upsert({ profile_id: user.id }, { onConflict: 'profile_id' })
 
   // Honor explicit destinations (e.g. recovery -> update-password). For the
   // default welcome destination, already-onboarded users go to dashboard —

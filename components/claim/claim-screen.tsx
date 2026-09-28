@@ -17,10 +17,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { redeemClaim } from '@/lib/claim-actions'
+import { redeemClaim, updateClaimedPhone } from '@/lib/claim-actions'
 import { buildClaimOtpCallbackPath } from '@/lib/claim-tokens'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { payScreenUrl } from '@/lib/push-payloads'
+import { InstallCoach, type InstallCoachPlatform } from '@/components/pwa/install-coach'
 
 export type ClaimScreenSession = { email: string | null } | null
 
@@ -31,7 +32,16 @@ export function ClaimScreen(props: {
   /** Test/SSR seam. Production omits it and the live session is used. */
   session?: ClaimScreenSession
   /** Test seam overriding the redeemClaim server action. */
-  onRedeem?: (token: string) => Promise<{ success?: true; error?: string; studentId?: string }>
+  onRedeem?: (
+    token: string,
+  ) => Promise<{ success?: true; error?: string; studentId?: string; claimedPhone?: string | null }>
+  /** Test seam overriding the updateClaimedPhone server action. */
+  onUpdatePhone?: (
+    studentId: string,
+    phone: string,
+  ) => Promise<{ success?: true; error?: string; phone?: string }>
+  /** Test seam forwarded to InstallCoach. Production omits it (auto-detect). */
+  coachPlatform?: InstallCoachPlatform
 }) {
   const [liveSession, setLiveSession] = useState<ClaimScreenSession>(null)
   const [sessionChecked, setSessionChecked] = useState(props.session !== undefined)
@@ -42,7 +52,13 @@ export function ClaimScreen(props: {
   const [otpError, setOtpError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [redeemError, setRedeemError] = useState<string | null>(null)
-  const [redeemed, setRedeemed] = useState<{ studentId: string } | null>(null)
+  const [redeemed, setRedeemed] = useState<{ studentId: string; claimedPhone: string | null } | null>(null)
+  // A2 — post-claim steps: phone-confirm FIRST, install coach SECOND.
+  const [postStep, setPostStep] = useState<'phone' | 'coach'>('phone')
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [phoneDraft, setPhoneDraft] = useState('')
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const session = props.session !== undefined ? props.session : liveSession
 
@@ -102,7 +118,14 @@ export function ClaimScreen(props: {
         ? await props.onRedeem(props.token)
         : await redeemClaim(props.token)
       if ((result as { success?: boolean }).success) {
-        setRedeemed({ studentId: (result as { studentId?: string }).studentId ?? '' })
+        setRedeemed({
+          studentId: (result as { studentId?: string }).studentId ?? '',
+          claimedPhone: (result as { claimedPhone?: string | null }).claimedPhone ?? null,
+        })
+        setPostStep('phone')
+        setEditingPhone(!(result as { claimedPhone?: string | null }).claimedPhone)
+        setPhoneDraft('')
+        setPhoneError(null)
       } else {
         setRedeemError((result as { error?: string }).error ?? CLAIM_COPY.claimInvalidDescription)
       }
@@ -123,22 +146,101 @@ export function ClaimScreen(props: {
     )
   }
 
+  async function handleSavePhone(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!redeemed || phoneSaving) return
+    setPhoneSaving(true)
+    setPhoneError(null)
+    try {
+      const save = props.onUpdatePhone
+        ? await props.onUpdatePhone(redeemed.studentId, phoneDraft)
+        : await updateClaimedPhone(redeemed.studentId, phoneDraft)
+      if ((save as { success?: boolean }).success) {
+        const savedPhone = (save as { phone?: string }).phone ?? phoneDraft
+        setRedeemed({ ...redeemed, claimedPhone: savedPhone })
+        setEditingPhone(false)
+        setPostStep('coach')
+      } else {
+        setPhoneError((save as { error?: string }).error ?? CLAIM_COPY.claimPhoneSaveFail)
+      }
+    } catch {
+      setPhoneError(CLAIM_COPY.claimPhoneSaveFail)
+    } finally {
+      setPhoneSaving(false)
+    }
+  }
+
   if (redeemed) {
     const payUrl = redeemed.studentId ? payScreenUrl(redeemed.studentId) : '/pay'
+
+    if (postStep === 'phone') {
+      return (
+        <Card dir="rtl">
+          <CardHeader>
+            <CardTitle className="text-base">{CLAIM_COPY.claimSuccessTitle}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4" data-testid="claim-phone-confirm">
+            <p className="text-sm leading-relaxed">
+              {CLAIM_COPY.claimSuccessDescription(props.studentName)}
+            </p>
+            <p className="text-sm font-medium">{CLAIM_COPY.claimPhoneConfirmTitle}</p>
+            {!editingPhone && redeemed.claimedPhone ? (
+              <div className="space-y-3">
+                <p className="text-sm leading-relaxed">
+                  {CLAIM_COPY.claimPhoneConfirmDescription(redeemed.claimedPhone)}
+                </p>
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={() => setPostStep('coach')}>
+                    {CLAIM_COPY.claimPhoneCorrectButton}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setPhoneDraft(redeemed.claimedPhone ?? '')
+                      setPhoneError(null)
+                      setEditingPhone(true)
+                    }}
+                  >
+                    {CLAIM_COPY.claimPhoneEditButton}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSavePhone} className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {CLAIM_COPY.claimPhoneMissingDescription}
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="claim-phone">{CLAIM_COPY.claimPhoneInputLabel}</Label>
+                  <Input
+                    id="claim-phone"
+                    data-testid="claim-phone-input"
+                    type="tel"
+                    dir="ltr"
+                    placeholder={CLAIM_COPY.claimPhonePlaceholder}
+                    value={phoneDraft}
+                    onChange={(e) => setPhoneDraft(e.target.value)}
+                  />
+                </div>
+                {phoneError ? <p className="text-xs text-destructive">{phoneError}</p> : null}
+                <Button type="submit" className="w-full" disabled={phoneSaving}>
+                  {phoneSaving ? CLAIM_COPY.claimPhoneSaving : CLAIM_COPY.claimPhoneSaveButton}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )
+    }
+
     return (
-      <Card dir="rtl">
-        <CardHeader>
-          <CardTitle className="text-base">{CLAIM_COPY.claimSuccessTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm leading-relaxed">
-            {CLAIM_COPY.claimSuccessDescription(props.studentName)}
-          </p>
-          <Button asChild className="w-full">
-            <a href={payUrl}>{CLAIM_COPY.claimGoPay}</a>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-4" dir="rtl">
+        <InstallCoach platform={props.coachPlatform} onLater={() => window.location.assign(payUrl)} />
+        <Button asChild className="w-full">
+          <a href={payUrl}>{CLAIM_COPY.claimGoPay}</a>
+        </Button>
+      </div>
     )
   }
 

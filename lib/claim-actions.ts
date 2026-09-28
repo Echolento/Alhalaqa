@@ -52,6 +52,8 @@ import {
   isValidClaimTokenFormat,
 } from '@/lib/claim-tokens'
 import { CLAIM_COPY } from '@/lib/claim-copy'
+import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
+import { HUB_UNKNOWN_TEACHER_LABEL } from '@/lib/payer-hub'
 
 type Service = ReturnType<typeof createServiceClient>
 
@@ -395,7 +397,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, claimed_by')
+    .select('id, teacher_id, name, claimed_by, phone')
     .eq('id', row.student_id)
     .maybeSingle()
   const s = (student ?? null) as StudentClaimRow | null
@@ -441,5 +443,99 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     idempotent: (s.claimed_by === user.id) as boolean,
     studentId: s.id,
     studentName,
+    claimedPhone: ((s as { phone?: string | null }).phone ?? null) as string | null,
   }
+}
+
+export interface ClaimedHubStudent {
+  studentId: string
+  studentName: string
+  teacherId: string
+  teacherName: string
+}
+
+/**
+ * Payer home list (A3): every student whose claimed_by is the caller, with
+ * the teacher display name. Session-scoped — never a global list. Teacher
+ * names resolve teachers -> profiles.full_name; missing names fall back to
+ * the neutral label (the hub component owns the final fallback too).
+ */
+export async function listMyClaimedStudents() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const service = createServiceClient()
+
+  const { data, error } = (await service
+    .from('students')
+    .select('id, name, teacher_id, teachers!inner(profile_id, profiles!inner(full_name))')
+    .eq('claimed_by', user.id)) as unknown as {
+    data: Array<{
+      id: string
+      name: string | null
+      teacher_id: string
+      teachers: { profile_id: string | null; profiles: { full_name: string | null } | null } | null
+    }> | null
+    error: unknown
+  }
+  if (error) return { error: 'تعذر تحميل القائمة — حاول مرة أخرى' }
+
+  const students: ClaimedHubStudent[] = (data ?? []).map((s) => ({
+    studentId: s.id,
+    studentName: s.name || 'طالب',
+    teacherId: s.teacher_id,
+    teacherName:
+      (s.teachers?.profiles?.full_name || '').trim() || HUB_UNKNOWN_TEACHER_LABEL,
+  }))
+  return { students }
+}
+
+/**
+ * Conditional مدفوعاتي gate (B): true when the caller owns ≥1 claimed row —
+ * i.e. this teacher is ALSO a payer. Session-less callers and teachers
+ * without claims get false (the shortcut stays hidden).
+ */
+export async function callerHasClaimedStudents(): Promise<boolean> {
+  const listed = await listMyClaimedStudents()
+  if ((listed as { error?: string }).error) return false
+  return (((listed as { students?: unknown[] }).students ?? []).length ?? 0) > 0
+}
+
+/**
+ * Payer-owned phone correction (A2). The caller must own the row
+ * (students.claimed_by === caller) — the teacher cannot be impersonated and
+ * a stranger cannot rewrite someone else's reachability. Normalizes via
+ * phone-utils; invalid numbers never write.
+ */
+export async function updateClaimedPhone(studentId: string, rawPhone: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const service = createServiceClient()
+
+  const { data: student } = await service
+    .from('students')
+    .select('id, claimed_by')
+    .eq('id', studentId)
+    .maybeSingle()
+  const s = (student ?? null) as { id: string; claimed_by: string | null } | null
+  if (!s) return { error: 'الطالب غير موجود' }
+  if (s.claimed_by !== user.id) return { error: 'Forbidden' }
+
+  const phone = formatPhoneNumber((rawPhone ?? '').trim())
+  if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.claimPhoneInvalid }
+
+  const { error: updateError } = (await service
+    .from('students')
+    .update({ phone })
+    .eq('id', studentId)) as unknown as { error: unknown }
+  if (updateError) return { error: CLAIM_COPY.claimPhoneSaveFail }
+
+  return { success: true as const, phone }
 }

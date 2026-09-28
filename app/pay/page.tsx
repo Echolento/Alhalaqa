@@ -1,10 +1,17 @@
 import { getPayScreenInfo, listProofHistory } from '@/lib/payment-proofs'
+import { listMyClaimedStudents } from '@/lib/claim-actions'
+import { createClient } from '@/lib/supabase/server'
 import { PayUploadContainer } from '@/components/pay/pay-upload-container'
+import { PayerHub } from '@/components/pay/payer-hub'
+import { PayerLogin } from '@/components/pay/payer-login'
 import { Card, CardContent } from '@/components/ui/card'
 
 // Frozen pay-screen URL contract (see payScreenUrl in lib/push-payloads.ts):
 // /pay?student=<id>&period=<periodKey>. The period param is informational —
 // the server recomputes the authoritative period via getPeriodKey.
+// /pay WITHOUT ?student= is the payer home hub (A3): session-owned list of
+// the caller's claimed students, stacked by teacher. No session → generic
+// payer OTP login (never the teacher bootstrap — see /auth/callback).
 export default async function PayPage({
   searchParams,
 }: {
@@ -13,15 +20,25 @@ export default async function PayPage({
   const { student: studentId } = await searchParams
 
   if (!studentId) {
-    return (
-      <div className="mx-auto w-full max-w-md p-4" dir="rtl">
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            رابط الدفع غير صالح — اطلب رابطاً جديداً من المعلم
-          </CardContent>
-        </Card>
-      </div>
-    )
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return <PayerLogin />
+
+    const listed = await listMyClaimedStudents()
+    if ((listed as { error?: string }).error) {
+      return (
+        <div className="mx-auto w-full max-w-md p-4" dir="rtl">
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              {(listed as { error: string }).error}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    return <PayerHub students={(listed as { students: [] }).students ?? []} />
   }
 
   const [info, history] = await Promise.all([

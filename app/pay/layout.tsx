@@ -6,11 +6,15 @@
 
 import type { ReactNode } from 'react'
 import { SilentPayerPush } from '@/components/pay/push-onboarding'
+import { InstallBanner } from '@/components/pwa/install-banner'
 
 export default function PayLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <SilentPayerPush />
+      <div className="px-4 pt-3">
+        <InstallBanner />
+      </div>
       <main>{children}</main>
     </>
   )

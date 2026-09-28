@@ -18,13 +18,20 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   themeColor: '#4d938b',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Alhalaqa',
+  },
   icons: {
     icon: [
       {
-        url: '/Logo.png',
+        url: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
       },
     ],
-    apple: '/Logo.png',
+    apple: '/icon-192.png',
   },
 }
 
