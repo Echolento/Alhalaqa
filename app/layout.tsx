@@ -15,7 +15,6 @@ const notoArabic = Noto_Sans_Arabic({
 export const metadata: Metadata = {
   title: 'Alhalaqa - الحلقة',
   description: 'منصة الحلقة لإدارة حلقات تحفيظ القرآن الكريم',
-  generator: 'v0.app',
   themeColor: '#4d938b',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -24,11 +23,12 @@ export const metadata: Metadata = {
     title: 'Alhalaqa',
   },
   icons: {
-    // Crisp theme-aware SVG first (browser tab), PNG fallback + PWA icons.
+    // Real Alhalaqa wordmark everywhere (favicon + PWA + iOS).
     icon: [
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
       },
       {
         url: '/icon-192.png',
