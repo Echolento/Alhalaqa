@@ -90,6 +90,33 @@ export const CLAIM_COPY = {
   payerLoginInvalidEmail: 'يرجى إدخال بريد إلكتروني صحيح.',
   payerLoginFail: 'تعذر إرسال رابط الدخول — حاول مرة أخرى.',
 
+  // ——— Phone-pull claim flow (no token: pay.alhalaqa.com entry) ———
+  phoneClaimTitle: 'متابعة الرسوم',
+  phoneClaimDescription: 'أدخل رقم الموبايل المسجّل عند المعلم — هنعرض الطلاب المرتبطين بيه.',
+  phoneClaimLabel: 'رقم الموبايل',
+  phoneClaimPlaceholder: '01xxxxxxxxx',
+  phoneClaimContinue: 'متابعة',
+  phoneClaimInvalidPhone: 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678).',
+  phoneClaimLookupFail: 'تعذر البحث — حاول مرة أخرى.',
+  phoneClaimFail: 'تعذر إتمام الربط — حاول مرة أخرى.',
+  phoneClaimEmptyTitle: 'مفيش حاجة مربوطة بالرقم ده',
+  phoneClaimEmptyDescription:
+    'لو المعلم مسجّل رقم مختلف، اطلب منه رابط الدعوة المخصوص — أو تأكد من الرقم وحاول تاني.',
+  phoneClaimFoundTitle: (count: number) =>
+    count === 1 ? 'لقينا طالب واحد' : `لقينا ${count} طلاب`,
+  phoneClaimWrongNumber: 'رقم غلط؟ عدّله',
+  phoneClaimLinking: 'جاري الربط…',
+  phoneClaimLinkedTitle: 'تم الربط بنجاح',
+  phoneClaimLinkedDescription: (names: string) => `أنت الآن تتابع رسوم: ${names}.`,
+  phoneClaimNotYours: 'مش بتوعك؟ فك الربط',
+  phoneClaimUnlinked: 'اتفك الربط — ارجع للرقم الصح وابدأ من جديد.',
+  phoneClaimUnlinkFail: 'تعذر فك الربط — حاول مرة أخرى.',
+  phoneClaimEmailTitle: 'سجّل الدخول لإتمام الربط',
+  phoneClaimEmailDescription:
+    'أدخل بريدك — هنبعتلك رابط دخول لمرة واحدة، وبعده الطلاب يظهروا عندك تلقائياً.',
+  phoneClaimInviteFallback: 'عندك رابط دعوة من المعلم؟ افتحه مباشرة.',
+  missingPhoneBadge: 'ناقص رقم',
+
   // ——— Teacher-as-payer shortcut + install nudges (B) ———
   myPaymentsLabel: 'مدفوعاتي',
   myPaymentsDescription: 'الرسوم المربوطة ببريدك كمتابع.',

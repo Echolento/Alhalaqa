@@ -6,7 +6,8 @@ import { REMIND_COPY } from '@/lib/remind-copy'
 describe('REMIND_COPY (single source of truth, HITL review)', () => {
   it('exposes the payer-phone relabel + helper', () => {
     expect(REMIND_COPY.payerPhoneLabel).toContain('ولي الأمر')
-    expect(REMIND_COPY.payerPhoneHelper).toContain('إشعارات الدفع')
+    expect(REMIND_COPY.payerPhoneHelper).toContain('يسجّل ويتابع الرسوم بنفسه')
+    expect(REMIND_COPY.payerPhoneHelper).toContain('رابط دعوة مخصوص')
     expect(REMIND_COPY.payerPhoneHelper).toContain('وليس رقم الطالب')
   })
 

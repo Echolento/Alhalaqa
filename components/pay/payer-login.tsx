@@ -27,6 +27,8 @@ type OtpClient = {
 export function PayerLogin(props: {
   /** Test seam. Production omits it and the live browser client is used. */
   createClient?: () => OtpClient
+  /** Post-login destination (relative-only, sanitized by /auth/callback). */
+  next?: string
 }) {
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +48,8 @@ export function PayerLogin(props: {
       const client = props.createClient
         ? props.createClient()
         : ((createClient() as unknown as BrowserClient) as unknown as OtpClient)
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/pay')}`
+      const dest = props.next ?? '/pay'
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(dest)}`
       const { error: otpError } = await client.auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

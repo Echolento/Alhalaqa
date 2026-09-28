@@ -93,15 +93,18 @@ interface StudentClaimRow {
   claimed_by: string | null
 }
 
-async function deriveAttemptKey(userId: string): Promise<string> {
-  let ip = 'unknown'
+async function readClientIp(): Promise<string> {
   try {
     const h = await headers()
     const forwarded = h.get('x-forwarded-for')
-    ip = (forwarded?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown').slice(0, 128)
+    return (forwarded?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown').slice(0, 128)
   } catch {
-    ip = 'unknown'
+    return 'unknown'
   }
+}
+
+async function deriveAttemptKey(userId: string): Promise<string> {
+  const ip = await readClientIp()
   return buildAttemptKey(`${userId}|${ip}`)
 }
 
@@ -502,6 +505,149 @@ export async function callerHasClaimedStudents(): Promise<boolean> {
   const listed = await listMyClaimedStudents()
   if ((listed as { error?: string }).error) return false
   return (((listed as { students?: unknown[] }).students ?? []).length ?? 0) > 0
+}
+
+interface PhoneMatchRow {
+  id: string
+  name: string | null
+  teacher_id: string
+  claimed_by: string | null
+  teachers: { profile_id: string | null; profiles: { full_name: string | null } | null } | null
+}
+
+function toHubStudent(s: PhoneMatchRow): ClaimedHubStudent {
+  return {
+    studentId: s.id,
+    studentName: s.name || 'طالب',
+    teacherId: s.teacher_id,
+    teacherName: (s.teachers?.profiles?.full_name || '').trim() || HUB_UNKNOWN_TEACHER_LABEL,
+  }
+}
+
+/**
+ * Phone-pull discovery (phone flow): exact E.164 match, unclaimed rows
+ * only, no session required (pre-login, like resolveClaimPreview R5).
+ * Rate-limited per IP+phone against enumeration; invalid numbers and
+ * empty results share one shape (no oracle beyond the match list).
+ */
+export async function lookupStudentsByPhone(rawPhone: string) {
+  const phone = formatPhoneNumber((rawPhone ?? '').trim())
+  if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.phoneClaimInvalidPhone }
+
+  const service = createServiceClient()
+  const nowMs = Date.now()
+  const ip = await readClientIp()
+  const key = buildAttemptKey(`phone-lookup|${ip}|${phone}`)
+  if (await isRateLimited(service, key, nowMs)) {
+    return { error: CLAIM_COPY.claimRateLimitedDescription }
+  }
+  await recordAttempt(service, key, nowMs)
+
+  const { data, error } = (await service
+    .from('students')
+    .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
+    .eq('phone', phone)
+    .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
+  if (error) return { error: CLAIM_COPY.phoneClaimLookupFail }
+
+  return { students: (data ?? []).filter((s) => !s.claimed_by).map(toHubStudent) }
+}
+
+/**
+ * Phone-pull claim (phone flow): links EVERY unclaimed row under the
+ * caller's phone to the caller's own profile. Requires a session (magic-link
+ * OTP first) — the phone routes, the session proves (same posture as R6).
+ * Rows claimed by someone else are excluded twice: by the DB filter and by
+ * the in-code skip (no steal, like R7). Single tap, whole family.
+ */
+export async function claimByPhone(rawPhone: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const phone = formatPhoneNumber((rawPhone ?? '').trim())
+  if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.phoneClaimInvalidPhone }
+
+  const service = createServiceClient()
+  const nowMs = Date.now()
+  const attemptKey = await deriveAttemptKey(user.id)
+  if (await isRateLimited(service, attemptKey, nowMs)) {
+    return { error: CLAIM_COPY.claimRateLimitedDescription }
+  }
+
+  const { data, error } = (await service
+    .from('students')
+    .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
+    .eq('phone', phone)
+    .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
+  if (error) return { error: CLAIM_COPY.phoneClaimFail }
+
+  const nowIso = new Date(nowMs).toISOString()
+  const claimed: ClaimedHubStudent[] = []
+  for (const s of data ?? []) {
+    if (!s || s.claimed_by) continue
+    const { error: linkError } = (await service
+      .from('students')
+      .update({ claimed_by: user.id })
+      .eq('id', s.id)
+      .is('claimed_by', null)) as unknown as { error: unknown }
+    if (linkError) continue
+    claimed.push(toHubStudent({ ...s, claimed_by: user.id }))
+    await logActivity(
+      {
+        actionType: 'claim_redeemed' as never,
+        entityType: 'student',
+        entityId: s.id,
+        details: { student_name: s.name || 'طالب', description: `ربط برقم الهاتف — ${s.name || 'طالب'}` },
+      } as never,
+      user.id,
+    )
+  }
+
+  await clearAttempts(service, attemptKey)
+  return { success: true as const, claimed }
+}
+
+/**
+ * Typo recovery (phone flow): the owner unlinks their own row
+ * (claimed_by back to null). Strangers get Forbidden; the row survives —
+ * only the link is cut, so re-claiming (phone or invite link) just works.
+ */
+export async function unlinkStudent(studentId: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const service = createServiceClient()
+  const { data: student } = await service
+    .from('students')
+    .select('id, claimed_by')
+    .eq('id', studentId)
+    .maybeSingle()
+  const s = (student ?? null) as { id: string; claimed_by: string | null } | null
+  if (!s) return { error: 'الطالب غير موجود' }
+  if (s.claimed_by !== user.id) return { error: 'Forbidden' }
+
+  const { error: updateError } = (await service
+    .from('students')
+    .update({ claimed_by: null })
+    .eq('id', studentId)) as unknown as { error: unknown }
+  if (updateError) return { error: CLAIM_COPY.phoneClaimUnlinkFail }
+
+  await logActivity(
+    {
+      actionType: 'claim_unlinked' as never,
+      entityType: 'student',
+      entityId: studentId,
+      details: { description: 'فك ربط برقم الهاتف' },
+    } as never,
+    user.id,
+  )
+  return { success: true as const }
 }
 
 /**

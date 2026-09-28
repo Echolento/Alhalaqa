@@ -1,5 +1,6 @@
 import { resolveClaimPreview } from '@/lib/claim-actions'
 import { ClaimScreen } from '@/components/claim/claim-screen'
+import { PhoneClaim } from '@/components/claim/phone-claim'
 import { Card, CardContent } from '@/components/ui/card'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 
@@ -21,19 +22,16 @@ const STATE_TITLE: Record<string, string> = {
 export default async function ClaimPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>
+  searchParams: Promise<{ token?: string; phone?: string }>
 }) {
-  const { token } = await searchParams
+  const { token, phone } = await searchParams
 
+  // No token: phone-pull entry (pay.alhalaqa.com landing + OTP ?phone=
+  // return leg). Bearer links keep working below, untouched, as fallback.
   if (!token) {
     return (
       <div className="mx-auto w-full max-w-md p-4" dir="rtl">
-        <Card>
-          <CardContent className="py-8 text-center space-y-2">
-            <p className="font-semibold">{CLAIM_COPY.claimInvalidTitle}</p>
-            <p className="text-sm text-muted-foreground">{CLAIM_COPY.claimInvalidDescription}</p>
-          </CardContent>
-        </Card>
+        <PhoneClaim initialPhone={typeof phone === 'string' ? phone : undefined} />
       </div>
     )
   }

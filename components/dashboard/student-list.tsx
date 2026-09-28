@@ -27,6 +27,7 @@ import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
+import { CLAIM_COPY } from '@/lib/claim-copy'
 
 interface StudentListProps {
   students: any[]
@@ -177,6 +178,15 @@ export function StudentList({ students, payments, month, currency, initialCollec
                           {student.claimed_by ? (
                             <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
                               ولي الأمر مربوط
+                            </Badge>
+                          ) : null}
+                          {!student.claimed_by && !student.phone ? (
+                            <Badge
+                              data-testid={`missing-phone-${student.id}`}
+                              variant="secondary"
+                              className="bg-amber-100 text-amber-700 border-transparent text-[10px] px-2 py-0.5"
+                            >
+                              {CLAIM_COPY.missingPhoneBadge}
                             </Badge>
                           ) : null}
                         </div>

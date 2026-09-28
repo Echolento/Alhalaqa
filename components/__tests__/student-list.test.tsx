@@ -57,6 +57,18 @@ describe('StudentList (merged home)', () => {
     expect(screen.getAllByText('دعوة ولي الأمر').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('flags unclaimed phone-less rows with the missing-number badge', () => {
+    const rows = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null, phone: null },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: null, phone: '+201012345678' },
+      { id: 's3', full_name: 'خالد', monthly_price: 50, payment_day: 1, claimed_by: 'payer-9', phone: null },
+    ]
+    render(<StudentList {...props} students={rows} payments={[]} />)
+    expect(screen.getByTestId('missing-phone-s1')).toBeInTheDocument()
+    expect(screen.queryByTestId('missing-phone-s2')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('missing-phone-s3')).not.toBeInTheDocument()
+  })
+
   it('each row links to profile', () => {
     const { container } = render(<StudentList {...props} />)
     const link = container.querySelector('a[href="/dashboard/students/s1"]')

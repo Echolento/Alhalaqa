@@ -272,6 +272,34 @@ test.describe('PWA invite UX + old-flow regression', () => {
     step('hub + login ok')
   })
 
+  test('phone-pull: type number → auto-linked → hub (new)', async ({ browser }) => {
+    const tCtx = await browser.newContext({ locale: 'ar' })
+    const teacher = await tCtx.newPage()
+    await passwordLogin(teacher, TEACHER_EMAIL)
+    await onboardTeacher(teacher)
+    await addStudent(teacher, 'طالب هاتف', '1044444444')
+    await tCtx.close()
+
+    const pCtx = await browser.newContext({ locale: 'ar' })
+    const payer = await pCtx.newPage()
+    await passwordLogin(payer, PAYER_EMAIL)
+    // Token-less entry: one field, zero taps after.
+    await payer.goto(`${BASE_URL}/claim`)
+    await payer.getByTestId('phone-claim-input').fill('01044444444')
+    await payer.getByRole('button', { name: /متابعة/ }).click()
+    await expect(payer.getByTestId('phone-claim-success')).toBeVisible({ timeout: 60000 })
+    await expect(payer.getByText('أنت الآن تتابع رسوم: طالب هاتف.')).toBeVisible()
+    const sid = await studentIdByName(teacherId!, 'طالب هاتف')
+    const { data: linked } = await admin.from('students').select('claimed_by').eq('id', sid).single()
+    expect((linked as { claimed_by: string }).claimed_by).toBe(payerId!)
+    // Hub picks it up with no further action.
+    await payer.goto(`${BASE_URL}/pay`)
+    await expect(payer.getByTestId(`hub-student-${sid}`)).toBeVisible({ timeout: 30000 })
+    step('phone-pull ok')
+
+    await pCtx.close()
+  })
+
   test('conditional مدفوعاتي + classic pay→verify loop (old)', async ({ browser }) => {
     // Plain teacher (no claims) sees no shortcut.
     const plainCtx = await browser.newContext({ locale: 'ar' })
