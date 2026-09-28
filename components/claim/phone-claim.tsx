@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { lookupStudentsByPhone, claimByPhone, unlinkStudent } from '@/lib/claim-actions'
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
+import { PhoneInput } from '@/components/auth/phone-input'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { PayerLogin } from '@/components/pay/payer-login'
 import { InstallCoach } from '@/components/pwa/install-coach'
@@ -40,10 +41,12 @@ export function PhoneClaim(props: {
 }) {
   const [liveSession, setLiveSession] = useState<PhoneClaimSession>(null)
   const [sessionChecked, setSessionChecked] = useState(props.session !== undefined)
-  const [phone, setPhone] = useState(props.initialPhone ?? '')
-  const [submittedPhone, setSubmittedPhone] = useState<string | null>(
-    props.initialPhone ?? null,
+  // PhoneInput speaks national digits (no +20, no leading 0): normalize any
+  // seeded value (OTP ?phone= leg may carry full E.164) through the same rule.
+  const [phone, setPhone] = useState(() =>
+    props.initialPhone ? formatPhoneNumber(props.initialPhone).replace(/^\+20/, '') : '',
   )
+  const [submittedPhone, setSubmittedPhone] = useState<string | null>(null)
   const [matches, setMatches] = useState<HubStudent[] | null>(null)
   const [looking, setLooking] = useState(false)
   const [lookupError, setLookupError] = useState<string | null>(null)
@@ -105,9 +108,12 @@ export function PhoneClaim(props: {
   }
 
   // OTP return leg: lookup fires on mount when the phone rides along.
+  // Uses the normalized state (not the raw param) so E.164 seeds work.
+  const mountFired = useRef(false)
   useEffect(() => {
-    if (props.initialPhone && sessionChecked) {
-      void runLookup(props.initialPhone)
+    if (props.initialPhone && sessionChecked && !mountFired.current) {
+      mountFired.current = true
+      void runLookup(phone)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionChecked])
@@ -300,18 +306,14 @@ export function PhoneClaim(props: {
           }}
           className="space-y-3"
         >
-          <div className="space-y-2">
-            <Label htmlFor="phone-claim-phone">{CLAIM_COPY.phoneClaimLabel}</Label>
-            <Input
-              id="phone-claim-phone"
-              data-testid="phone-claim-input"
-              type="tel"
-              dir="ltr"
-              placeholder={CLAIM_COPY.phoneClaimPlaceholder}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
+          <PhoneInput
+            id="phone-claim-phone"
+            name="phone-claim-phone"
+            value={phone}
+            onChange={setPhone}
+            label={CLAIM_COPY.phoneClaimLabel}
+            placeholder={CLAIM_COPY.phoneClaimPlaceholder}
+          />
           {lookupError ? (
             <p data-testid="phone-claim-error" className="text-xs text-destructive">
               {lookupError}

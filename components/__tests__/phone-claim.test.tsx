@@ -13,7 +13,7 @@ const matches = [
 ]
 
 function typePhone(phone = '01055556666') {
-  fireEvent.change(screen.getByTestId('phone-claim-input'), { target: { value: phone } })
+  fireEvent.change(screen.getByLabelText(/رقم الموبايل/), { target: { value: phone } })
   fireEvent.click(screen.getByRole('button', { name: /متابعة/ }))
 }
 
@@ -49,7 +49,7 @@ describe('PhoneClaim', () => {
       />,
     )
     typePhone()
-    await waitFor(() => expect(onClaim).toHaveBeenCalledWith('01055556666'))
+    await waitFor(() => expect(onClaim).toHaveBeenCalledWith('1055556666'))
     await waitFor(() => expect(screen.getByTestId('phone-claim-success')).toBeTruthy())
     expect(screen.getByText(/تتابع رسوم: Karim، Layla/)).toBeTruthy()
   })
@@ -68,7 +68,7 @@ describe('PhoneClaim', () => {
     typePhone()
     await waitFor(() => expect(screen.getByTestId('phone-claim-matches')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: /رقم غلط/ }))
-    expect(screen.getByTestId('phone-claim-input')).toBeTruthy()
+    expect(screen.getByLabelText(/رقم الموبايل/)).toBeTruthy()
     expect(screen.queryByTestId('phone-claim-matches')).toBeNull()
   })
 
@@ -101,7 +101,7 @@ describe('PhoneClaim', () => {
         onClaim={vi.fn(async () => ({ success: true, claimed: matches }))}
       />,
     )
-    await waitFor(() => expect(onLookup).toHaveBeenCalledWith('01055556666'))
+    await waitFor(() => expect(onLookup).toHaveBeenCalledWith('1055556666'))
     await waitFor(() => expect(screen.getByTestId('phone-claim-success')).toBeTruthy())
   })
 })
