@@ -1,9 +1,23 @@
 import { updateSession } from '@/lib/supabase/proxy'
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolvePayRewrite } from '@/lib/pay-host'
 
 export async function proxy(request: NextRequest) {
   try {
     const { searchParams, pathname } = new URL(request.url)
+
+    // Payer subdomain root serves the phone-claim entry, not the homepage.
+    // Refreshed auth cookies ride along so logged-in payers stay logged in.
+    const payTarget = resolvePayRewrite(pathname, request.headers.get('host'))
+    if (payTarget) {
+      const sessioned = await updateSession(request)
+      const rewrite = NextResponse.rewrite(new URL(payTarget, request.url))
+      for (const cookie of sessioned.cookies.getAll()) {
+        rewrite.cookies.set(cookie)
+      }
+      return rewrite
+    }
+
     const code = searchParams.get('code')
 
     if (code && !pathname.startsWith('/auth/callback')) {

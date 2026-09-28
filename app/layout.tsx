@@ -24,7 +24,12 @@ export const metadata: Metadata = {
     title: 'Alhalaqa',
   },
   icons: {
+    // Crisp theme-aware SVG first (browser tab), PNG fallback + PWA icons.
     icon: [
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
       {
         url: '/icon-192.png',
         sizes: '192x192',
