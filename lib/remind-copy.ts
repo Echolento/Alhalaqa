@@ -69,6 +69,17 @@ export const REMIND_COPY = {
   },
   whatsappInviteText: (params: { studentName: string; inviteUrl: string }) =>
     `السلام عليكم، دعوة لولي أمر ${params.studentName} لمتابعة رسوم الحلقة واستلام إشعارات الدفع: ${params.inviteUrl}`,
+
+  // ——— Entry-point distribution (one link for all parents) ———
+  shareEntryTitle: 'ادعُ أولياء الأمور',
+  shareEntryDescription:
+    'رابط واحد للكل: يفتح صفحة التسجيل برقم الموبايل. ابعته في جروب الأهالي مرة واحدة وخلاص.',
+  shareEntryLinkLabel: 'رابط التسجيل',
+  shareEntryButton: 'مشاركة',
+  shareEntryCopy: 'نسخ',
+  shareEntryCopied: 'اتنسخ — ابعته في جروب الأهالي.',
+  shareEntryText: (url: string) =>
+    `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.`,
 } as const
 
 export type RemindCopy = typeof REMIND_COPY

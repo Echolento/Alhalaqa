@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeacherPayments } from '@/lib/payment-actions'
 import { callerHasClaimedStudents } from '@/lib/claim-actions'
 import { MyPaymentsLink } from '@/components/dashboard/my-payments-link'
+import { ShareEntryCard } from '@/components/dashboard/share-entry-card'
 import { StudentList } from '@/components/dashboard/student-list'
 import { Button } from '@/components/ui/button'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
@@ -59,6 +60,8 @@ export default async function DashboardPage({
           </Link>
         </div>
       </div>
+
+      <ShareEntryCard />
 
       <MyPaymentsLink visible={showMyPayments} />
 

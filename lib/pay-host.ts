@@ -20,3 +20,7 @@ export function resolvePayRewrite(pathname: string, host: string | null | undefi
   if (!isPayHost(host)) return null
   return '/claim'
 }
+
+/** The one link teachers share with all parents (client-safe). */
+export const PAY_ENTRY_URL =
+  process.env.NEXT_PUBLIC_PAY_URL ?? 'https://pay.alhalaqa.com'
