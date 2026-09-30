@@ -6,6 +6,7 @@ import { REMIND_COPY } from '@/lib/remind-copy'
 vi.mock('@/lib/student-actions', () => ({
   addStudent: vi.fn(() => ({ success: true })),
   addMultipleStudents: vi.fn(() => ({ success: true })),
+  getBillingDefaults: vi.fn(() => Promise.resolve(undefined)),
 }))
 
 vi.mock('@/lib/contacts', () => ({

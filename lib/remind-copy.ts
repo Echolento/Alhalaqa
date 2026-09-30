@@ -72,12 +72,11 @@ export const REMIND_COPY = {
 
   // ——— Entry-point distribution (one link for all parents) ———
   shareEntryTitle: 'ادعُ أولياء الأمور',
-  shareEntryDescription:
-    'رابط واحد للكل: يفتح صفحة التسجيل برقم الموبايل. ابعته في جروب الأهالي مرة واحدة وخلاص.',
+  shareEntryDescription: 'رابط واحد للكل: يفتح صفحة التسجيل برقم الموبايل.',
   shareEntryLinkLabel: 'رابط التسجيل',
   shareEntryButton: 'مشاركة',
   shareEntryCopy: 'نسخ',
-  shareEntryCopied: 'اتنسخ — ابعته في جروب الأهالي.',
+  shareEntryCopied: 'اتنسخ.',
   shareEntryText: (url: string) =>
     `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.`,
 } as const
