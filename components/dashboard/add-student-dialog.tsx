@@ -23,8 +23,6 @@ import { Badge } from '@/components/ui/badge'
 import { isContactPickerAvailable, pickContacts, findDuplicates } from '@/lib/contacts'
 import { useRouter } from 'next/navigation'
 import { REMIND_COPY } from '@/lib/remind-copy'
-import { BillingFields, type BillingFieldDefaults } from '@/components/dashboard/billing-fields'
-import { getBillingDefaults } from '@/lib/student-actions'
 
 interface AddStudentDialogProps {
   students: { name?: string | null; full_name?: string | null; phone?: string | null }[]
@@ -34,7 +32,6 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [phoneValue, setPhoneValue] = useState('')
-  const [billingDefaults, setBillingDefaults] = useState<BillingFieldDefaults | undefined>(undefined)
   const [importMode, setImportMode] = useState(false)
   const [importItems, setImportItems] = useState<{
     id: string
@@ -55,9 +52,6 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       setPhoneValue('')
       setImportMode(false)
       setImportItems([])
-      getBillingDefaults()
-        .then(setBillingDefaults)
-        .catch(() => setBillingDefaults(undefined))
     }
   }
 
@@ -68,15 +62,9 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
     const formData = new FormData(form)
     const name = formData.get('name') as string
     const phone = phoneValue ? `+20${phoneValue}` : undefined
-    const priceRaw = (formData.get('price') as string | null)?.trim() ?? ''
-    const frequencyRaw = (formData.get('frequency') as string | null)?.trim() ?? ''
-    const nextDueRaw = (formData.get('next_due_date') as string | null)?.trim() ?? ''
-    const result = await addStudent(name, {
-      phone,
-      ...(priceRaw !== '' ? { price: Number(priceRaw) } : {}),
-      ...(frequencyRaw !== '' ? { frequency: frequencyRaw as 'weekly' | 'biweekly' | 'monthly' } : {}),
-      ...(nextDueRaw !== '' ? { nextDueDate: nextDueRaw } : {}),
-    })
+    // Billing (price/frequency/first-bill date) is NOT collected here — the
+    // server applies the teacher defaults; edits live in the student profile.
+    const result = await addStudent(name, { phone })
     if (result.success) {
       toast({ title: 'تمت الإضافة', description: `تم إضافة ${name}` })
       setOpen(false)
@@ -218,7 +206,6 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
                   {REMIND_COPY.payerPhoneHelper}
                 </p>
               </div>
-              <BillingFields defaults={billingDefaults} />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
                 <Button type="submit" disabled={loading}>{loading ? 'جاري...' : 'إضافة'}</Button>
