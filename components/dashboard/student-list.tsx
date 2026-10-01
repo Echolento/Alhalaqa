@@ -27,7 +27,6 @@ import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
 import { ShareEntryCard } from '@/components/dashboard/share-entry-card'
 import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
-import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { formatDueDateAr } from '@/lib/billing-next'
 
@@ -264,14 +263,6 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               currency={currency}
                               periodKey={month}
                               phone={student.phone ?? null}
-                            />
-                          ) : null}
-                          {!student.claimed_by ? (
-                            <PayerInviteButton
-                              studentId={student.id}
-                              studentName={student.full_name || student.name || 'طالب'}
-                              phone={student.phone ?? null}
-                              compact
                             />
                           ) : null}
                         </div>
