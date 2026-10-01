@@ -24,6 +24,7 @@ import { toggleStudentPayment } from '@/lib/payment-actions'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
 import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
+import { ShareEntryCard } from '@/components/dashboard/share-entry-card'
 import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
@@ -128,6 +129,8 @@ export function StudentList({ students, payments, month, currency, initialCollec
           </CardContent>
         </Card>
       </div>
+
+      {students.length > 0 ? <ShareEntryCard /> : null}
 
       <div className="flex gap-3 items-center">
         <div className="relative flex-1">

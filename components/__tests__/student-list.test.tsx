@@ -39,6 +39,18 @@ describe('StudentList (merged home)', () => {
     expect(screen.getByText('المبالغ المتبقية')).toBeInTheDocument()
   })
 
+  it('shows the pay.alhalaqa.com share card after the stat cards when students exist', () => {
+    render(<StudentList {...props} />)
+    const stats = screen.getByText('المبالغ المستلمة').closest('[class*="grid-cols-2"]')!
+    const shareCard = screen.getByTestId('share-entry-card')
+    expect(stats.compareDocumentPosition(shareCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('hides the pay.alhalaqa.com share card until there is at least one student', () => {
+    render(<StudentList {...props} students={[]} payments={[]} initialCollected={0} initialExpected={0} />)
+    expect(screen.queryByTestId('share-entry-card')).not.toBeInTheDocument()
+  })
+
   it('filters rows by search', () => {
     render(<StudentList {...props} />)
     fireEvent.change(screen.getByPlaceholderText('البحث عن طالب...'), { target: { value: 'محمد' } })
