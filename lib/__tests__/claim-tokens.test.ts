@@ -8,7 +8,7 @@ import {
   CLAIM_ATTEMPT_WINDOW_MS,
   CLAIM_MAX_ATTEMPTS,
   CLAIM_TOKEN_TTL_MS,
-  buildClaimOtpCallbackPath,
+  buildClaimOtpNext,
   buildClaimUrl,
   claimExpiryFromNow,
   evaluateClaimForRedeem,
@@ -150,10 +150,11 @@ describe('frozen claim URL contract', () => {
   it('buildClaimUrl points at /claim?token= and the OTP callback nests it as relative ?next=', () => {
     const raw = generateClaimToken()
     expect(buildClaimUrl(raw)).toBe(`/claim?token=${encodeURIComponent(raw)}`)
-    const callback = buildClaimOtpCallbackPath(raw)
-    expect(callback.startsWith('/auth/callback?next=')).toBe(true)
-    // Relative-only: no protocol/host may leak in (open-redirect guard).
-    expect(callback).not.toMatch(/^https?:\/\//)
-    expect(decodeURIComponent(callback.split('next=')[1])).toBe(buildClaimUrl(raw))
+    // emailRedirectTo is the final destination (relative), NOT /auth/callback:
+    // the email template replays it through /auth/confirm.
+    const otpNext = buildClaimOtpNext(raw)
+    expect(otpNext).toBe(buildClaimUrl(raw))
+    expect(otpNext.startsWith('/claim?token=')).toBe(true)
+    expect(otpNext).not.toMatch(/^https?:\/\//)
   })
 })

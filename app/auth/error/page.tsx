@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertTriangle } from 'lucide-react'
 
 export default function AuthErrorPage() {
-  // NOTE: /auth/callback still appends ?reason=no_code|exchange_failed|no_session
-  // to this URL for debugging — readable from the address bar, never rendered.
+  // NOTE: /auth/callback appends ?reason=no_code|exchange_failed|no_session and
+  // /auth/confirm appends ?reason=confirm_failed for debugging — readable from
+  // the address bar, never rendered.
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">

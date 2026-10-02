@@ -158,16 +158,11 @@ export function buildClaimUrl(rawToken: string): string {
 }
 
 /**
- * Destination for the payer magic-link email: after the OTP exchange the
- * auth callback must land back on the claim screen with the token intact.
- * Relative-only (open-redirect safe — the callback route additionally runs
- * sanitizeNextPath on ?next=).
+ * Destination for the payer magic-link email: the claim screen with the token
+ * intact, used directly as emailRedirectTo. The email template forwards it as
+ * `next` to /auth/confirm (token_hash), which verifies without a browser code
+ * verifier and then sanitizes/replays this relative path.
  */
 export function buildClaimOtpNext(rawToken: string): string {
   return buildClaimUrl(rawToken)
-}
-
-/** Full /auth/callback URL (path form) carrying the claim screen as ?next=. */
-export function buildClaimOtpCallbackPath(rawToken: string): string {
-  return `/auth/callback?next=${encodeURIComponent(buildClaimOtpNext(rawToken))}`
 }

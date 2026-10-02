@@ -102,9 +102,9 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-        `${siteUrl}/auth/callback`,
-      data: {
+        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+          `${siteUrl}/welcome`,
+        data: {
         full_name: fullName,
         role: 'teacher',
       },
@@ -124,7 +124,7 @@ export async function signUp(formData: FormData) {
         email,
         options: {
           emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${siteUrl}/auth/callback`,
+            `${siteUrl}/welcome`,
         },
       })
       if (resendError) {
@@ -460,7 +460,7 @@ export async function resetPasswordForEmail(formData: FormData) {
   const siteUrl = await getRequestSiteUrl()
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/auth/update-password`,
+    redirectTo: `${siteUrl}/auth/update-password`,
   })
 
   if (error) {

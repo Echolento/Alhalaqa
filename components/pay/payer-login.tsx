@@ -2,8 +2,9 @@
 
 // components/pay/payer-login.tsx
 // A3 slice — generic payer email-OTP login for /pay without a session (no
-// claim token involved). Magic link returns via
-// /auth/callback?next=/pay (relative-only, open-redirect safe).
+// claim token involved). The magic link returns straight to the destination
+// via /auth/confirm (token_hash), which needs no browser code verifier — so
+// it survives the email being opened in a different browser/WebView.
 // Test seam: `createClient` override; production uses the browser client.
 
 import { useState } from 'react'
@@ -49,7 +50,9 @@ export function PayerLogin(props: {
         ? props.createClient()
         : ((createClient() as unknown as BrowserClient) as unknown as OtpClient)
       const dest = props.next ?? '/pay'
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(dest)}`
+      // Final destination, not /auth/callback: the email template forwards
+      // .RedirectTo to /auth/confirm, which verifies the token_hash.
+      const redirectTo = `${window.location.origin}${dest}`
       const { error: otpError } = await client.auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

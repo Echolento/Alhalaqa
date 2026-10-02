@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { redeemClaim, updateClaimedPhone } from '@/lib/claim-actions'
-import { buildClaimOtpCallbackPath } from '@/lib/claim-tokens'
+import { buildClaimOtpNext } from '@/lib/claim-tokens'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { payScreenUrl } from '@/lib/push-payloads'
 import { InstallCoach, type InstallCoachPlatform } from '@/components/pwa/install-coach'
@@ -92,7 +92,9 @@ export function ClaimScreen(props: {
     setOtpError(null)
     setOtpSending(true)
     try {
-      const redirectTo = `${window.location.origin}${buildClaimOtpCallbackPath(props.token)}`
+      // Final destination, not /auth/callback: the email template forwards
+      // .RedirectTo to /auth/confirm, which verifies the token_hash.
+      const redirectTo = `${window.location.origin}${buildClaimOtpNext(props.token)}`
       const { error } = await createClient().auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

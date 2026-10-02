@@ -39,7 +39,9 @@ describe('PayerLogin', () => {
     >
     expect(calls).toHaveLength(1)
     expect(calls[0]?.[0]?.email).toBe('payer@mail.com')
-    expect(calls[0]?.[0]?.options?.emailRedirectTo).toContain('/auth/callback?next=%2Fpay')
+    // Final destination, not /auth/callback: the email template replays it
+    // through /auth/confirm (token_hash, no PKCE verifier).
+    expect(calls[0]?.[0]?.options?.emailRedirectTo).toMatch(/\/pay$/)
   })
 
   it('surfaces send failures', async () => {
