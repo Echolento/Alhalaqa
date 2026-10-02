@@ -85,20 +85,38 @@ export async function POST(request: Request) {
       }
 
       case 'search_user': {
-        const email = String(params.email || '').toLowerCase()
-        if (!email) {
-          return NextResponse.json({ ok: false, error: 'email required' }, { status: 400 })
+        // Flexible lookup: accept email (exact or fragment), a user id, or a
+        // display/name fragment. Returns all matches so the assistant can list
+        // candidates instead of demanding an exact email.
+        const q = String(params.query ?? params.email ?? '').trim().toLowerCase()
+        if (!q) {
+          return NextResponse.json(
+            { ok: false, error: 'query required' },
+            { status: 400 },
+          )
         }
         const { data, error } = await service.auth.admin.listUsers({ perPage: 1000 })
         if (error) throw error
-        const match = (data?.users || []).find(
-          (u) => (u.email || '').toLowerCase() === email,
-        )
-        if (!match) return NextResponse.json({ ok: true, result: null })
-        return NextResponse.json({
-          ok: true,
-          result: { id: match.id, email: match.email, created_at: match.created_at },
-        })
+        const users = data?.users || []
+        const matches = users
+          .map((u) => ({
+            id: u.id,
+            email: u.email ?? '',
+            name:
+              (u.user_metadata as any)?.full_name ??
+              (u.user_metadata as any)?.name ??
+              '',
+            created_at: u.created_at,
+          }))
+          .filter((u) => {
+            if (u.id.toLowerCase() === q) return true
+            if (u.email.toLowerCase() === q) return true
+            if (u.email.toLowerCase().includes(q)) return true
+            if (u.name.toLowerCase().includes(q)) return true
+            return false
+          })
+          .slice(0, 20)
+        return NextResponse.json({ ok: true, result: matches })
       }
 
       case 'ban_user': {
