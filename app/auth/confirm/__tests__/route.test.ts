@@ -4,10 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // works when the email is opened in a different browser/WebView than the one
 // that requested it. These tests pin that contract and the safe redirect.
 let verifyResult: { error: unknown; data?: unknown }
+let getUserResult: { data: { user: unknown } }
 
 const mockSupabase = {
   auth: {
     verifyOtp: vi.fn(async () => verifyResult),
+    getUser: vi.fn(async () => getUserResult),
   },
 }
 
@@ -40,6 +42,7 @@ function locationOf(res: Response): string {
 beforeEach(() => {
   vi.clearAllMocks()
   verifyResult = { error: null, data: { user: { id: 'user-1' } } }
+  getUserResult = { data: { user: null } }
 })
 
 describe('GET /auth/confirm (email link, no verifier)', () => {
@@ -84,8 +87,21 @@ describe('GET /auth/confirm (email link, no verifier)', () => {
     expect(locationOf(res)).toBe('https://x.test/welcome')
   })
 
-  it('redirects to error when verifyOtp fails', async () => {
+  it('continues to the destination when the link was already used but a session exists', async () => {
+    verifyResult = { error: { message: 'One-time token not found' } }
+    getUserResult = { data: { user: { id: 'user-1' } } }
+    const { GET } = await import('@/app/auth/confirm/route')
+    const res = await GET(
+      new Request(
+        'https://x.test/auth/confirm?token_hash=abc&type=recovery&next=%2Fauth%2Fupdate-password',
+      ),
+    )
+    expect(locationOf(res)).toBe('https://x.test/auth/update-password')
+  })
+
+  it('redirects to error when verifyOtp fails and there is no session', async () => {
     verifyResult = { error: { message: 'expired' } }
+    getUserResult = { data: { user: null } }
     const { GET } = await import('@/app/auth/confirm/route')
     const res = await GET(
       new Request('https://x.test/auth/confirm?token_hash=abc&type=email&next=%2Fwelcome'),

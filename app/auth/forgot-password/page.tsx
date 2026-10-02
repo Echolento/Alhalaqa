@@ -45,6 +45,9 @@ export default function ForgotPasswordPage() {
                         <p className="text-muted-foreground text-sm">
                             تحقق من صندوق بريدك الإلكتروني للحصول على التعليمات.
                         </p>
+                        <p className="text-muted-foreground text-xs">
+                            استخدم أحدث رسالة وصلتك — كل طلب جديد يلغي الرابط السابق، والرابط يعمل مرة واحدة فقط.
+                        </p>
                     </div>
                     <Button asChild className="w-full">
                         <Link href="/auth/login">العودة لتسجيل الدخول</Link>

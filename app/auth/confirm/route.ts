@@ -9,7 +9,8 @@ import { sanitizeRedirectTo } from '@/lib/auth-redirect'
 // Verifies `token_hash` server-side — NO PKCE code verifier — so it works when
 // the mail is opened in a different browser or in-app WebView than the one that
 // requested it (the mobile default). The Supabase email templates must point
-// their link here: {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}
+// their link here:
+//   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -25,6 +26,17 @@ export async function GET(request: NextRequest) {
       const dest = await resolvePostAuthDestination(data.user.id, next)
       return NextResponse.redirect(`${origin}${dest}`)
     }
+
+    // One-time links are single-use: a re-click, an email-client prefetch, or a
+    // newer request (which invalidates the older link) lands here. If the
+    // browser already holds a session, don't dead-end on the error page — the
+    // login already happened, so just continue.
+    const { data: existing } = await supabase.auth.getUser()
+    if (existing?.user) {
+      const dest = await resolvePostAuthDestination(existing.user.id, next)
+      return NextResponse.redirect(`${origin}${dest}`)
+    }
+
     console.error('[auth/confirm] verifyOtp failed:', error?.message)
   }
 
