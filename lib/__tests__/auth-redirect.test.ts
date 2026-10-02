@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeNextPath, sanitizeRedirectTo, DEFAULT_AUTH_NEXT_PATH } from '../auth-redirect'
+import {
+  sanitizeNextPath,
+  sanitizeRedirectTo,
+  authRedirectOrigin,
+  DEFAULT_AUTH_NEXT_PATH,
+} from '../auth-redirect'
 
 describe('sanitizeNextPath', () => {
   it('passes through valid internal paths', () => {
@@ -35,9 +40,31 @@ describe('sanitizeRedirectTo (email template .RedirectTo)', () => {
     expect(sanitizeRedirectTo('/welcome', ORIGIN)).toBe('/welcome')
   })
 
+  it('accepts the pay alias as the same site', () => {
+    expect(sanitizeRedirectTo('https://pay.alhalaqa.com/claim?phone=010', ORIGIN)).toBe(
+      '/claim?phone=010',
+    )
+  })
+
   it('rejects cross-origin and malformed input', () => {
     expect(sanitizeRedirectTo('https://evil.com/pay', ORIGIN)).toBe(DEFAULT_AUTH_NEXT_PATH)
     expect(sanitizeRedirectTo('//evil.com', ORIGIN)).toBe(DEFAULT_AUTH_NEXT_PATH)
     expect(sanitizeRedirectTo(null, ORIGIN)).toBe(DEFAULT_AUTH_NEXT_PATH)
+  })
+})
+
+describe('authRedirectOrigin', () => {
+  it('collapses the pay alias to the canonical www host', () => {
+    expect(authRedirectOrigin('https://pay.alhalaqa.com')).toBe('https://www.alhalaqa.com')
+    expect(authRedirectOrigin('https://pay.alhalaqa.com/claim?x=1')).toBe('https://www.alhalaqa.com')
+  })
+
+  it('leaves www and localhost untouched', () => {
+    expect(authRedirectOrigin('https://www.alhalaqa.com')).toBe('https://www.alhalaqa.com')
+    expect(authRedirectOrigin('http://localhost:3000')).toBe('http://localhost:3000')
+  })
+
+  it('returns non-URL input unchanged', () => {
+    expect(authRedirectOrigin('not a url')).toBe('not a url')
   })
 })

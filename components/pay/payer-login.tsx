@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
+import { authRedirectOrigin } from '@/lib/auth-redirect'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 
 type BrowserClient = ReturnType<typeof createClient>
@@ -51,8 +52,10 @@ export function PayerLogin(props: {
         : ((createClient() as unknown as BrowserClient) as unknown as OtpClient)
       const dest = props.next ?? '/pay'
       // Final destination, not /auth/callback: the email template forwards
-      // .RedirectTo to /auth/confirm, which verifies the token_hash.
-      const redirectTo = `${window.location.origin}${dest}`
+      // .RedirectTo to /auth/confirm, which verifies the token_hash. Use the
+      // canonical host — the pay subdomain isn't in Supabase's allowlist, so
+      // its redirect_to would silently collapse to the Site URL root.
+      const redirectTo = `${authRedirectOrigin(window.location.origin)}${dest}`
       const { error: otpError } = await client.auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

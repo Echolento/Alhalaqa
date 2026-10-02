@@ -15,16 +15,37 @@ export function sanitizeNextPath(input: string | null | undefined): string {
 }
 
 /**
+ * Email/OAuth redirect targets must use a host that is allow-listed in Supabase.
+ * The pay subdomain is only a routing alias (its root rewrites to /claim); every
+ * app route also exists on the canonical www host. An unlisted redirect_to is
+ * silently replaced with the Site URL root, which drops the destination — so
+ * collapse pay.* to www.* before handing a URL to Supabase.
+ */
+export function authRedirectOrigin(origin: string): string {
+  try {
+    const u = new URL(origin)
+    if (u.hostname.startsWith('pay.')) {
+      u.hostname = `www.${u.hostname.slice(4)}`
+      return u.origin
+    }
+  } catch {
+    // Not a URL — return unchanged.
+  }
+  return origin
+}
+
+/**
  * Email links carry `{{ .RedirectTo }}`, which is the absolute `emailRedirectTo`
- * we passed to Supabase. Reduce it to a same-origin relative path (or the safe
- * default) before redirecting — never trust it to be same-origin.
+ * we passed to Supabase. Reduce it to a same-site relative path (or the safe
+ * default) before redirecting — never trust it to be same-origin. pay.* and
+ * www.* are the same site.
  */
 export function sanitizeRedirectTo(input: string | null | undefined, origin: string): string {
   if (!input) return DEFAULT_AUTH_NEXT_PATH
   if (input.startsWith('/')) return sanitizeNextPath(input)
   try {
     const url = new URL(input)
-    if (url.origin === new URL(origin).origin) {
+    if (authRedirectOrigin(url.origin) === authRedirectOrigin(new URL(origin).origin)) {
       return sanitizeNextPath(`${url.pathname}${url.search}`)
     }
   } catch {

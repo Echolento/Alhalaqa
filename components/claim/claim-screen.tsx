@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { redeemClaim, updateClaimedPhone } from '@/lib/claim-actions'
 import { buildClaimOtpNext } from '@/lib/claim-tokens'
+import { authRedirectOrigin } from '@/lib/auth-redirect'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { payScreenUrl } from '@/lib/push-payloads'
 import { InstallCoach, type InstallCoachPlatform } from '@/components/pwa/install-coach'
@@ -93,8 +94,9 @@ export function ClaimScreen(props: {
     setOtpSending(true)
     try {
       // Final destination, not /auth/callback: the email template forwards
-      // .RedirectTo to /auth/confirm, which verifies the token_hash.
-      const redirectTo = `${window.location.origin}${buildClaimOtpNext(props.token)}`
+      // .RedirectTo to /auth/confirm, which verifies the token_hash. Canonical
+      // host only — the pay subdomain isn't allow-listed in Supabase.
+      const redirectTo = `${authRedirectOrigin(window.location.origin)}${buildClaimOtpNext(props.token)}`
       const { error } = await createClient().auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

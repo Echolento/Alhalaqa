@@ -8,7 +8,7 @@ import { headers } from 'next/headers'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 import { validateInstapayHandle, validateInstapayLink } from './instapay'
 import { logActivity } from './log-activity'
-import { getSiteUrl } from './auth-redirect'
+import { getSiteUrl, authRedirectOrigin } from './auth-redirect'
 import { normalizeFrequency } from './billing-period'
 
 /**
@@ -22,7 +22,9 @@ async function getRequestSiteUrl(): Promise<string> {
     const h = await headers()
     const host = h.get('x-forwarded-host') ?? h.get('host')
     const proto = h.get('x-forwarded-proto') ?? 'https'
-    if (host) return `${proto}://${host}`
+    // Canonicalize the pay alias → www: Supabase silently drops a redirect_to
+    // whose host isn't in the allowlist (falls back to the Site URL root).
+    if (host) return authRedirectOrigin(`${proto}://${host}`)
   } catch {
     // fall through to env-based URL
   }
