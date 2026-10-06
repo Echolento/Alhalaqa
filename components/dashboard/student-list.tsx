@@ -162,15 +162,21 @@ export function StudentList({ students, payments, month, currency, initialCollec
           {filtered.map((student) => {
             const payment = localPayments.find((p) => p.student_id === student.id)
             const isPaid = payment?.paid || false
-            const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
+            // A receipt awaiting verification: amber, and tapping goes straight
+            // to the verification queue (not the profile).
+            const hasPending = !isPaid && !!(student as any).hasPendingProof
+            const status = getPaymentStatus(isPaid, { pending: hasPending })
+            const cardHref = hasPending
+              ? `/dashboard/unpaid?student=${student.id}`
+              : `/dashboard/students/${student.id}`
             return (
               <Card
                 key={student.id}
-                onClick={() => router.push(`/dashboard/students/${student.id}`)}
+                onClick={() => router.push(cardHref)}
                 className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg cursor-pointer ${status.cardClass}`}
               >
                 <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 w-full min-w-0">
+                  <Link href={cardHref} className="flex items-center gap-3 w-full min-w-0">
                       {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">

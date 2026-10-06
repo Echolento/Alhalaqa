@@ -68,6 +68,16 @@ describe('StudentList (merged home)', () => {
     expect(screen.queryByText('دعوة ولي الأمر')).not.toBeInTheDocument()
   })
 
+  it('marks a pending-verification row amber and routes it to the queue, not the profile', () => {
+    const rows = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, hasPendingProof: true },
+    ]
+    const { container } = render(<StudentList {...props} students={rows} payments={[]} />)
+    expect(screen.getAllByText('قيد المراجعة').length).toBeGreaterThanOrEqual(1)
+    expect(container.querySelector('a[href="/dashboard/unpaid?student=s1"]')).toBeInTheDocument()
+    expect(container.querySelector('a[href="/dashboard/students/s1"]')).toBeNull()
+  })
+
   it('flags unclaimed phone-less rows with the missing-number badge', () => {
     const rows = [
       { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null, phone: null },
