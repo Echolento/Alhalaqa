@@ -24,3 +24,26 @@ export function resolvePayRewrite(pathname: string, host: string | null | undefi
 /** The one link teachers share with all parents (client-safe). */
 export const PAY_ENTRY_URL =
   process.env.NEXT_PUBLIC_PAY_URL ?? 'https://pay.alhalaqa.com'
+
+/** Records which audience installed the PWA so /start can route a lapsed
+ *  session to the right login instead of guessing. */
+export const AUDIENCE_COOKIE = 'alhalaqa_audience'
+
+export type Audience = 'payer' | 'teacher'
+
+/**
+ * Which audience a route belongs to. The installable PWA is one app, so the
+ * launch target (/start) is role-aware; this cookie is the fallback for a
+ * signed-out launch (we can't read the role without a session).
+ */
+export function audienceFor(
+  pathname: string,
+  host: string | null | undefined,
+): Audience | null {
+  if (isPayHost(host)) return 'payer'
+  if (pathname === '/claim' || pathname.startsWith('/claim/')) return 'payer'
+  if (pathname === '/pay' || pathname.startsWith('/pay/')) return 'payer'
+  if (pathname === '/welcome' || pathname.startsWith('/welcome/')) return 'teacher'
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 'teacher'
+  return null
+}

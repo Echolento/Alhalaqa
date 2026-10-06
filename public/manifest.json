@@ -2,7 +2,7 @@
   "name": "Alhalaqa - الحلقة",
   "short_name": "Alhalaqa",
   "description": "منصة الحلقة لإدارة حلقات تحفيظ القرآن الكريم",
-  "start_url": "/",
+  "start_url": "/start",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4d938b",

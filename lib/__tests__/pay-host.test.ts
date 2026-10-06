@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isPayHost, resolvePayRewrite } from '@/lib/pay-host'
+import { isPayHost, resolvePayRewrite, audienceFor } from '@/lib/pay-host'
 
 describe('isPayHost', () => {
   it('matches the pay subdomain, with or without port', () => {
@@ -27,5 +27,24 @@ describe('resolvePayRewrite', () => {
     expect(resolvePayRewrite('/claim?phone=x', 'pay.alhalaqa.com')).toBeNull()
     expect(resolvePayRewrite('/', 'alhalaqa.com')).toBeNull()
     expect(resolvePayRewrite('/', 'localhost:3000')).toBeNull()
+  })
+})
+
+describe('audienceFor', () => {
+  it('marks payer surfaces (pay host, /claim, /pay) as payer', () => {
+    expect(audienceFor('/', 'pay.alhalaqa.com')).toBe('payer')
+    expect(audienceFor('/claim', 'www.alhalaqa.com')).toBe('payer')
+    expect(audienceFor('/pay', 'www.alhalaqa.com')).toBe('payer')
+  })
+
+  it('marks teacher surfaces (onboarding, dashboard) as teacher', () => {
+    expect(audienceFor('/welcome', 'www.alhalaqa.com')).toBe('teacher')
+    expect(audienceFor('/welcome/instapay', 'www.alhalaqa.com')).toBe('teacher')
+    expect(audienceFor('/dashboard', 'www.alhalaqa.com')).toBe('teacher')
+  })
+
+  it('returns null for neutral routes', () => {
+    expect(audienceFor('/', 'www.alhalaqa.com')).toBeNull()
+    expect(audienceFor('/auth/login', 'www.alhalaqa.com')).toBeNull()
   })
 })

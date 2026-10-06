@@ -1,21 +1,37 @@
 import { updateSession } from '@/lib/supabase/proxy'
 import { NextResponse, type NextRequest } from 'next/server'
-import { resolvePayRewrite } from '@/lib/pay-host'
+import { resolvePayRewrite, audienceFor, AUDIENCE_COOKIE, type Audience } from '@/lib/pay-host'
+
+const ONE_YEAR = 60 * 60 * 24 * 365
+
+/** Stamp the install-audience cookie so /start can route a lapsed session. */
+function withAudience(response: NextResponse, audience: Audience | null): NextResponse {
+  if (audience && response.cookies.get(AUDIENCE_COOKIE)?.value !== audience) {
+    response.cookies.set(AUDIENCE_COOKIE, audience, {
+      path: '/',
+      maxAge: ONE_YEAR,
+      sameSite: 'lax',
+    })
+  }
+  return response
+}
 
 export async function proxy(request: NextRequest) {
   try {
     const { searchParams, pathname } = new URL(request.url)
+    const host = request.headers.get('host')
+    const audience = audienceFor(pathname, host)
 
     // Payer subdomain root serves the phone-claim entry, not the homepage.
     // Refreshed auth cookies ride along so logged-in payers stay logged in.
-    const payTarget = resolvePayRewrite(pathname, request.headers.get('host'))
+    const payTarget = resolvePayRewrite(pathname, host)
     if (payTarget) {
       const sessioned = await updateSession(request)
       const rewrite = NextResponse.rewrite(new URL(payTarget, request.url))
       for (const cookie of sessioned.cookies.getAll()) {
         rewrite.cookies.set(cookie)
       }
-      return rewrite
+      return withAudience(rewrite, audience)
     }
 
     const code = searchParams.get('code')
@@ -26,10 +42,10 @@ export async function proxy(request: NextRequest) {
         params.set('next', '/welcome')
       }
       const callbackUrl = new URL(`/auth/callback?${params.toString()}`, request.url)
-      return NextResponse.redirect(callbackUrl)
+      return withAudience(NextResponse.redirect(callbackUrl), audience)
     }
 
-    return await updateSession(request)
+    return withAudience(await updateSession(request), audience)
   } catch (err) {
     console.error('Proxy error:', err)
     return NextResponse.next()

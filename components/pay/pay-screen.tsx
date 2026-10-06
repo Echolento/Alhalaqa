@@ -5,6 +5,9 @@
 // arrives via props from app/pay/page.tsx (amount via getDuePeriodInfo,
 // InstaPay contract via getInstaPayContract). Upload wiring lives in the
 // container; this component only reports the chosen File upward.
+//
+// Unpaid layout is an explicit 3-step flow so a parent always knows what is
+// owed and what to do next: (1) pay, (2) upload the receipt, (3) await review.
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -60,6 +63,7 @@ export function PayScreen(props: {
   const [staged, setStaged] = useState<{ file: File; url: string } | null>(null)
   // Saved-receipt viewer: history rows open the full image (up to 8 kept).
   const [viewProof, setViewProof] = useState<PaymentProof | null>(null)
+  const hasMethod = !!(data.instapayLink || data.instapayHandle)
 
   function stageFile(file: File) {
     setStaged((prev) => {
@@ -93,39 +97,42 @@ export function PayScreen(props: {
           </CardContent>
         </Card>
       ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">دفع رسوم {data.studentName}</CardTitle>
-          {!data.isPaidForPeriod ? (
-            <p className="pt-1 text-xs text-muted-foreground" data-testid="push-primer">
-              {PAY_PUSH_COPY.promptPrimer}
-            </p>
-          ) : null}
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">المبلغ المستحق</span>
-            <span className="text-xl font-bold" data-testid="amount-due">
-              {data.amount} {data.currency}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="text-muted-foreground">الفترة</span>
-            <span data-testid="period-key">{data.periodLabel}</span>
-          </div>
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="text-muted-foreground">تاريخ الاستحقاق</span>
-            <span>{data.dueDateLabel}</span>
-          </div>
 
-          {!data.isPaidForPeriod && !(data.instapayLink || data.instapayHandle) ? (
-            <p className="pt-2 text-center text-sm text-muted-foreground">
-              تواصل مع المعلم لمعرفة طريقة الدفع
-            </p>
-          ) : null}
-          {!data.isPaidForPeriod && (data.instapayLink || data.instapayHandle) ? (
-            <div className="space-y-2 pt-2">
-              {data.instapayLink && (
+      {!data.isPaidForPeriod ? (
+        <>
+          {/* What is owed */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">دفع رسوم {data.studentName}</CardTitle>
+              <p className="pt-1 text-xs text-muted-foreground" data-testid="push-primer">
+                {PAY_PUSH_COPY.promptPrimer}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">المبلغ المستحق</span>
+                <span className="text-xl font-bold" data-testid="amount-due">
+                  {data.amount} {data.currency}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="text-muted-foreground">الفترة</span>
+                <span data-testid="period-key">{data.periodLabel}</span>
+              </div>
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="text-muted-foreground">تاريخ الاستحقاق</span>
+                <span>{data.dueDateLabel}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Step 1 — pay */}
+          <Card data-testid="payment-step">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">١) ادفع المبلغ</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {data.instapayLink ? (
                 <Button asChild className="w-full">
                   <a
                     href={data.instapayLink}
@@ -137,101 +144,120 @@ export function PayScreen(props: {
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
-              )}
-              {data.instapayHandle && (
+              ) : null}
+              {data.instapayHandle ? (
                 <p className="text-center text-sm text-muted-foreground" data-testid="instapay-handle">
                   أو حوّل إلى العنوان: <span className="font-mono" dir="ltr">{data.instapayHandle}</span>
                 </p>
+              ) : null}
+              {hasMethod ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  بعد إتمام التحويل، أكمل الخطوة ٢ برفع صورة الإيصال.
+                </p>
+              ) : (
+                <p
+                  data-testid="payment-unavailable"
+                  className="text-sm leading-relaxed text-muted-foreground"
+                >
+                  لم يضف المعلم طريقة الدفع بعد. تواصل مع المعلم ليعطيك رابط الدفع
+                  (مثل InstaPay)، ثم أكمل الخطوة ٢ برفع صورة الإيصال.
+                </p>
               )}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {!data.isPaidForPeriod ? (
-      <Card>
-        <CardContent className="space-y-3 pt-4">
-          <label htmlFor="receipt-upload" className="text-sm font-medium">
-            ارفع سكرين شوت الإيصال
-          </label>
-          <Input
-            id="receipt-upload"
-            data-testid="receipt-upload"
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) stageFile(file)
-              e.currentTarget.value = ''
-            }}
-          />
-          {!staged ? (
-            <Button
-              className="w-full"
-              disabled={uploading}
-              onClick={() => document.getElementById('receipt-upload')?.click()}
-            >
-              <Upload className="h-4 w-4" />
-              {uploading ? 'جارٍ الرفع…' : 'اختر صورة الإيصال'}
-            </Button>
-          ) : (
-            <div className="space-y-2" data-testid="upload-preview">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={staged.url}
-                alt="معاينة الإيصال"
-                data-testid="upload-preview-image"
-                className="mx-auto max-h-64 rounded-md border object-contain"
-              />
-              <p className="truncate text-center text-xs text-muted-foreground" dir="ltr">
-                {staged.file.name}
+          {/* Step 2 — upload the receipt */}
+          <Card data-testid="upload-step">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">٢) ارفع صورة الإيصال</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                بعد الدفع، صوّر الإيصال وارفعه هنا ليصل إلى المعلم.
               </p>
-              <div className="flex gap-2">
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                id="receipt-upload"
+                data-testid="receipt-upload"
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) stageFile(file)
+                  e.currentTarget.value = ''
+                }}
+              />
+              {!staged ? (
                 <Button
-                  className="flex-1"
+                  className="w-full"
                   disabled={uploading}
-                  data-testid="upload-confirm"
-                  onClick={() => {
-                    onFileSelected?.(staged.file)
-                    clearStaged()
-                  }}
+                  onClick={() => document.getElementById('receipt-upload')?.click()}
                 >
-                  <Check className="h-4 w-4" />
-                  {uploading ? 'جارٍ الرفع…' : 'تأكيد الإرسال'}
+                  <Upload className="h-4 w-4" />
+                  {uploading ? 'جارٍ الرفع…' : 'اختر صورة الإيصال'}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  disabled={uploading}
-                  data-testid="upload-retake"
-                  onClick={() => {
-                    clearStaged()
-                    document.getElementById('receipt-upload')?.click()
-                  }}
+              ) : (
+                <div className="space-y-2" data-testid="upload-preview">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={staged.url}
+                    alt="معاينة الإيصال"
+                    data-testid="upload-preview-image"
+                    className="mx-auto max-h-64 rounded-md border object-contain"
+                  />
+                  <p className="truncate text-center text-xs text-muted-foreground" dir="ltr">
+                    {staged.file.name}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      disabled={uploading}
+                      data-testid="upload-confirm"
+                      onClick={() => {
+                        onFileSelected?.(staged.file)
+                        clearStaged()
+                      }}
+                    >
+                      <Check className="h-4 w-4" />
+                      {uploading ? 'جارٍ الرفع…' : 'تأكيد الإرسال'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      disabled={uploading}
+                      data-testid="upload-retake"
+                      onClick={() => {
+                        clearStaged()
+                        document.getElementById('receipt-upload')?.click()
+                      }}
+                    >
+                      إعادة الاختيار
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {uploadError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {uploadError}
+                </p>
+              )}
+              {showPendingBanner && (
+                <p
+                  data-testid="pending-banner"
+                  className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800"
                 >
-                  إعادة الاختيار
-                </Button>
-              </div>
-            </div>
-          )}
-          {uploadError && (
-            <p role="alert" className="text-sm text-destructive">
-              {uploadError}
-            </p>
-          )}
-          {showPendingBanner && (
-            <p
-              data-testid="pending-banner"
-              className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800"
-            >
-              <Clock className="h-4 w-4" />
-              إيصالك قيد المراجعة — سنعلمك عند التحقق
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                  <Clock className="h-4 w-4" />
+                  إيصالك قيد المراجعة — سنعلمك عند التحقق
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground">
+            ٣) يتحقق المعلم من الإيصال وتصلك نتيجة المراجعة.
+          </p>
+        </>
       ) : null}
 
       <Card>
