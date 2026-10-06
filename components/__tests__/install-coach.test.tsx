@@ -1,17 +1,46 @@
 // components/__tests__/install-coach.test.tsx
 // A2 slice — InstallCoach per-platform branches + faint Later.
 
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { InstallCoach } from '@/components/pwa/install-coach'
+
+type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
+
+function makePromptEvent(): PromptEvent {
+  const e = new Event('beforeinstallprompt') as PromptEvent
+  e.prompt = vi.fn(async () => {})
+  e.userChoice = Promise.resolve({ outcome: 'accepted' })
+  return e
+}
+
+beforeEach(() => {
+  delete (window as unknown as { __deferredInstallPrompt?: unknown }).__deferredInstallPrompt
+})
+
+afterEach(() => {
+  delete (window as unknown as { __deferredInstallPrompt?: unknown }).__deferredInstallPrompt
+})
 
 describe('InstallCoach', () => {
   it('android branch shows the install affordance', () => {
     render(<InstallCoach platform="android" onLater={() => {}} />)
     expect(screen.getByTestId('install-coach')).toBeTruthy()
-    // InstallButton renders nothing without a captured prompt — the branch
-    // copy must still orient the user.
     expect(screen.getByText(/ثبّت/i)).toBeTruthy()
+  })
+
+  it('android without a deferred prompt gives manual guidance, not a phantom button', () => {
+    render(<InstallCoach platform="android" onLater={() => {}} />)
+    expect(screen.queryByRole('button', { name: /ثبّت التطبيق/ })).toBeNull()
+    expect(screen.getByText(/قائمة المتصفح/)).toBeTruthy()
+  })
+
+  it('android with a captured prompt shows the install button', async () => {
+    render(<InstallCoach platform="android" onLater={() => {}} />)
+    act(() => {
+      window.dispatchEvent(makePromptEvent())
+    })
+    expect(await screen.findByRole('button', { name: /ثبّت التطبيق/ })).toBeTruthy()
   })
 
   it('ios branch shows the 3-step Add-to-Home-Screen guide', () => {

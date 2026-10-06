@@ -19,6 +19,7 @@ function makePromptEvent(): PromptEvent {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  delete (window as unknown as { __deferredInstallPrompt?: unknown }).__deferredInstallPrompt
 })
 
 afterEach(() => {
@@ -55,6 +56,13 @@ describe('useInstallPrompt', () => {
       window.dispatchEvent(new Event('appinstalled'))
     })
     await waitFor(() => expect(result.current.canInstall).toBe(false))
+  })
+
+  it('adopts a prompt captured before hydration (stashed on window)', async () => {
+    const evt = makePromptEvent()
+    ;(window as unknown as { __deferredInstallPrompt?: unknown }).__deferredInstallPrompt = evt
+    const { result } = renderHook(() => useInstallPrompt())
+    await waitFor(() => expect(result.current.canInstall).toBe(true))
   })
 
   it('promptInstall is a no-op without a captured event', async () => {

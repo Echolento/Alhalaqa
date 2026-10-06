@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import Script from 'next/script'
 import './globals.css'
 import { Toaster } from "@/components/ui/toaster"
+import { ServiceWorkerBootstrap } from "@/components/pwa/service-worker-bootstrap"
 
 const notoArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
@@ -49,8 +50,18 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${notoArabic.className} antialiased`} suppressHydrationWarning>
         {children}
+        <ServiceWorkerBootstrap />
         <Toaster />
         <Analytics />
+        {/* Capture beforeinstallprompt before hydration so the install coach
+            can never miss it (the event is only dispatched once per load). */}
+        <Script id="bip-capture" strategy="beforeInteractive">
+          {`window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            window.__deferredInstallPrompt = e;
+            window.dispatchEvent(new Event('bip-available'));
+          });`}
+        </Script>
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-TERD2EK651" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || [];

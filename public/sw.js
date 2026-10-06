@@ -1,3 +1,9 @@
+// Minimal fetch handler. Chrome requires a registered service worker WITH a
+// fetch handler before it treats the app as installable and fires
+// `beforeinstallprompt`. We never call respondWith, so this is a pure
+// passthrough and caching/offline behaviour is unchanged.
+self.addEventListener('fetch', () => {})
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
 

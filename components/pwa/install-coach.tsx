@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Share, PlusSquare, CheckCircle2 } from 'lucide-react'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { InstallButton } from '@/components/pwa/install-button'
+import { useInstallPrompt } from '@/hooks/use-install-prompt'
 import { detectIosPushCoachLive } from '@/lib/ios-push-coach'
 
 export type InstallCoachPlatform = 'android' | 'ios' | 'other'
@@ -34,6 +35,7 @@ export function InstallCoach(props: {
 }) {
   const [livePlatform, setLivePlatform] = useState<InstallCoachPlatform>('other')
   const [mounted, setMounted] = useState(false)
+  const { canInstall } = useInstallPrompt()
 
   useEffect(() => {
     setMounted(true)
@@ -52,11 +54,16 @@ export function InstallCoach(props: {
       </CardHeader>
       <CardContent className="space-y-3">
         {platform === 'android' ? (
-          <div className="space-y-2">
-            <p className="text-sm">اضغط الزر أدناه لتثبيت التطبيق على جهازك.</p>
-            <InstallButton />
-            <p className="text-xs text-muted-foreground">{CLAIM_COPY.installCoachAndroidHint}</p>
-          </div>
+          canInstall ? (
+            <div className="space-y-2">
+              <InstallButton />
+              <p className="text-xs text-muted-foreground">{CLAIM_COPY.installCoachAndroidHint}</p>
+            </div>
+          ) : (
+            // No native prompt available (yet): never promise a button that
+            // can't render — give the manual Chrome path instead.
+            <p className="text-sm text-muted-foreground">{CLAIM_COPY.installCoachGenericHint}</p>
+          )
         ) : platform === 'ios' ? (
           <ol className="space-y-2 text-sm" data-testid="ios-install-steps">
             <li className="flex items-center gap-2">

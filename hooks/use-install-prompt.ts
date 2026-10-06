@@ -28,19 +28,39 @@ export function isStandaloneDisplay(): boolean {
   }
 }
 
+type WindowWithBip = Window & { __deferredInstallPrompt?: DeferredInstallPrompt }
+
 export function useInstallPrompt() {
   const [deferred, setDeferred] = useState<DeferredInstallPrompt | null>(null)
 
   useEffect(() => {
+    const w = window as WindowWithBip
+    const adopt = (e: Event) => {
+      const evt = e as DeferredInstallPrompt
+      w.__deferredInstallPrompt = evt
+      setDeferred(evt)
+    }
+    // The inlne capture script (root layout) stashes the event even if it
+    // fired before hydration — adopt it on mount so the button is never lost.
+    const stashed = w.__deferredInstallPrompt
+    if (stashed) setDeferred(stashed)
+    const onAvailable = () => {
+      if (w.__deferredInstallPrompt) setDeferred(w.__deferredInstallPrompt)
+    }
     const onBeforeInstall = (e: Event) => {
       e.preventDefault()
-      setDeferred(e as DeferredInstallPrompt)
+      adopt(e)
     }
-    const onInstalled = () => setDeferred(null)
+    const onInstalled = () => {
+      w.__deferredInstallPrompt = undefined
+      setDeferred(null)
+    }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    window.addEventListener('bip-available', onAvailable)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('bip-available', onAvailable)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
