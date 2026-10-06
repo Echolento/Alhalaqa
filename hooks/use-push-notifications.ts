@@ -31,9 +31,27 @@ export function usePushNotifications() {
         registrationRef.current = reg
         return reg.pushManager.getSubscription()
       })
-      .then(sub => {
+      .then(async (sub) => {
         setIsSubscribed(!!sub)
         setIsLoading(false)
+        // A browser-level subscription outlives logout / account switches, but
+        // the server stores subscriptions PER PROFILE. Re-link the existing
+        // subscription to the current profile so pushes resolve: without this,
+        // the hook reports subscribed locally while the server has NO row for
+        // this profile, and every send silently no-ops.
+        if (sub) {
+          try {
+            const json = sub.toJSON()
+            if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+              await registerPushSubscription({
+                endpoint: json.endpoint,
+                keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+              })
+            }
+          } catch {
+            // Best-effort — the settings toggle can still re-subscribe.
+          }
+        }
       })
       .catch(err => {
         console.error('[sw-register]', err)

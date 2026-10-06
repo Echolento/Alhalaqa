@@ -363,6 +363,9 @@ export async function updateTeacherSettings(formData: FormData) {
   })
 
   revalidatePath('/dashboard/settings')
+  // A parent mid-flow should see the payment button on their next pay-screen
+  // load once the teacher adds a method.
+  revalidatePath('/pay')
   return { success: true }
 }
 
