@@ -33,39 +33,28 @@ export async function getTeacherPayments(month?: string) {
   const today = new Date()
   const normalizedStudents = (students || []).map(s => {
     const frequency = normalizeFrequency((s as any).frequency)
-    let studentMonthKey: string
-    if (month && frequency === 'monthly') {
-      studentMonthKey = month
-    } else if (month) {
-      studentMonthKey = getPeriodKey(today, frequency, s.payment_day || 1)
-    } else {
-      studentMonthKey = getPeriodKey(today, frequency, s.payment_day || 1)
-    }
+    // The period this student is viewed against: a monthly student ties to the
+    // displayed month; interval (weekly/biweekly) students keep their own cycle.
+    const studentMonthKey =
+      month && frequency === 'monthly'
+        ? month
+        : getPeriodKey(today, frequency, s.payment_day || 1)
     return {
       id: s.id,
       full_name: s.name || 'طالب',
       monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
       phone: (s as any).phone ?? null,
       payment_day: s.payment_day || 1,
+      frequency,
+      next_due_date: ((s as any).next_due_date ?? null) as string | null,
       claimed_by: (s as any).claimed_by ?? null,
-      currentMonthKey: studentMonthKey
+      currentMonthKey: studentMonthKey,
     }
   })
 
-  const monthKeysToFetch = Array.from(new Set(normalizedStudents.map(s => s.currentMonthKey)))
-
-  const { data: existingPayments } = await supabase
-    .from('student_payments')
-    .select('*')
-    .in('month', monthKeysToFetch)
-    .in('student_id', normalizedStudents.map(s => s.id))
-
-  // Pending-confirmation proofs: a receipt waiting for teacher verification
-  // turns the card amber instead of red (RLS read-own policy covers this).
-  // Matched by STUDENT only: the proof is stored against the student's
-  // OUTSTANDING due cycle (next_due_date), which is not the dashboard's
-  // displayed period — a period-scoped match therefore never lit the amber.
-  // Mirrors getStudentProfile, so profile and dashboard agree.
+  // Pending-confirmation proofs turn the card amber instead of red. Matched by
+  // STUDENT (not period): the proof is stored against the outstanding due cycle,
+  // which is not the dashboard's displayed period. Mirrors getStudentProfile.
   const pendingStudentIds = new Set<string>()
   {
     const ids = normalizedStudents.map(s => s.id)
@@ -84,37 +73,36 @@ export async function getTeacherPayments(month?: string) {
     (s as any).hasPendingProof = pendingStudentIds.has(s.id)
   }
 
-  const paymentSet = new Set((existingPayments || []).map(p => `${p.student_id}_${p.month}`))
-  const studentsNeedingPaymentRecord = normalizedStudents.filter(s => !paymentSet.has(`${s.id}_${s.currentMonthKey}`))
-
-  if (studentsNeedingPaymentRecord.length > 0) {
-    // Backfill is a write: service client (rows are derived from the
-    // caller's own students, verified above via their teacher id).
-    const { error: insertError } = await createServiceClient()
+  // Payments: mirror the profile's status rule — the row for the displayed
+  // period if one exists, else the student's MOST RECENT row. Prepay records the
+  // SETTLED cycle, which is usually not the wall-clock month, so a
+  // period-scoped fetch made paid students read as unpaid and desynced totals.
+  const ids = normalizedStudents.map(s => s.id)
+  const rowsByStudent = new Map<string, Record<string, unknown>[]>()
+  if (ids.length > 0) {
+    const { data: rows } = await supabase
       .from('student_payments')
-      .insert(studentsNeedingPaymentRecord.map(s => ({
-        student_id: s.id,
-        month: s.currentMonthKey,
-        paid: false,
-        amount_paid: 0,
-      })))
-    if (insertError && insertError.code !== '23505') {
-      console.error('[getTeacherPayments] insert missing payments error:', insertError)
+      .select('*')
+      .in('student_id', ids)
+    for (const row of rows || []) {
+      const r = row as Record<string, unknown>
+      const key = r.student_id as string
+      const list = rowsByStudent.get(key) ?? []
+      list.push(r)
+      rowsByStudent.set(key, list)
     }
   }
+  const payments = normalizedStudents
+    .map(s => {
+      const rows = (rowsByStudent.get(s.id) ?? [])
+        .slice()
+        .sort((a, b) => String(b.month).localeCompare(String(a.month)))
+      // Same rule as StudentProfile: the displayed month's row, else the latest.
+      return rows.find(p => p.month === monthKey) ?? rows[0] ?? null
+    })
+    .filter(Boolean)
 
-  // No backfill needed (common case): skip the second fetch entirely.
-  if (studentsNeedingPaymentRecord.length === 0) {
-    return { students: normalizedStudents, payments: existingPayments || [], currency: teacher.currency }
-  }
-
-  const { data: finalPayments } = await supabase
-    .from('student_payments')
-    .select('*')
-    .in('month', monthKeysToFetch)
-    .in('student_id', normalizedStudents.map(s => s.id))
-
-  return { students: normalizedStudents, payments: finalPayments || [], currency: teacher.currency }
+  return { students: normalizedStudents, payments, currency: teacher.currency }
 }
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {

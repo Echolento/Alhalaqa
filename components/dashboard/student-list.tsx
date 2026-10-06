@@ -62,12 +62,15 @@ export function StudentList({ students, payments, month, currency, initialCollec
     setLoading(studentId)
     const payment = localPayments.find((p) => p.student_id === studentId)
     const newPaid = !payment?.paid
+    // Target the period this student's row actually belongs to (prepay settles
+    // a cycle that isn't the wall-clock month), so undo hits the right row.
+    const targetMonth = (payment as { month?: string } | undefined)?.month ?? month
     const now = new Date().toISOString()
     const price = Number(students.find((s) => s.id === studentId)?.monthly_price) || 0
     setLocalPayments((prev) =>
       prev.some((p) => p.student_id === studentId)
         ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: newPaid, paid_at: newPaid ? now : null } : p))
-        : [...prev, { student_id: studentId, month, paid: newPaid, paid_at: newPaid ? now : null }]
+        : [...prev, { student_id: studentId, month: targetMonth, paid: newPaid, paid_at: newPaid ? now : null }]
     )
     // Totals update locally — no second server trip (was router.refresh).
     setCollected((c) => c + (newPaid ? price : -price))
@@ -82,7 +85,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
       )
     }
     try {
-      const result = await toggleStudentPayment(studentId, month)
+      const result = await toggleStudentPayment(studentId, targetMonth)
       if (result.success) {
         // Deterministic close: Radix also closes on action-click, but the
         // controlled `open` prop is the source of truth — a stale undoTarget

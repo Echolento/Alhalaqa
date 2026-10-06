@@ -560,14 +560,11 @@ describe('getTeacherPayments', () => {
           { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 15 },
         ],
       })
-        b.in = vi.fn().mockReturnValue({
-        ...b,
-        in: vi.fn().mockResolvedValue({
-          data: [
-            { id: 'p1', student_id: studentId, month: '2024-06-01', paid: true, amount_paid: 100 },
-            { id: 'p2', student_id: studentId2, month: '2024-06-01', paid: false, amount_paid: 0 },
-          ],
-        }),
+        b.in = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'p1', student_id: studentId, month: '2024-06-01', paid: true, amount_paid: 100 },
+          { id: 'p2', student_id: studentId2, month: '2024-06-01', paid: false, amount_paid: 0 },
+        ],
       })
       return b
     })
@@ -592,10 +589,7 @@ describe('getTeacherPayments', () => {
           { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 1, frequency: 'weekly' },
         ],
       })
-      b.in = vi.fn().mockReturnValue({
-        ...b,
-        in: vi.fn().mockResolvedValue({ data: [] }),
-      })
+      b.in = vi.fn().mockResolvedValue({ data: [] })
       return b
     })
 
@@ -606,6 +600,34 @@ describe('getTeacherPayments', () => {
     expect(monthly?.currentMonthKey).toBe('2024-06-01')
     expect(weekly?.currentMonthKey).not.toBe('2024-06-01')
     expect(weekly?.currentMonthKey).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('reads a student as paid when the settled cycle is not the displayed month (prepay)', async () => {
+    // Prepay settles a cycle (e.g. 2026-11-01) that isn't the wall-clock month
+    // (2026-10-01) → the row for the displayed month is absent, so the status
+    // must fall back to the latest row, exactly like the profile page.
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'weekly' }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'p1', student_id: studentId, month: '2026-10-05', paid: false, amount_paid: 0 },
+          { id: 'p2', student_id: studentId, month: '2026-11-01', paid: true, amount_paid: 100 },
+        ],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-10-01')
+    const paid = result.payments.find((p: any) => p.student_id === studentId) as any
+    expect(paid?.paid).toBe(true)
+    expect(paid?.month).toBe('2026-11-01')
   })
 })
 
