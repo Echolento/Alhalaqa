@@ -58,7 +58,7 @@ describe('PayScreen', () => {
     expect(input).toHaveAttribute('type', 'file')
   })
 
-  it('shows the pending-review confirmation when a proof is pending', () => {
+  it('settles a pending period: shows the review state and blocks re-pay', () => {
     render(
       <PayScreen
         data={{ ...baseData, hasPending: true }}
@@ -75,7 +75,10 @@ describe('PayScreen', () => {
         ]}
       />,
     )
-    expect(screen.getByTestId('pending-banner')).toHaveTextContent('قيد المراجعة')
+    // No second payment for a period already submitted.
+    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('قيد المراجعة')
+    expect(screen.queryByTestId('receipt-upload')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
   })
 
   it('shows human period labels in history rows, never raw keys', () => {

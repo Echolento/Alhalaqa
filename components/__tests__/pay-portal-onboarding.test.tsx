@@ -98,13 +98,14 @@ describe('PayPortalOnboarding (no payer choice)', () => {
     expect(onFileSelected.mock.calls[0][0].name).toBe('receipt.jpg')
   })
 
-  it('shows the pending-review banner through the wrapper', () => {
+  it('settles a pending period through the wrapper (no re-pay)', () => {
     render(
       <PayPortalOnboarding
         payData={{ ...baseData, hasPending: true }}
         proofs={[]}
       />,
     )
-    expect(screen.getByTestId('pending-banner')).toHaveTextContent('قيد المراجعة')
+    expect(screen.getByTestId('paid-disclaimer')).toHaveTextContent('قيد المراجعة')
+    expect(screen.queryByTestId('receipt-upload')).not.toBeInTheDocument()
   })
 })

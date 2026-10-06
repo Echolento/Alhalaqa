@@ -64,6 +64,9 @@ export function PayScreen(props: {
   // Saved-receipt viewer: history rows open the full image (up to 8 kept).
   const [viewProof, setViewProof] = useState<PaymentProof | null>(null)
   const hasMethod = !!(data.instapayLink || data.instapayHandle)
+  // A submitted period is settled: verified (paid) OR awaiting review (pending).
+  // Either way the payer must not be able to pay the SAME period twice.
+  const settled = data.isPaidForPeriod || data.hasPending
 
   function stageFile(file: File) {
     setStaged((prev) => {
@@ -81,7 +84,7 @@ export function PayScreen(props: {
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4 p-4" dir="rtl">
-      {data.isPaidForPeriod ? (
+      {settled ? (
         <Card
           data-testid="paid-disclaimer"
           className="border-emerald-500 bg-emerald-50 shadow-md"
@@ -90,15 +93,19 @@ export function PayScreen(props: {
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
               <Check className="h-7 w-7 text-white" />
             </span>
-            <p className="text-xl font-black text-emerald-800">مدفوع</p>
+            <p className="text-xl font-black text-emerald-800">
+              {data.isPaidForPeriod ? 'مدفوع' : 'قيد المراجعة'}
+            </p>
             <p className="text-sm text-emerald-700">
-              رسوم {data.studentName} عن {data.periodLabel} مدفوعة بالكامل — لا يوجد مبلغ مستحق.
+              {data.isPaidForPeriod
+                ? `رسوم ${data.studentName} عن ${data.periodLabel} مدفوعة بالكامل — لا يوجد مبلغ مستحق.`
+                : `تم استلام إيصال ${data.studentName} عن ${data.periodLabel} — بانتظار تأكيد المعلم.`}
             </p>
           </CardContent>
         </Card>
       ) : null}
 
-      {!data.isPaidForPeriod ? (
+      {!settled ? (
         <>
           {/* What is owed */}
           <Card>
