@@ -38,6 +38,7 @@ import { FormattedDate } from '@/components/ui/formatted-date'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { REMIND_COPY } from '@/lib/remind-copy'
+import { FREQUENCY_PRICE_WORD } from '@/lib/onboarding-copy'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
 
@@ -77,6 +78,10 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   const router = useRouter()
   const { toast } = useToast()
   const currencySymbol = getCurrencySymbol(currency)
+  // The price label must match the student's cycle — "الاشتراك الشهري" on a
+  // weekly student read as a contradiction.
+  const freqWord =
+    FREQUENCY_PRICE_WORD[(student.frequency as string) || 'monthly'] ?? 'الشهري'
   const current = payments.find((p) => p.month === month) || payments[0]
   const isPaid = current?.paid || false
   const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
@@ -260,7 +265,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         </Row>
         <Row
           icon={Wallet}
-          label="الاشتراك الشهري"
+          label={`الاشتراك ${freqWord}`}
           edit={<Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1" onClick={() => { setPriceVal(String(student.monthly_price || 0)); setEditField('price') }}><Pencil className="w-4 h-4" />تعديل</Button>}
         >
           {student.monthly_price} {currencySymbol}
@@ -327,38 +332,39 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         </Row>
       </Card>
 
-      <Card>
-        <CardContent className="p-4 space-y-3" dir="rtl">
-          {!isPaid && (student as any).hasPendingProof ? (
-            <Link href={`/dashboard/unpaid?student=${student.id}`}>
-              <Button className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-600 font-bold">
-                مراجعة الإيصال
-              </Button>
-            </Link>
-          ) : null}
-          {!isPaid && !(student as any).hasPendingProof && student.claimed_by ? (
-            <RemindButton
-              studentId={student.id}
-              studentName={student.full_name || student.name || 'طالب'}
-              payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
-              amount={Number(student.monthly_price) || undefined}
-              currency={currency}
-              periodKey={month}
-              phone={student.phone ?? null}
-            />
-          ) : null}
-          {!student.claimed_by ? (
-            <PayerInviteButton
-              studentId={student.id}
-              studentName={student.full_name || student.name || 'طالب'}
-              phone={student.phone ?? null}
-            />
-          ) : null}
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            {REMIND_COPY.remindManualNote}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Actions — hidden entirely when there's nothing to act on (a paid,
+          claimed student used to leave an empty card with only a note). */}
+      {!isPaid || !student.claimed_by ? (
+        <Card>
+          <CardContent className="p-4 space-y-3" dir="rtl">
+            {!isPaid && (student as any).hasPendingProof ? (
+              <Link href={`/dashboard/unpaid?student=${student.id}`}>
+                <Button className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-600 font-bold">
+                  مراجعة الإيصال
+                </Button>
+              </Link>
+            ) : null}
+            {!isPaid && !(student as any).hasPendingProof && student.claimed_by ? (
+              <RemindButton
+                studentId={student.id}
+                studentName={student.full_name || student.name || 'طالب'}
+                payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
+                amount={Number(student.monthly_price) || undefined}
+                currency={currency}
+                periodKey={month}
+                phone={student.phone ?? null}
+              />
+            ) : null}
+            {!student.claimed_by ? (
+              <PayerInviteButton
+                studentId={student.id}
+                studentName={student.full_name || student.name || 'طالب'}
+                phone={student.phone ?? null}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader className="py-3">
