@@ -1,13 +1,13 @@
 'use client'
 
 // components/pay/push-onboarding.tsx
-// #35 slice 7/8 — SILENT payer push subscriber. Renders NOTHING: the payer
-// gets no prompt, no choice, no skip — just the pay screen (pay → upload).
-// Push subscription is attempted automatically so due/verdict pushes keep
-// working: when browser permission is already granted it subscribes on mount;
-// otherwise it waits for the payer's first tap anywhere (pointerdown, once)
-// and subscribes then. Denials and errors are swallowed silently — the pay
-// flow never depends on push. Test seam: `push` overrides the live hook.
+// Payer push subscriber. Deliberately low-friction, but recoverable: it never
+// fires the permission prompt without a user gesture (mobile browsers auto-deny
+// gesture-less requests, and a denial is permanent — the prompt never returns).
+//   - permission already granted → subscribes silently on mount;
+//   - otherwise → a small tappable bar (a real gesture) requests permission;
+//   - denied → settings guidance, since no code can re-prompt.
+// Teacher flavor (`hideBlockedHint`) renders nothing — its dashboard prompt owns it.
 
 import { useEffect, useRef } from 'react'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
@@ -21,10 +21,14 @@ export interface SilentPayerPushState {
   unsubscribe: () => void | Promise<void>
 }
 
+function permissionDenied(): boolean {
+  return typeof Notification !== 'undefined' && Notification.permission === 'denied'
+}
+
 export function SilentPayerPush(props: {
   /** Test seam. Production omits it and the live hook is used. */
   push?: SilentPayerPushState
-  /** Teacher flavor: never render even the blocked hint (Settings owns UI). */
+  /** Teacher flavor: render no UI (Settings/dashboard owns the affordance). */
   hideBlockedHint?: boolean
 }) {
   const live = usePushNotifications()
@@ -32,62 +36,58 @@ export function SilentPayerPush(props: {
   const attemptedRef = useRef(false)
 
   useEffect(() => {
-    if (attemptedRef.current || push.isLoading || push.isSubscribed || push.error) {
-      return
+    if (attemptedRef.current || push.isLoading || push.isSubscribed || push.error) return
+    // Only auto-subscribe when the browser already granted permission — no
+    // prompt, no risk of a gesture-less auto-deny.
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    attemptedRef.current = true
+    try {
+      void push.subscribe()
+    } catch {
+      // Silent by design.
     }
-
-    const attempt = () => {
-      if (attemptedRef.current) return
-      attemptedRef.current = true
-      try {
-        void push.subscribe()
-      } catch {
-        // Silent by design — pay flow never depends on push.
-      }
-    }
-
-    // Ask right away. Desktop prompts on load. Mobile browsers that
-    // suppress prompt-without-gesture land in error state → the blocked
-    // hint appears → tapping it IS a gesture, so retry succeeds there.
-    attempt()
-    return undefined
-    // push.* intentionally read once per state change, not subscribed fully.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [push.isLoading, push.isSubscribed, push.error])
 
-  function handleRetry() {
-    attemptedRef.current = false
-    try {
-      attemptedRef.current = true
-      void push.subscribe()
-    } catch {
-      // Still silent — the hint stays until subscription succeeds.
-    }
-  }
+  if (props.hideBlockedHint || push.isLoading || push.isSubscribed) return null
 
-  // The ONLY payer-visible push UI: a blocked-only retry hint. Everything
-  // else stays silent — no prompt, no choice.
-  if (!push.isLoading && !push.isSubscribed && push.error && !props.hideBlockedHint) {
+  if (permissionDenied()) {
     return (
-      <button
-        type="button"
-        data-testid="push-blocked-hint"
-        onClick={handleRetry}
-        className="w-full rounded-md bg-amber-50 px-3 py-2 text-center text-xs text-amber-800"
-      >
-        {PAY_PUSH_COPY.blockedHint}
-      </button>
+      <div className="mx-auto w-full max-w-md px-4 pt-3">
+        <p
+          data-testid="push-denied-help"
+          className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs leading-relaxed text-amber-800"
+        >
+          {PAY_PUSH_COPY.deniedHelp}
+        </p>
+      </div>
     )
   }
 
-  return null
+  return (
+    <div className="mx-auto w-full max-w-md px-4 pt-3">
+      <button
+        type="button"
+        data-testid="push-enable"
+        onClick={() => {
+          try {
+            void push.subscribe()
+          } catch {
+            // The hook surfaces errors; retry stays available.
+          }
+        }}
+        className="w-full rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-800"
+      >
+        {PAY_PUSH_COPY.blockedHint}
+      </button>
+    </div>
+  )
 }
 
 /**
- * Teacher twin: same silent auto-ask, zero UI ever — the Settings switch
- * already shows state + errors. Mount once in the dashboard header so the
- * native prompt appears on first dashboard visit instead of waiting for
- * the teacher to discover the switch. Denied → silent as usual.
+ * Teacher twin: no UI of its own. The dashboard's TeacherNotifyPrompt is the
+ * tappable affordance; this only opportunistically subscribes when permission
+ * is already granted.
  */
 export function SilentTeacherPush() {
   return <SilentPayerPush hideBlockedHint />

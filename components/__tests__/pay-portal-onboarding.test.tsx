@@ -1,7 +1,7 @@
 // Portal: no prompt, no choice — pay Data + upload only, silent push underneath.
 // Push hook module mocked; PayScreen props stand in for server-computed
 // getPayScreenInfo (frequency-aware amount/period surfaced, never recomputed).
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { PayPortalOnboarding } from '@/components/pay/pay-portal-onboarding'
 import type { PayScreenData } from '@/components/pay/pay-screen'
@@ -46,6 +46,10 @@ beforeEach(() => {
   stubPush()
 })
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('PayPortalOnboarding (no payer choice)', () => {
   it('shows no prompt UI — only due + upload', () => {
     render(<PayPortalOnboarding payData={baseData} proofs={[]} />)
@@ -54,8 +58,8 @@ describe('PayPortalOnboarding (no payer choice)', () => {
     expect(screen.getByTestId('pay-portal-onboarding')).toBeInTheDocument()
   })
 
-  it('silently subscribes underneath while payer views due', () => {
-    stubPush()
+  it('silently subscribes underneath when permission is already granted', () => {
+    vi.stubGlobal('Notification', { permission: 'granted' })
     const subscribe = vi.fn()
     render(
       <PayPortalOnboarding

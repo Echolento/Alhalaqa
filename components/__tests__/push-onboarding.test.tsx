@@ -1,6 +1,5 @@
-// Silent payer push subscriber: no prompt, no choice, no UI.
-// Browser push APIs are never touched directly — the injected `push` seam
-// drives states; the live-hook path stubs Notification.permission.
+// Payer push subscriber: silent when it can be, recoverable when it can't.
+// Never fires the permission prompt without a gesture; denied shows guidance.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { SilentPayerPush } from '@/components/pay/push-onboarding'
@@ -35,126 +34,51 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('SilentPayerPush (no payer choice)', () => {
-  it('renders nothing — payer sees only the pay screen', () => {
+describe('SilentPayerPush (recoverable)', () => {
+  it('renders nothing once subscribed', () => {
     const { container } = render(
       <SilentPayerPush
-        push={{
-          isSubscribed: false,
-          isLoading: false,
-          error: null,
-          subscribe: vi.fn(),
-          unsubscribe: vi.fn(),
-        }}
+        push={{ isSubscribed: true, isLoading: false, error: null, subscribe: vi.fn(), unsubscribe: vi.fn() }}
       />,
     )
     expect(container.innerHTML).toBe('')
   })
 
-  it('subscribes once on mount when unsubscribed (seam)', () => {
-    const subscribe = vi.fn()
-    render(
-      <SilentPayerPush
-        push={{
-          isSubscribed: false,
-          isLoading: false,
-          error: null,
-          subscribe,
-          unsubscribe: vi.fn(),
-        }}
-      />,
-    )
-    expect(subscribe).toHaveBeenCalledOnce()
+  it('renders nothing for the teacher flavor', () => {
+    vi.stubGlobal('Notification', { permission: 'default' })
+    stubPush()
+    const { container } = render(<SilentPayerPush hideBlockedHint />)
+    expect(container.innerHTML).toBe('')
   })
 
-  it('does nothing when already subscribed or errored', () => {
-    const subscribedSub = vi.fn()
-    const { unmount } = render(
-      <SilentPayerPush
-        push={{
-          isSubscribed: true,
-          isLoading: false,
-          error: null,
-          subscribe: subscribedSub,
-          unsubscribe: vi.fn(),
-        }}
-      />,
-    )
-    expect(subscribedSub).not.toHaveBeenCalled()
-    unmount()
-
-    const errorSub = vi.fn()
-    render(
-      <SilentPayerPush
-        push={{
-          isSubscribed: false,
-          isLoading: false,
-          error: 'boom',
-          subscribe: errorSub,
-          unsubscribe: vi.fn(),
-        }}
-      />,
-    )
-    expect(errorSub).not.toHaveBeenCalled()
+  it('shows a tappable enable bar and asks on tap', () => {
+    vi.stubGlobal('Notification', { permission: 'default' })
+    const { subscribe } = stubPush()
+    render(<SilentPayerPush />)
+    const btn = screen.getByTestId('push-enable')
+    fireEvent.click(btn)
+    expect(subscribe).toHaveBeenCalled()
   })
 
-  it('live path: subscribes on mount when permission already granted', () => {
+  it('shows settings guidance (not a dead button) when permission is denied', () => {
+    vi.stubGlobal('Notification', { permission: 'denied' })
+    stubPush()
+    render(<SilentPayerPush />)
+    expect(screen.getByTestId('push-denied-help')).toBeInTheDocument()
+    expect(screen.queryByTestId('push-enable')).not.toBeInTheDocument()
+  })
+
+  it('auto-subscribes on mount only when permission is already granted', () => {
     vi.stubGlobal('Notification', { permission: 'granted' })
     const { subscribe } = stubPush()
     render(<SilentPayerPush />)
     expect(subscribe).toHaveBeenCalledOnce()
   })
 
-  it('live path: asks on mount even when permission undecided', () => {
+  it('does NOT ask on mount when permission is undecided (needs a gesture)', () => {
     vi.stubGlobal('Notification', { permission: 'default' })
     const { subscribe } = stubPush()
     render(<SilentPayerPush />)
-    expect(subscribe).toHaveBeenCalledOnce()
-
-    // Once only — rerenders never re-ask.
-    fireEvent.pointerDown(document.body)
-    expect(subscribe).toHaveBeenCalledOnce()
-  })
-
-  it('shows a tap-to-retry hint only when blocked, silent otherwise', () => {
-    const subscribe = vi.fn()
-    const { container, rerender } = render(
-      <SilentPayerPush
-        push={{
-          isSubscribed: false,
-          isLoading: false,
-          error: null,
-          subscribe,
-          unsubscribe: vi.fn(),
-        }}
-      />,
-    )
-    expect(container.innerHTML).toBe('')
-
-    rerender(
-      <SilentPayerPush
-        push={{
-          isSubscribed: false,
-          isLoading: false,
-          error: 'denied',
-          subscribe,
-          unsubscribe: vi.fn(),
-        }}
-      />,
-    )
-    const hint = screen.getByTestId('push-blocked-hint')
-    expect(hint).toBeInTheDocument()
-    fireEvent.click(hint)
-    expect(subscribe).toHaveBeenCalled()
-  })
-
-  it('live path: stays silent when permission denied', () => {
-    vi.stubGlobal('Notification', { permission: 'denied' })
-    const { subscribe } = stubPush()
-    const { container } = render(<SilentPayerPush />)
-    fireEvent.pointerDown(document.body)
-    // Hook owns the denial copy; subscriber adds no UI of its own.
-    expect(container.innerHTML).toBe('')
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(subscribe).not.toHaveBeenCalled()
   })
 })
