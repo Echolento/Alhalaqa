@@ -34,14 +34,18 @@ export const PAY_PUSH_COPY = {
   unsubscribeAriaLabel: 'إيقاف إشعارات الدفع',
   loadingLabel: 'جارٍ التحقق…',
 
-  // ——— Errors (deniedHelp mirrors the teacher hook wording for consistency) ———
-  // ——— Blocked-only hint: the ONLY payer-visible push UI. Silent everywhere
-  // else; this appears solely when subscribing failed so the payer can fix
-  // it with one tap (retry) instead of wondering why verdicts never arrive.
+  // ——— Payer-visible push UI ———
+  // enableBar: shown whenever the payer isn't subscribed and CAN be prompted
+  // (permission undecided). Tapping is a gesture, so the browser/OS prompt shows.
+  enableBar: 'فعّل إشعارات الدفع لتصلك تنبيهات الرسوم — اضغط هنا',
+  // blockedHint: legacy alias kept for older surfaces.
   blockedHint:
     'إشعارات الدفع متوقفة على هذا الجهاز — اضغط هنا لإعادة المحاولة',
+  // deniedHelp: permission was permanently denied — no code can re-prompt.
+  // Covers both the browser tab (site settings) and the INSTALLED app (the
+  // permission lives in the OS app settings).
   deniedHelp:
-    'الإشعارات محظورة في المتصفح. اسمح بها من إعدادات الموقع (أيقونة القفل بجانب الرابط).',
+    'الإشعارات محظورة على هذا الجهاز. اسمح بها من إعدادات التطبيق أو الموقع (أندرويد: الإعدادات ← التطبيقات ← الحلقة ← الإشعارات)، ثم أعد المحاولة.',
   permissionDeniedLabel: 'لم يتم منح الإذن',
   errorGeneric: 'تعذر تفعيل الإشعارات — حاول مرة أخرى.',
 

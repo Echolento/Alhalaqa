@@ -78,7 +78,7 @@ export function SilentPayerPush(props: {
         }}
         className="w-full rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-800"
       >
-        {PAY_PUSH_COPY.blockedHint}
+        {PAY_PUSH_COPY.enableBar}
       </button>
     </div>
   )
