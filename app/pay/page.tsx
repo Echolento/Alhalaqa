@@ -69,6 +69,7 @@ export default async function PayPage({
     instapayHandle: string | null
     hasPending: boolean
     isPaidForPeriod: boolean
+    isPaidUp?: boolean
     periodLabel: string
   }
 
@@ -93,6 +94,7 @@ export default async function PayPage({
         instapayHandle: good.instapayHandle,
         hasPending: good.hasPending,
         isPaidForPeriod: good.isPaidForPeriod,
+        isPaidUp: good.isPaidUp,
         periodLabel: good.periodLabel,
       }}
       initialProofs={proofs}

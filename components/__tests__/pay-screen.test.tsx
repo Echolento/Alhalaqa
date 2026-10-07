@@ -51,6 +51,13 @@ describe('PayScreen', () => {
     expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
   })
 
+  it('reads paid up (nothing due) until the next cycle is due', () => {
+    render(<PayScreen data={{ ...baseData, isPaidUp: true }} proofs={[]} />)
+    expect(screen.getByTestId('paid-up')).toHaveTextContent('لا يوجد مبلغ مستحق')
+    expect(screen.queryByTestId('receipt-upload')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
+  })
+
   it('offers an image-only upload input (camera/gallery)', () => {
     render(<PayScreen data={baseData} proofs={[]} />)
     const input = screen.getByTestId('receipt-upload') as HTMLInputElement

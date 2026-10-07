@@ -18,6 +18,7 @@ import {
   duePeriodKey,
   firstOfNextMonth,
   parseISODate,
+  toISODate,
 } from '@/lib/billing-next'
 import { getInstaPayContract } from '@/lib/instapay'
 import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
@@ -307,6 +308,22 @@ export async function getPayScreenInfo(studentId: string) {
     .eq('paid', true)
     .maybeSingle()
 
+  // Paid up: the family settled a cycle and the next one has NOT come due yet.
+  // Without this, the prepay ratchet immediately presents the next cycle as due
+  // right after a payment, which reads as "paying again".
+  const todayISO = toISODate(new Date())
+  let isPaidUp = false
+  if (dueISO > todayISO && !paidRow && !pending) {
+    const { data: anyPaid } = await service
+      .from('student_payments')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('paid', true)
+      .limit(1)
+      .maybeSingle()
+    isPaidUp = !!anyPaid
+  }
+
   return {
     studentId: s.id,
     studentName: s.name || 'طالب',
@@ -319,5 +336,6 @@ export async function getPayScreenInfo(studentId: string) {
     instapayHandle: contract.instapayHandle,
     hasPending: !!pending,
     isPaidForPeriod: !!paidRow,
+    isPaidUp,
   }
 }

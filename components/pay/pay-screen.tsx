@@ -36,6 +36,8 @@ export interface PayScreenData {
   instapayHandle: string | null
   hasPending: boolean
   isPaidForPeriod: boolean
+  /** Settled and the next cycle isn't due yet → show "nothing due", no pay. */
+  isPaidUp?: boolean
 }
 
 const STATUS_LABEL: Record<PaymentProof['status'], string> = {
@@ -67,6 +69,8 @@ export function PayScreen(props: {
   // A submitted period is settled: verified (paid) OR awaiting review (pending).
   // Either way the payer must not be able to pay the SAME period twice.
   const settled = data.isPaidForPeriod || data.hasPending
+  // Settled and the next cycle hasn't come due → don't ask again yet.
+  const paidUp = !settled && !!data.isPaidUp
 
   function stageFile(file: File) {
     setStaged((prev) => {
@@ -105,7 +109,21 @@ export function PayScreen(props: {
         </Card>
       ) : null}
 
-      {!settled ? (
+      {paidUp ? (
+        <Card data-testid="paid-up" className="border-emerald-500 bg-emerald-50 shadow-md">
+          <CardContent className="flex flex-col items-center gap-1 py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
+              <Check className="h-7 w-7 text-white" />
+            </span>
+            <p className="text-xl font-black text-emerald-800">لا يوجد مبلغ مستحق</p>
+            <p className="text-sm text-emerald-700">
+              رسوم {data.studentName} مسدَّدة — الاستحقاق القادم: {data.dueDateLabel}.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!settled && !paidUp ? (
         <>
           {/* What is owed */}
           <Card>
