@@ -279,7 +279,9 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                 <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-3 space-y-2" align="start">
-                <Label htmlFor="profile-next-due">تاريخ أول فاتورة مستحقة</Label>
+                <Label htmlFor="profile-next-due">
+                  {payments.length === 0 ? 'تاريخ أول فاتورة مستحقة' : 'تاريخ الاستحقاق القادم'}
+                </Label>
                 <Input
                   id="profile-next-due"
                   data-testid="profile-next-due"
