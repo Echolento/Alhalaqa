@@ -45,7 +45,7 @@ export const PAY_PUSH_COPY = {
   // Covers both the browser tab (site settings) and the INSTALLED app (the
   // permission lives in the OS app settings).
   deniedHelp:
-    'الإشعارات محظورة على هذا الجهاز. اسمح بها من إعدادات التطبيق أو الموقع (أندرويد: الإعدادات ← التطبيقات ← الحلقة ← الإشعارات)، ثم أعد المحاولة.',
+    'الإشعارات محظورة على هذا الجهاز. اسمح بها من إعدادات التطبيق أو الموقع (أندرويد: الإعدادات ← التطبيقات ← Alhalaqa ← الإشعارات)، ثم أعد المحاولة.',
   permissionDeniedLabel: 'لم يتم منح الإذن',
   errorGeneric: 'تعذر تفعيل الإشعارات — حاول مرة أخرى.',
 
