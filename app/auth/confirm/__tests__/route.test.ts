@@ -106,13 +106,13 @@ describe('GET /auth/confirm (email link, no verifier)', () => {
     const res = await GET(
       new Request('https://x.test/auth/confirm?token_hash=abc&type=email&next=%2Fwelcome'),
     )
-    expect(locationOf(res)).toBe('https://x.test/auth/error?reason=confirm_failed')
+    expect(locationOf(res)).toContain('/auth/error?reason=confirm_failed')
   })
 
   it('redirects to error when token_hash is missing', async () => {
     const { GET } = await import('@/app/auth/confirm/route')
     const res = await GET(new Request('https://x.test/auth/confirm?type=email'))
     expect(mockSupabase.auth.verifyOtp).not.toHaveBeenCalled()
-    expect(locationOf(res)).toBe('https://x.test/auth/error?reason=confirm_failed')
+    expect(locationOf(res)).toContain('/auth/error?reason=confirm_failed')
   })
 })

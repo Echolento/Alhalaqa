@@ -40,5 +40,8 @@ export async function GET(request: NextRequest) {
     console.error('[auth/confirm] verifyOtp failed:', error?.message)
   }
 
-  return NextResponse.redirect(`${origin}/auth/error?reason=confirm_failed`)
+  // Carry the destination so the error page can offer a flow-appropriate
+  // retry (payers must NOT be dropped into the teacher password-reset flow).
+  const errorParams = new URLSearchParams({ reason: 'confirm_failed', next })
+  return NextResponse.redirect(`${origin}/auth/error?${errorParams.toString()}`)
 }
