@@ -7,7 +7,7 @@
 // it survives the email being opened in a different browser/WebView.
 // Test seam: `createClient` override; production uses the browser client.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +36,15 @@ export function PayerLogin(props: {
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  // Resend cooldown: firing several magic links invalidates the older ones, so
+  // the last email must be the one the payer uses. Make them wait.
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -64,6 +73,7 @@ export function PayerLogin(props: {
         setError(CLAIM_COPY.payerLoginFail)
       } else {
         setSent(true)
+        setCooldown(60)
       }
     } catch {
       setError(CLAIM_COPY.payerLoginFail)
@@ -103,8 +113,12 @@ export function PayerLogin(props: {
                 {CLAIM_COPY.payerLoginSent}
               </p>
             ) : null}
-            <Button type="submit" className="w-full" disabled={sending}>
-              {sending ? CLAIM_COPY.payerLoginSending : CLAIM_COPY.payerLoginSendButton}
+            <Button type="submit" className="w-full" disabled={sending || cooldown > 0}>
+              {cooldown > 0
+                ? `إعادة الإرسال بعد ${cooldown}ث`
+                : sending
+                  ? CLAIM_COPY.payerLoginSending
+                  : CLAIM_COPY.payerLoginSendButton}
             </Button>
           </form>
         </CardContent>

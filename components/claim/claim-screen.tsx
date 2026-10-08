@@ -51,6 +51,13 @@ export function ClaimScreen(props: {
   const [otpSending, setOtpSending] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [otpError, setOtpError] = useState<string | null>(null)
+  // Resend cooldown — a newer link invalidates older ones, so make them wait.
+  const [otpCooldown, setOtpCooldown] = useState(0)
+  useEffect(() => {
+    if (otpCooldown <= 0) return
+    const t = setTimeout(() => setOtpCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [otpCooldown])
   const [confirming, setConfirming] = useState(false)
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [redeemed, setRedeemed] = useState<{ studentId: string; claimedPhone: string | null } | null>(null)
@@ -105,6 +112,7 @@ export function ClaimScreen(props: {
         setOtpError(CLAIM_COPY.claimOtpFailDescription)
       } else {
         setOtpSent(true)
+        setOtpCooldown(60)
       }
     } catch {
       setOtpError(CLAIM_COPY.claimOtpFailDescription)
@@ -291,8 +299,12 @@ export function ClaimScreen(props: {
               </p>
             ) : null}
             {otpError ? <p className="text-xs text-destructive">{otpError}</p> : null}
-            <Button type="submit" className="w-full" disabled={otpSending}>
-              {otpSending ? CLAIM_COPY.claimSendingLink : CLAIM_COPY.claimSendLinkButton}
+            <Button type="submit" className="w-full" disabled={otpSending || otpCooldown > 0}>
+              {otpCooldown > 0
+                ? `إعادة الإرسال بعد ${otpCooldown}ث`
+                : otpSending
+                  ? CLAIM_COPY.claimSendingLink
+                  : CLAIM_COPY.claimSendLinkButton}
             </Button>
           </form>
         ) : (

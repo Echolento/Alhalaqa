@@ -86,7 +86,8 @@ export const CLAIM_COPY = {
   payerLoginEmailPlaceholder: 'example@email.com',
   payerLoginSendButton: 'إرسال رابط الدخول',
   payerLoginSending: 'جاري إرسال الرابط…',
-  payerLoginSent: 'تفقد بريدك — اضغط رابط الدخول ثم ارجع إلى هنا.',
+  payerLoginSent:
+    'تفقد بريدك — افتح أحدث رسالة وصلتك واضغط رابط الدخول. كل طلب جديد يلغي الرابط القديم، فاستخدم الأحدث فقط.',
   payerLoginInvalidEmail: 'يرجى إدخال بريد إلكتروني صحيح.',
   payerLoginFail: 'تعذر إرسال رابط الدخول — حاول مرة أخرى.',
 

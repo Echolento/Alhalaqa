@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle } from 'lucide-react'
+import { PAY_ENTRY_URL } from '@/lib/pay-host'
 
 // NOTE: /auth/callback appends ?reason=no_code|exchange_failed|no_session and
 // /auth/confirm appends ?reason=confirm_failed&next=<dest> — used here to show
@@ -19,7 +20,11 @@ export default async function AuthErrorPage({
   // NOT the teacher password-reset. Never send a parent to "reset password".
   const isPayerFlow =
     typeof next === 'string' && (next.startsWith('/pay') || next.startsWith('/claim'))
-  const retryHref = isPayerFlow && next ? next : '/auth/forgot-password'
+  // Payers retry from their own entry on the PAY subdomain; never the teacher
+  // reset-password flow, never the main domain.
+  const retryHref = isPayerFlow
+    ? `${PAY_ENTRY_URL}${next && next.startsWith('/') ? next : ''}`
+    : '/auth/forgot-password'
   const retryLabel = isPayerFlow ? 'العودة والمحاولة من جديد' : 'طلب رابط جديد'
 
   return (
