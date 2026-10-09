@@ -48,6 +48,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+  <script
+    defer
+    src="https://cloud.umami.is/script.js"
+    data-website-id="006f002e-d769-4c0b-9d93-29ff655b5f64"
+  />
+</head>
       <body className={`${notoArabic.className} antialiased`} suppressHydrationWarning>
         {children}
         <ServiceWorkerBootstrap />
