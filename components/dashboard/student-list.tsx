@@ -123,7 +123,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
               <Clock className="w-5 h-5 text-amber-600" />
               <p className="text-sm text-muted-foreground font-medium">المبالغ المتبقية</p>
             </div>
-            <h2 className="text-2xl font-bold">{Math.max(0, initialExpected - collected)} {currencySymbol}</h2>
+            <h2 className="text-2xl font-bold">{Math.max(0, initialExpected - initialCollected)} {currencySymbol}</h2>
           </CardContent>
         </Card>
       </div>

@@ -139,13 +139,13 @@ describe('StudentList (merged home)', () => {
     expect(btn.className).not.toContain('w-full')
   })
 
-  it('toggle updates totals locally with no second fetch', async () => {
+  it('toggle updates the received card live; remaining stays at the server value', async () => {
     render(<StudentList {...props} />)
     // pending 200 appears twice (summary card + s2 row readout)
     expect(screen.getAllByText('200 ر.س')).toHaveLength(2)
     fireEvent.click(screen.getByText('تحديد كمدفوع'))
-    // collected 100 -> 300, pending 200 -> 0 — all local, no refresh
+    // received 100 -> 300 updates live; remaining is NOT re-derived from it.
     expect(await screen.findByText('300 ر.س')).toBeInTheDocument()
-    expect(await screen.findByText('0 ر.س')).toBeInTheDocument()
+    expect(screen.queryByText('0 ر.س')).not.toBeInTheDocument()
   })
 })
