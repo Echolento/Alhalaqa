@@ -10,11 +10,19 @@ describe('describePeriod', () => {
   })
 
   it('weekly shows this-week + full Arabic range', () => {
-    const labels = describePeriod('2026-07-01', 'weekly')
+    const today = new Date(2026, 6, 3) // inside the Jul 1–7 week (local, TZ-robust)
+    const labels = describePeriod('2026-07-01', 'weekly', today)
     expect(labels.payerLabel).toContain('هذا الأسبوع')
     expect(labels.payerLabel).toContain('يوليو')
     // 7-day span: Jul 1 → Jul 7.
     expect(labels.teacherLabel).toContain('–')
+  })
+
+  it('weekly label tells the truth for past and future cycles', () => {
+    const today = new Date(2026, 6, 3)
+    expect(describePeriod('2026-06-24', 'weekly', today).payerLabel).toContain('الأسبوع الماضي')
+    expect(describePeriod('2026-07-08', 'weekly', today).payerLabel).toContain('الأسبوع القادم')
+    expect(describePeriod('2026-06-10', 'weekly', today).payerLabel).toContain('قبل')
   })
 
   it('biweekly labels cycle order within the month', () => {

@@ -33,7 +33,7 @@ interface ProofRow {
   teacher_id: string
   payer_profile_id: string
   period_key: string
-  status: 'pending' | 'verified' | 'rejected'
+  status: 'pending' | 'verified' | 'rejected' | 'undone'
   teacher_note: string | null
 }
 

@@ -70,9 +70,26 @@ export interface PeriodLabels {
   teacherLabel: string
 }
 
+/**
+ * Relative week label for the payer, computed against `today` so an overdue
+ * or upcoming cycle is labelled truthfully — never a hardcoded "this week".
+ */
+function relativeWeek(start: Date, today: Date): string {
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  const weeks = Math.floor((todayUTC - start.getTime()) / DAY_MS / 7)
+  if (weeks === 0) return 'هذا الأسبوع'
+  if (weeks === 1) return 'الأسبوع الماضي'
+  if (weeks === -1) return 'الأسبوع القادم'
+  if (weeks === 2) return 'قبل أسبوعين'
+  if (weeks === -2) return 'بعد أسبوعين'
+  if (weeks > 2) return `قبل ${weeks} أسابيع`
+  return `بعد ${Math.abs(weeks)} أسابيع`
+}
+
 export function describePeriod(
   periodKey: string,
   frequency?: BillingFrequency | null,
+  today: Date = new Date(),
 ): PeriodLabels {
   const freq = normalizeFrequency(frequency)
   const start = parseKey(periodKey)
@@ -81,7 +98,7 @@ export function describePeriod(
   if (freq === 'weekly') {
     const range = `${dayMonth(start)} – ${dayMonth(addDays(start, 6))}`
     return {
-      payerLabel: `هذا الأسبوع (${range})`,
+      payerLabel: `${relativeWeek(start, today)} (${range})`,
       teacherLabel: range,
     }
   }

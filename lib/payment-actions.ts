@@ -3,8 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
-import { getCurrentMonthKey, getPeriodKey, normalizeFrequency, type BillingFrequency } from './billing-period'
-import { duePeriodKey, firstOfNextMonth } from './billing-next'
+import { getCurrentMonthKey, getPeriodKey, getPeriodDueDate, normalizeFrequency, type BillingFrequency } from './billing-period'
+import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
 import { advanceStudentCycle } from './payment-proof-verdict'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
@@ -181,12 +181,13 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   // taps advance it below (undo never moves it: one-way ratchet).
   const { data: cycleRow } = await service
     .from('students')
-    .select('frequency, name, next_due_date')
+    .select('frequency, name, next_due_date, payment_day')
     .eq('id', studentId)
     .maybeSingle()
 
   const cycleFrequency = normalizeFrequency((cycleRow as any)?.frequency)
   const cycleDue = ((cycleRow as any)?.next_due_date ?? null) as string | null
+  const cyclePayDay = ((cycleRow as any)?.payment_day ?? 1) as number
   const monthKey = month ?? duePeriodKey(cycleDue ?? firstOfNextMonth(), cycleFrequency)
 
   // Independent reads: run together, not one-after-another (toggle latency).
@@ -238,11 +239,25 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
   if (newPaid) {
     await advanceStudentCycle(service, studentId, monthKey, cycleFrequency, cycleDue)
-  } else if (!cycleDue || monthKey < cycleDue) {
+  } else {
     // Undo reverses the advance too: point the outstanding cycle back at the
-    // now-unpaid period, so the payer's view (keyed off next_due_date) re-syncs
-    // instead of still reading the advanced cycle as paid. Never moves it later.
-    await service.from('students').update({ next_due_date: monthKey }).eq('id', studentId)
+    // now-unpaid period's DUE date (period keys are month-firsts — restoring
+    // the real due date keeps monthly payment days intact), so the payer's view
+    // re-syncs instead of still reading the advanced cycle as paid.
+    // Never moves it later (only retreats when the untoggled cycle is older).
+    const retreatDue = toISODate(getPeriodDueDate(monthKey, cycleFrequency, cyclePayDay))
+    if (!cycleDue || retreatDue < cycleDue) {
+      await service.from('students').update({ next_due_date: retreatDue }).eq('id', studentId)
+    }
+    // Revoke accepted receipts for the reopened cycle so the payer's history
+    // stops claiming "مقبول". Silent (no push) — undo is a teacher correction;
+    // the receipt image is kept as an audit trail.
+    await service
+      .from('payment_proofs')
+      .update({ status: 'undone', updated_at: new Date().toISOString() })
+      .eq('student_id', studentId)
+      .eq('period_key', monthKey)
+      .eq('status', 'verified')
   }
 
   await logActivity({

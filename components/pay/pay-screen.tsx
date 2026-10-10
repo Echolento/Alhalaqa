@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { ExternalLink, Upload, Clock, Check, XCircle } from 'lucide-react'
+import { ExternalLink, Upload, Clock, Check, XCircle, Undo2 } from 'lucide-react'
 import type { PaymentProof } from '@/lib/payment-proof-validation'
 import { PAY_PUSH_COPY } from '@/lib/pay-push-copy'
 import {
@@ -44,6 +44,7 @@ const STATUS_LABEL: Record<PaymentProof['status'], string> = {
   pending: 'قيد المراجعة',
   verified: 'مقبول',
   rejected: 'مرفوض',
+  undone: 'ملغى — كان مقبولاً',
 }
 
 export function proofStatusLabel(status: PaymentProof['status']): string {
@@ -308,6 +309,8 @@ export function PayScreen(props: {
                       <Clock className="h-4 w-4 text-amber-600" />
                     ) : proof.status === 'verified' ? (
                       <Check className="h-4 w-4 text-emerald-600" />
+                    ) : proof.status === 'undone' ? (
+                      <Undo2 className="h-4 w-4 text-amber-600" />
                     ) : (
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}
@@ -318,7 +321,7 @@ export function PayScreen(props: {
                       <span className="text-xs text-muted-foreground">{proof.teacher_note}</span>
                     )}
                     <Badge
-                      variant={proof.status === 'verified' ? 'secondary' : 'destructive'}
+                      variant={proof.status === 'verified' ? 'secondary' : proof.status === 'undone' ? 'outline' : 'destructive'}
                       data-testid={`proof-status-${proof.id}`}
                     >
                       {proofStatusLabel(proof.status)}

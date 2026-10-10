@@ -20,7 +20,7 @@ export type AllowedProofMimeType = (typeof ALLOWED_PROOF_MIME_TYPES)[number]
 
 export const ALLOWED_PROOF_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'] as const
 
-export type ProofStatus = 'pending' | 'verified' | 'rejected'
+export type ProofStatus = 'pending' | 'verified' | 'rejected' | 'undone'
 
 export interface PaymentProof {
   id: string
