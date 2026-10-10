@@ -110,9 +110,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
         <Card className="border shadow-sm">
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
-                <DollarSign className="w-5 h-5" />
-              </div>
+              <DollarSign className="w-5 h-5 text-emerald-600" />
               <p className="text-sm text-muted-foreground font-medium">المبالغ المستلمة</p>
             </div>
             <h2 className="text-2xl font-bold">{collected} {currencySymbol}</h2>
@@ -122,9 +120,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
         <Card className="border shadow-sm">
           <CardContent className="p-4 md:p-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
-                <Clock className="w-5 h-5" />
-              </div>
+              <Clock className="w-5 h-5 text-amber-600" />
               <p className="text-sm text-muted-foreground font-medium">المبالغ المتبقية</p>
             </div>
             <h2 className="text-2xl font-bold">{Math.max(0, initialExpected - collected)} {currencySymbol}</h2>
