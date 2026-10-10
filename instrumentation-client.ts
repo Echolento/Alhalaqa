@@ -7,6 +7,11 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: "https://6837aeb766471d819891f4ad586d2195@o4512226638692352.ingest.de.sentry.io/4512226667528272",
 
+  // Production only (Vercel production). Off for local dev, localhost, and
+  // Vercel preview deployments so they can't burn the Sentry quota.
+  // NEXT_PUBLIC_VERCEL_ENV is the browser-exposed counterpart of VERCEL_ENV.
+  enabled: process.env.NEXT_PUBLIC_VERCEL_ENV === "production",
+
   // Turns off collection of data that could identify users. Adjust per category:
   // https://docs.sentry.io/platforms/javascript/configuration/options/#dataCollection
   dataCollection: {

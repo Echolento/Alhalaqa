@@ -29,6 +29,12 @@ export default withSentryConfig(nextConfig, {
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
 
+  // Don't generate/upload source maps for local builds — keeps Sentry artifact
+  // usage to Vercel deployments only.
+  sourcemaps: {
+    disable: !process.env.VERCEL,
+  },
+
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
