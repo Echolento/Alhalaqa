@@ -106,6 +106,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
 
   return (
     <div className="space-y-4">
+      {/* Totals cards hidden for now
       <div className="grid grid-cols-2 gap-3 md:gap-6">
         <Card className="border shadow-sm">
           <CardContent className="p-4 md:p-6">
@@ -127,6 +128,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
           </CardContent>
         </Card>
       </div>
+      */}
 
       {students.length > 0 ? <ShareEntryCard /> : null}
 
