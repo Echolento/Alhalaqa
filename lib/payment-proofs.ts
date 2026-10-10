@@ -243,7 +243,16 @@ export async function getTeacherProofQueue(studentId: string) {
     .order('created_at', { ascending: false })
 
   if (error) return { error: error.message }
-  return { proofs: (data ?? []) as PaymentProof[] }
+
+  // Frequency travels with the proofs so callers can label periods correctly.
+  const { data: studentRow } = await service
+    .from('students')
+    .select('frequency')
+    .eq('id', studentId)
+    .maybeSingle()
+  const frequency = ((studentRow as { frequency?: string | null } | null)?.frequency) || 'monthly'
+
+  return { proofs: (data ?? []) as PaymentProof[], frequency }
 }
 
 /**

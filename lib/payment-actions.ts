@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
-import { getCurrentMonthKey, getPeriodKey, getPeriodDueDate, normalizeFrequency, type BillingFrequency } from './billing-period'
+import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
 import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
 import { advanceStudentCycle } from './payment-proof-verdict'
 import { logActivity } from './log-activity'
@@ -33,12 +33,13 @@ export async function getTeacherPayments(month?: string) {
   const today = new Date()
   const normalizedStudents = (students || []).map(s => {
     const frequency = normalizeFrequency((s as any).frequency)
-    // The period this student is viewed against: a monthly student ties to the
-    // displayed month; interval (weekly/biweekly) students keep their own cycle.
-    const studentMonthKey =
-      month && frequency === 'monthly'
-        ? month
-        : getPeriodKey(today, frequency, s.payment_day || 1)
+    // The cycle this student is viewed against: monthly ties to the selected
+    // month (a real ledger); interval students tie to their OUTSTANDING cycle
+    // derived from next_due_date — the source of truth — never the wall clock.
+    const cycleKey =
+      frequency === 'monthly'
+        ? monthKey
+        : duePeriodKey(((s as any).next_due_date ?? firstOfNextMonth(today)) as string, frequency)
     return {
       id: s.id,
       full_name: s.name || 'طالب',
@@ -48,7 +49,7 @@ export async function getTeacherPayments(month?: string) {
       frequency,
       next_due_date: ((s as any).next_due_date ?? null) as string | null,
       claimed_by: (s as any).claimed_by ?? null,
-      currentMonthKey: studentMonthKey,
+      currentMonthKey: cycleKey,
     }
   })
 
@@ -97,12 +98,29 @@ export async function getTeacherPayments(month?: string) {
       const rows = (rowsByStudent.get(s.id) ?? [])
         .slice()
         .sort((a, b) => String(b.month).localeCompare(String(a.month)))
-      // Same rule as StudentProfile: the displayed month's row, else the latest.
-      return rows.find(p => p.month === monthKey) ?? rows[0] ?? null
+      // Same rule as StudentProfile: the displayed cycle's row, else the latest.
+      return rows.find(p => p.month === s.currentMonthKey) ?? rows[0] ?? null
     })
     .filter(Boolean)
 
-  return { students: normalizedStudents, payments, currency: teacher.currency }
+  // Month totals honour frequency: an interval student contributes one price
+  // per cycle that STARTS in the selected month (weekly ≈ 4, biweekly ≈ 2),
+  // and collected counts only paid cycles inside that month.
+  let expected = 0
+  let collected = 0
+  for (const s of normalizedStudents) {
+    const starts = cycleStartsInMonth(s.frequency, monthKey, s.payment_day)
+    expected += (Number(s.monthly_price) || 0) * starts.length
+    const startsSet = new Set(starts)
+    for (const row of rowsByStudent.get(s.id) ?? []) {
+      const r = row as { paid?: boolean; month?: string; amount_paid?: number }
+      if (r.paid && r.month && startsSet.has(r.month)) {
+        collected += Number(r.amount_paid) || 0
+      }
+    }
+  }
+
+  return { students: normalizedStudents, payments, currency: teacher.currency, expected, collected }
 }
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {

@@ -62,13 +62,14 @@ export default async function UnpaidPage({
       studentName: string
       periodKey: string
       periodLabel?: string
+      frequency?: string
       storagePath: string
       imageUrl: string | null
       createdAt: string
     }> }).items ?? []).map((it) => ({
       ...it,
       periodLabel:
-        it.periodLabel ?? describePeriod(it.periodKey).teacherLabel,
+        it.periodLabel ?? describePeriod(it.periodKey, it.frequency).teacherLabel,
     })).slice()
 
   // Student-scoped reuse: restrict the enriched global list to proofs the
@@ -76,6 +77,7 @@ export default async function UnpaidPage({
   // (signed URLs) while honouring the read-only getTeacherProofQueue import.
   if (teacherScoped && (teacherScoped as { proofs?: Array<{ id: string; status: string }> }).proofs) {
     const scoped = (teacherScoped as { proofs: Array<{ id: string; status: string }> }).proofs
+    const scopedFrequency = ((teacherScoped as { frequency?: string }).frequency) || 'monthly'
     const pendingIds = new Set(scoped.filter((p) => p.status === 'pending').map((p) => p.id))
     items = items.filter((it) => pendingIds.has(it.id))
     // Proofs known to the per-student queue but missing from the global
@@ -94,7 +96,7 @@ export default async function UnpaidPage({
         studentId: String(full.student_id ?? studentFilter ?? ''),
         studentName: 'طالب',
         periodKey: String(full.period_key ?? ''),
-        periodLabel: describePeriod(String(full.period_key ?? '')).teacherLabel,
+        periodLabel: describePeriod(String(full.period_key ?? ''), scopedFrequency).teacherLabel,
         storagePath: String(full.storage_path ?? ''),
         imageUrl: null,
         createdAt: String(full.created_at ?? ''),
@@ -114,6 +116,7 @@ export default async function UnpaidPage({
       status: string
       imageUrl?: string | null
       studentName?: string
+      frequency?: string
       storage_path?: string
     } }).proof
     if (entry && entry.status === 'pending') {
@@ -123,7 +126,7 @@ export default async function UnpaidPage({
           studentId: entry.student_id,
           studentName: entry.studentName ?? 'طالب',
           periodKey: entry.period_key,
-          periodLabel: describePeriod(entry.period_key).teacherLabel,
+          periodLabel: describePeriod(entry.period_key, entry.frequency).teacherLabel,
           storagePath: entry.storage_path ?? '',
           imageUrl: entry.imageUrl ?? null,
           createdAt: '',

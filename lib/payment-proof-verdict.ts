@@ -331,6 +331,8 @@ export interface UnpaidQueueItem {
   periodKey: string
   /** Teacher-facing human label (month, batch + range, or week range). */
   periodLabel: string
+  /** Student billing frequency — lets labels stay correct without re-derivation. */
+  frequency?: string
   storagePath: string
   imageUrl: string | null
   status: 'pending'
@@ -403,6 +405,7 @@ export async function getUnpaidQueue() {
         String(p['period_key']),
         (frequencyById.get(String(p['student_id'])) ?? 'monthly') as 'weekly' | 'biweekly' | 'monthly',
       ).teacherLabel,
+      frequency: frequencyById.get(String(p['student_id'])) ?? 'monthly',
       storagePath,
       imageUrl,
       status: 'pending',
@@ -435,10 +438,11 @@ export async function getProofReceipt(proofId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, name')
+    .select('id, name, frequency')
     .eq('id', proof.student_id)
     .maybeSingle()
   const studentName = ((student as { name?: string | null } | null)?.name || 'طالب') as string
+  const frequency = ((student as { frequency?: string | null } | null)?.frequency) || 'monthly'
 
   let imageUrl: string | null = null
   try {
@@ -478,6 +482,6 @@ export async function getProofReceipt(proofId: string) {
   }
 
   return {
-    proof: { ...proof, studentName, imageUrl },
+    proof: { ...proof, studentName, imageUrl, frequency },
   }
 }

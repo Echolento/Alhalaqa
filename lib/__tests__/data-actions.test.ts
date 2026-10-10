@@ -694,6 +694,58 @@ describe('getTeacherPayments', () => {
     expect(paid?.paid).toBe(true)
     expect(paid?.month).toBe('2026-11-01')
   })
+
+  it('month expected scales with frequency (weekly pays several cycles, not one)', async () => {
+    const weeklyId = 'student-w'
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [
+          { id: studentId, name: 'Monthly', monthly_price: 100, payment_day: 1, frequency: 'monthly' },
+          { id: weeklyId, name: 'Weekly', monthly_price: 200, payment_day: 1, frequency: 'weekly', next_due_date: '2026-09-07' },
+        ],
+      })
+      b.in = vi.fn().mockResolvedValue({ data: [] })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const { cycleStartsInMonth } = await import('@/lib/billing-period')
+    const result = await getTeacherPayments('2026-09-01')
+    const weeklyCycles = cycleStartsInMonth('weekly', '2026-09-01', 1).length
+    expect(weeklyCycles).toBeGreaterThanOrEqual(4)
+    expect(result.expected).toBe(100 + 200 * weeklyCycles)
+  })
+
+  it('collected counts only paid cycles inside the selected month', async () => {
+    const weeklyId = 'student-w'
+    const { cycleStartsInMonth } = await import('@/lib/billing-period')
+    const starts = cycleStartsInMonth('weekly', '2026-09-01', 1)
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: weeklyId, name: 'Weekly', monthly_price: 200, payment_day: 1, frequency: 'weekly', next_due_date: starts[0] }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'a', student_id: weeklyId, month: starts[0], paid: true, amount_paid: 200 },
+          { id: 'b', student_id: weeklyId, month: starts[1], paid: true, amount_paid: 200 },
+          { id: 'c', student_id: weeklyId, month: '2026-08-25', paid: true, amount_paid: 200 },
+        ],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-09-01')
+    expect(result.collected).toBe(400)
+  })
 })
 
 describe('updateStudentMonthlyPrice', () => {

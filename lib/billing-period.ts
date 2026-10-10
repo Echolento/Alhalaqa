@@ -127,3 +127,36 @@ export function getDuePeriodInfo(
   const periodKey = getPeriodKey(date, freq, anchor)
   return { periodKey, dueDate: getPeriodDueDate(periodKey, freq, anchor), amount: monthlyPrice || 0 }
 }
+
+/**
+ * Cycle-start keys that fall inside a calendar month — the number of billing
+ * cycles a student owes for that month. Monthly → the month itself (1).
+ * Weekly → 4 or 5; biweekly → 2 or 3, per the student's anchor grid.
+ * Uses UTC day-stepping (no DST drift) on the same grid as getPeriodKey.
+ */
+export function cycleStartsInMonth(
+  frequency: BillingFrequency | null | undefined,
+  monthKey: string,
+  anchorDay?: number,
+): string[] {
+  const freq = normalizeFrequency(frequency)
+  const [y, m] = monthKey.split('-').map(Number)
+  if (freq === 'monthly') return [formatMonthKey(y, m)]
+
+  const interval = freq === 'weekly' ? 7 : 14
+  const anchor = Math.min(Math.max(anchorDay || 1, 1), 31)
+  const ref = Date.UTC(2024, 0, 1 + ((anchor - 1) % interval))
+  const monthStart = Date.UTC(y, m - 1, 1)
+  const monthEnd = Date.UTC(y, m, 0) // day 0 → last day of month m
+
+  const diffDays = Math.floor((monthStart - ref) / DAY_MS)
+  const firstK = Math.ceil(diffDays / interval)
+
+  const starts: string[] = []
+  for (let ms = ref + firstK * interval * DAY_MS; ms <= monthEnd; ms += interval * DAY_MS) {
+    if (ms < monthStart) continue
+    const d = new Date(ms)
+    starts.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`)
+  }
+  return starts
+}

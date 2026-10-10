@@ -22,12 +22,9 @@ export default async function DashboardPage({
 
   const { month } = await searchParams
   const currentMonth = month || new Date().toISOString().slice(0, 7) + '-01'
-  const { students, payments, currency } = await getTeacherPayments(currentMonth)
+  const { students, payments, currency, expected, collected } = await getTeacherPayments(currentMonth)
   // Teacher-as-payer shortcut: visible only when the caller owns ≥1 claim.
   const showMyPayments = await callerHasClaimedStudents()
-
-  const totalCollected = payments.reduce((sum: number, p: any) => sum + (Number(p.amount_paid) || 0), 0)
-  const totalExpected = students.reduce((sum: number, s: any) => sum + (Number(s.monthly_price) || 0), 0)
 
   const monthDate = new Date(currentMonth)
   const monthLabel = monthDate.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long', year: 'numeric' })
@@ -70,8 +67,8 @@ export default async function DashboardPage({
         payments={payments}
         month={currentMonth}
         currency={currency}
-        initialCollected={totalCollected}
-        initialExpected={totalExpected}
+        initialCollected={collected}
+        initialExpected={expected}
       />
     </div>
   )

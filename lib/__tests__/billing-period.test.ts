@@ -7,7 +7,27 @@ import {
   nextMonthKey,
   getBillingMonthKey,
   getCurrentBillingMonthKey,
+  cycleStartsInMonth,
 } from '@/lib/billing-period'
+
+describe('cycleStartsInMonth', () => {
+  it('monthly is exactly one cycle', () => {
+    expect(cycleStartsInMonth('monthly', '2026-09-01')).toEqual(['2026-09-01'])
+  })
+
+  it('weekly yields 4–5 cycle starts, all inside the month', () => {
+    const starts = cycleStartsInMonth('weekly', '2026-09-01', 1)
+    expect(starts.length).toBeGreaterThanOrEqual(4)
+    expect(starts.length).toBeLessThanOrEqual(5)
+    for (const s of starts) expect(s.startsWith('2026-09-')).toBe(true)
+  })
+
+  it('biweekly yields 2–3 cycle starts', () => {
+    const starts = cycleStartsInMonth('biweekly', '2026-09-01', 1)
+    expect(starts.length).toBeGreaterThanOrEqual(2)
+    expect(starts.length).toBeLessThanOrEqual(3)
+  })
+})
 
 describe('formatMonthKey', () => {
   it('formats year and month into YYYY-MM-01', () => {
