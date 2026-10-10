@@ -47,3 +47,7 @@ diagnose_db.cjs
 tunnel.log
 tunnel-err.log
 dev-server.log
+*.log
+
+# Sentry Config File
+.env.sentry-build-plugin
