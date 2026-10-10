@@ -84,16 +84,35 @@ async function claimFire(
   return (data?.length ?? 0) > 0
 }
 
+/**
+ * Authorized if the bearer matches either the legacy env secret (Vercel) or a
+ * database-minted token verified via the SECURITY DEFINER `verify_cron_secret`
+ * RPC. The DB token is generated in Vault and never exposed — so the hourly
+ * pg_cron trigger needs no shared secret on the deployment.
+ */
+async function isAuthorized(request: Request, supabase: Service): Promise<boolean> {
+  const authHeader = request.headers.get('authorization') ?? ''
+  const provided = authHeader.replace(/^Bearer\s+/i, '').trim()
+  if (!provided) return false
+  if (process.env.CRON_SECRET && provided === process.env.CRON_SECRET) return true
+  try {
+    const { data, error } = await supabase.rpc('verify_cron_secret', { provided })
+    if (error) return false
+    return data === true
+  } catch {
+    return false
+  }
+}
+
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const supabase = createServiceClient()
+  if (!(await isAuthorized(request, supabase))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   const now = new Date()
   const triggers = dueTriggers(now)
   const dateKey = cairoDateKey(now)
-  const supabase = createServiceClient()
 
   const { data: teachers } = await supabase
     .from('teachers')
