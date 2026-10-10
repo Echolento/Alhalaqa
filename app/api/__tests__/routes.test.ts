@@ -19,7 +19,7 @@ const mockSupabase = {
     exchangeCodeForSession: vi.fn(),
     getUser: vi.fn(),
   },
-  from: vi.fn(() => createBuilder()),
+  from: vi.fn((_table: string) => createBuilder()),
 }
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -63,7 +63,7 @@ describe('GET /api/teachers/[id]/display', () => {
     builder.select.mockReturnValue(builder)
     builder.eq.mockReturnValue(builder)
 
-    const response = await GET(new Request('http://localhost'), { params: { id: 'teacher-1' } })
+    const response = await GET(new Request('http://localhost'), { params: Promise.resolve({ id: 'teacher-1' }) })
     const body = await response.json()
 
     expect(response.status).toBe(200)
@@ -79,7 +79,7 @@ describe('GET /api/teachers/[id]/display', () => {
     builder.select.mockReturnValue(builder)
     builder.eq.mockReturnValue(builder)
 
-    const response = await GET(new Request('http://localhost'), { params: { id: 'nonexistent' } })
+    const response = await GET(new Request('http://localhost'), { params: Promise.resolve({ id: 'nonexistent' }) })
     expect(response.status).toBe(404)
   })
 })

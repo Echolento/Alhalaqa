@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getOverdueStudents } from '@/lib/overdue'
-import { normalizeFrequency } from '@/lib/billing-period'
-import { duePeriodKey, firstOfNextMonth } from '@/lib/billing-next'
+import { outstandingCycleKey } from '@/lib/billing-next'
 import { sendOverdueEmail } from '@/lib/email-actions'
 import {
   buildAutoDuePayload,
@@ -10,7 +9,7 @@ import {
   buildOverdueEscalationPayload,
   type PushPayload,
 } from '@/lib/push-payloads'
-import { sendPushNotification } from '@/lib/push'
+import { getPushSubscription, sendPushNotification } from '@/lib/push'
 import {
   cairoDateKey,
   dueTriggers,
@@ -23,18 +22,6 @@ export const dynamic = 'force-dynamic'
 
 type Service = ReturnType<typeof createServiceClient>
 
-async function getSubscription(
-  service: Service,
-  profileId: string,
-): Promise<{ endpoint: string; p256dh: string; auth: string } | null> {
-  const { data } = await service
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('profile_id', profileId)
-    .maybeSingle()
-  return (data as { endpoint: string; p256dh: string; auth: string } | null) ?? null
-}
-
 async function pushToProfile(
   service: Service,
   profileId: string,
@@ -46,7 +33,7 @@ async function pushToProfile(
     console.log('[cron-push] skipped push: VAPID keys not configured')
     return { attempted: false, reason: 'vapid_not_configured' }
   }
-  const subscription = await getSubscription(service, profileId)
+  const subscription = await getPushSubscription(service, profileId)
   if (!subscription) {
     console.log('[cron-push] skipped push: no subscription for profile')
     return { attempted: false, reason: 'no_subscription' }
@@ -138,11 +125,7 @@ export async function GET(request: Request) {
     const today = new Date()
     // Outstanding cycle key per student — from next_due_date, never the
     // wall clock. Legacy rows without a date bill the 1st of next month.
-    const cycleKeyFor = (row: any): string =>
-      duePeriodKey(
-        (row.next_due_date as string | null) ?? firstOfNextMonth(today),
-        normalizeFrequency(row.frequency ?? 'monthly'),
-      )
+    const cycleKeyFor = (row: any): string => outstandingCycleKey(row, today)
     const months = [...new Set(students.map((s) => cycleKeyFor(s)))]
 
     const [{ data: payments }, { data: pendingProofs }] = await Promise.all([

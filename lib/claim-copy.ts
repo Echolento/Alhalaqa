@@ -133,4 +133,3 @@ export const CLAIM_COPY = {
   inviteRegeneratedNote: 'إصدار رابط جديد يُلغي الرابط السابق تلقائياً.',
 } as const
 
-export type ClaimCopy = typeof CLAIM_COPY

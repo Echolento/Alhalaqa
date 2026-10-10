@@ -11,15 +11,14 @@ import { triggerManualRemind } from '@/lib/push-triggers'
 import { logActivity } from '@/lib/log-activity'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { createServiceClient } from '@/lib/supabase/service'
-import { normalizeFrequency } from '@/lib/billing-period'
-import { duePeriodKey, firstOfNextMonth } from '@/lib/billing-next'
+import { outstandingCycleKey } from '@/lib/billing-next'
 
 /**
  * Outstanding cycle key for a manual nudge: the student's next-due date,
  * never whatever month grid the teacher happens to be viewing. Legacy rows
  * without a date bill the 1st of next month.
  */
-async function outstandingCycleKey(studentId: string): Promise<string> {
+async function fetchOutstandingCycleKey(studentId: string): Promise<string> {
   try {
     const service = createServiceClient()
     const { data } = await service
@@ -28,12 +27,9 @@ async function outstandingCycleKey(studentId: string): Promise<string> {
       .eq('id', studentId)
       .maybeSingle()
     const row = (data ?? null) as { frequency?: unknown; next_due_date?: string | null } | null
-    return duePeriodKey(
-      row?.next_due_date ?? firstOfNextMonth(),
-      normalizeFrequency(row?.frequency),
-    )
+    return outstandingCycleKey(row ?? {})
   } catch {
-    return duePeriodKey(firstOfNextMonth(), 'monthly')
+    return outstandingCycleKey({})
   }
 }
 
@@ -62,7 +58,7 @@ export async function sendManualRemind(
       {
         // 'manual_remind' lands in a later slice's ActionType union; cast keeps
         // this slice additive-only (no edits to shared types/log files).
-        actionType: 'manual_remind' as never,
+        actionType: 'manual_remind',
         entityType: 'student',
         entityId: params.studentId,
         details: {
@@ -70,12 +66,12 @@ export async function sendManualRemind(
           mode: 'test_no_payer',
           description: REMIND_COPY.remindLogTestMode(params.studentName),
         },
-      } as never,
+      },
     )
     return { success: false, reason: 'no_payer_yet', testMode: true }
   }
 
-  const periodKey = params.periodKey ?? (await outstandingCycleKey(params.studentId))
+  const periodKey = params.periodKey ?? (await fetchOutstandingCycleKey(params.studentId))
   const result = (await triggerManualRemind({
     studentId: params.studentId,
     payerProfileId: params.payerProfileId,
@@ -92,7 +88,7 @@ export async function sendManualRemind(
   if (!result.success) {
     await logActivity(
       {
-        actionType: 'manual_remind' as never,
+        actionType: 'manual_remind',
         entityType: 'student',
         entityId: params.studentId,
         details: {
@@ -100,21 +96,21 @@ export async function sendManualRemind(
           reason: result.reason ?? 'send_failed',
           description: REMIND_COPY.remindLogManual(params.studentName),
         },
-      } as never,
+      },
     )
     return { success: false, reason: result.reason ?? 'send_failed', testMode: false }
   }
 
   await logActivity(
     {
-      actionType: 'manual_remind' as never,
+      actionType: 'manual_remind',
       entityType: 'student',
       entityId: params.studentId,
       details: {
         student_name: params.studentName,
         description: REMIND_COPY.remindLogManual(params.studentName),
       },
-    } as never,
+    },
   )
   return { success: true, testMode: false }
 }

@@ -1,5 +1,5 @@
 import { type EmailOtpType } from '@supabase/supabase-js'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolvePostAuthDestination } from '@/lib/auth-bootstrap'
 import { sanitizeRedirectTo } from '@/lib/auth-redirect'
@@ -10,7 +10,7 @@ import { sanitizeRedirectTo } from '@/lib/auth-redirect'
 // never verifies, so an email-client prefetch / double-open can't burn the
 // link before the user taps. Verifies server-side (token_hash, no PKCE).
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   const origin = new URL(request.url).origin
   const form = await request.formData()
   const token_hash = form.get('token_hash')

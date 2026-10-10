@@ -1,17 +1,16 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
+import { requireUser } from './action-context'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
 import { normalizeFrequency, type BillingFrequency } from './billing-period'
 import { firstOfNextMonth, isValidDueDate } from './billing-next'
 
 export async function getTeacherStudents() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const ctx = await requireUser()
+  if ('error' in ctx) return []
+  const { user, supabase } = ctx
 
   const { data: teacher } = await supabase
     .from('teachers')
@@ -43,11 +42,10 @@ export async function getTeacherStudents() {
  * stays usable even when the teacher row is missing pieces.
  */
 export async function getBillingDefaults() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const ctx = await requireUser()
   const fallback = { frequency: 'monthly' as const, price: 0, nextDueDate: firstOfNextMonth() }
-  if (!user) return fallback
-  const service = createServiceClient()
+  if ('error' in ctx) return fallback
+  const { user, service } = ctx
   const teacherId = await getOwnTeacherId(service, user.id)
   if (!teacherId) return fallback
   const { data: teacher } = await service
@@ -79,10 +77,9 @@ function normalizeNewStudentInput(input?: string | NewStudentInput): NewStudentI
 }
 
 export async function addStudent(name: string, input?: string | NewStudentInput) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const opts = normalizeNewStudentInput(input)
 
@@ -145,10 +142,9 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
  * Strict date gate — garbage never writes. Ownership-checked.
  */
 export async function updateStudentNextDue(studentId: string, nextDueDate: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
@@ -164,11 +160,11 @@ export async function updateStudentNextDue(studentId: string, nextDueDate: strin
   if (error) return { error: error.message }
 
   await logActivity({
-    actionType: 'next_due_update' as never,
+    actionType: 'next_due_update',
     entityType: 'student',
     entityId: studentId,
     details: { next_due_date: nextDueDate },
-  } as never, user.id)
+  }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
@@ -176,10 +172,9 @@ export async function updateStudentNextDue(studentId: string, nextDueDate: strin
 }
 
 export async function updateStudent(studentId: string, name: string, phone?: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
@@ -214,10 +209,9 @@ export async function updateStudent(studentId: string, name: string, phone?: str
 }
 
 export async function addMultipleStudents(students: { name: string; phone?: string }[]) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   // Service client bypasses RLS: only ever use the caller's own teacher id.
   const teacherId = await getOwnTeacherId(service, user.id)
@@ -269,10 +263,9 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
 }
 
 export async function deleteStudent(studentId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }

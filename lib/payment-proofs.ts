@@ -10,19 +10,19 @@
 // contract buildReceiptUploadedPayload from lib/push-payloads.ts.
 
 import { describePeriod } from '@/lib/period-label'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent } from '@/lib/ownership'
 import { normalizeFrequency } from '@/lib/billing-period'
 import {
   duePeriodKey,
-  firstOfNextMonth,
+  outstandingCycleKey,
+  outstandingDueISO,
   parseISODate,
   toISODate,
 } from '@/lib/billing-next'
 import { getInstaPayContract } from '@/lib/instapay'
 import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
-import { sendPushNotification } from '@/lib/push'
+import { getPushSubscription, sendPushNotification } from '@/lib/push'
 import {
   PAYMENT_PROOFS_BUCKET,
   PROOF_HISTORY_LIMIT,
@@ -42,11 +42,6 @@ interface StudentBillingRow {
   next_due_date: string | null
 }
 
-/** Outstanding cycle due date; legacy rows without one bill the 1st of next month. */
-function outstandingDueISO(s: Pick<StudentBillingRow, 'next_due_date'>): string {
-  return s.next_due_date ?? firstOfNextMonth()
-}
-
 interface TeacherBillingRow {
   id: string
   profile_id: string
@@ -63,11 +58,9 @@ export async function uploadPaymentProof(params: {
   sizeBytes: number
   fileBytes: Uint8Array | Buffer
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const fileCheck = validateProofFile({
     fileName: params.fileName,
@@ -75,8 +68,6 @@ export async function uploadPaymentProof(params: {
     sizeBytes: params.sizeBytes,
   })
   if (!fileCheck.ok) return { error: fileCheck.error }
-
-  const service = createServiceClient()
 
   const { data: student } = await service
     .from('students')
@@ -89,7 +80,7 @@ export async function uploadPaymentProof(params: {
 
   // Period key is server-computed from the OUTSTANDING next-due cycle —
   // never the wall clock, never trusted from the client.
-  const periodKey = duePeriodKey(outstandingDueISO(s), normalizeFrequency(s.frequency))
+  const periodKey = outstandingCycleKey(s)
 
   const storagePath = buildProofStoragePath({
     teacherId: s.teacher_id,
@@ -133,11 +124,7 @@ export async function uploadPaymentProof(params: {
 
     const teacherProfileId = (teacher as { profile_id: string } | null)?.profile_id
     if (teacherProfileId) {
-      const { data: subscription } = await service
-        .from('push_subscriptions')
-        .select('endpoint, p256dh, auth')
-        .eq('profile_id', teacherProfileId)
-        .maybeSingle()
+      const subscription = await getPushSubscription(service, teacherProfileId)
 
       if (subscription) {
         const target = buildReceiptUploadedPayload({
@@ -145,10 +132,7 @@ export async function uploadPaymentProof(params: {
           studentName: s.name || 'طالب',
           receiptId: proofId,
         })
-        await sendPushNotification(
-          subscription as { endpoint: string; p256dh: string; auth: string },
-          target.payload,
-        )
+        await sendPushNotification(subscription, target.payload)
       }
     }
   } catch {
@@ -163,13 +147,9 @@ export async function uploadPaymentProof(params: {
  * everyone else sees only their own uploads (wrong-payer isolation).
  */
 export async function listProofHistory(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const { data: student } = await service
     .from('students')
@@ -225,13 +205,9 @@ export async function listProofHistory(studentId: string) {
 
 /** Teacher-only queue read. Wrong teacher => Forbidden. */
 export async function getTeacherProofQueue(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
   if (!ownerTeacherId) return { error: 'Forbidden' }
@@ -262,13 +238,9 @@ export async function getTeacherProofQueue(studentId: string) {
  * payScreenUrl). Prepay model: next_due_date opens the period being paid for.
  */
 export async function getPayScreenInfo(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const { data: student } = await service
     .from('students')

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Check, Clock, User, ChevronRight, Pencil, Trash2, Phone, Wallet, CalendarDays, Receipt, AlertTriangle, Undo2 } from 'lucide-react'
+import { Check, Clock, User, ChevronRight, Pencil, Trash2, Phone, Wallet, CalendarDays, Receipt, AlertTriangle, Undo2, type LucideIcon } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -41,10 +41,11 @@ import { REMIND_COPY } from '@/lib/remind-copy'
 import { FREQUENCY_PRICE_WORD } from '@/lib/onboarding-copy'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
+import type { StudentView, PaymentView } from '@/lib/types'
 
 interface StudentProfileProps {
-  student: any
-  payments: any[]
+  student: StudentView
+  payments: PaymentView[]
   month: string
   currency: string
 }
@@ -55,7 +56,7 @@ function Row({
   children,
   edit,
 }: {
-  icon: any
+  icon: LucideIcon
   label: string
   children: React.ReactNode
   edit?: React.ReactNode
@@ -81,10 +82,10 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   // The price label must match the student's cycle — "الاشتراك الشهري" on a
   // weekly student read as a contradiction.
   const freqWord =
-    FREQUENCY_PRICE_WORD[(student.frequency as string) || 'monthly'] ?? 'الشهري'
+    FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
   const current = payments.find((p) => p.month === month) || payments[0]
   const isPaid = current?.paid || false
-  const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
+  const status = getPaymentStatus(isPaid, { pending: !isPaid && !!student.hasPendingProof })
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)
@@ -103,26 +104,26 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     const phone = student.phone || undefined
     const result = await updateStudent(student.id, nameVal, phone)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
       setEditField(null)
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
   const savePhone = async () => {
     setLoading(true)
     const phone = phoneVal ? `+20${phoneVal}` : undefined
-    const result = await updateStudent(student.id, student.full_name || student.name, phone)
+    const result = await updateStudent(student.id, student.full_name || student.name || '', phone)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
       setEditField(null)
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
@@ -135,12 +136,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     setLoading(true)
     const result = await updateStudentMonthlyPrice(student.id, price, month)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
       setEditField(null)
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
@@ -155,28 +156,28 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     setLoading(true)
     const result = await updateStudentFrequency(student.id, frequency)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم الحفظ — يُطبق من الدورة القادمة' })
       setFreqOpen(false)
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
   const [nextDueVal, setNextDueVal] = useState(
-    (student.next_due_date as string | null) ?? '',
+    student.next_due_date ?? '',
   )
   const saveNextDue = async () => {
     setLoading(true)
     const result = await updateStudentNextDue(student.id, nextDueVal)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
       setDayOpen(false)
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
@@ -184,11 +185,11 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     setLoading(true)
     const result = await toggleStudentPayment(student.id, month)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: '✓ تم التحديث' })
       refresh()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
@@ -196,11 +197,11 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     setLoading(true)
     const result = await deleteStudent(student.id)
     setLoading(false)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: 'تم الحذف' })
       router.push('/dashboard')
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
   }
 
@@ -274,7 +275,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           icon={CalendarDays}
           label="تاريخ الاستحقاق"
           edit={
-            <Popover open={dayOpen} onOpenChange={(o) => { setDayOpen(o); if (o) setNextDueVal((student.next_due_date as string | null) ?? '') }}>
+            <Popover open={dayOpen} onOpenChange={(o) => { setDayOpen(o); if (o) setNextDueVal(student.next_due_date ?? '') }}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
               </PopoverTrigger>
@@ -339,14 +340,14 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
       {!isPaid || !student.claimed_by ? (
         <Card>
           <CardContent className="p-4 space-y-3" dir="rtl">
-            {!isPaid && (student as any).hasPendingProof ? (
+            {!isPaid && student.hasPendingProof ? (
               <Link href={`/dashboard/unpaid?student=${student.id}`}>
                 <Button className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-600 font-bold">
                   مراجعة الإيصال
                 </Button>
               </Link>
             ) : null}
-            {!isPaid && !(student as any).hasPendingProof && student.claimed_by ? (
+            {!isPaid && !student.hasPendingProof && student.claimed_by ? (
               <RemindButton
                 studentId={student.id}
                 studentName={student.full_name || student.name || 'طالب'}

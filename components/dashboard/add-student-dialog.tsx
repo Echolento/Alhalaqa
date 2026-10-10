@@ -23,9 +23,10 @@ import { Badge } from '@/components/ui/badge'
 import { isContactPickerAvailable, pickContacts, findDuplicates } from '@/lib/contacts'
 import { useRouter } from 'next/navigation'
 import { REMIND_COPY } from '@/lib/remind-copy'
+import type { StudentView } from '@/lib/types'
 
 interface AddStudentDialogProps {
-  students: { name?: string | null; full_name?: string | null; phone?: string | null }[]
+  students: StudentView[]
 }
 
 export function AddStudentDialog({ students }: AddStudentDialogProps) {
@@ -80,7 +81,10 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
     try {
       const contacts = await pickContacts()
       if (!contacts.length) return
-      const duplicates = findDuplicates(contacts, students as any)
+      const duplicates = findDuplicates(
+        contacts,
+        students.map((s) => ({ name: s.name ?? null, phone: s.phone ?? null })),
+      )
       const items = contacts.map((c, i) => ({
         id: `import-${Date.now()}-${i}`,
         name: c.name,

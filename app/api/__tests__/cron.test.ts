@@ -11,9 +11,13 @@ vi.mock('@/lib/email-actions', () => ({
   sendOverdueEmail: (...args: any[]) => mockSendEmail(...args),
 }))
 
-vi.mock('@/lib/push', () => ({
-  sendPushNotification: (...args: any[]) => mockSendPush(...args),
-}))
+vi.mock('@/lib/push', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/push')>()
+  return {
+    ...actual,
+    sendPushNotification: (...args: any[]) => mockSendPush(...args),
+  }
+})
 
 // September = Cairo UTC+3. Hours below pin exact Cairo trigger windows.
 const AT_08 = new Date('2026-09-24T05:00:00Z') // 08:00 Cairo

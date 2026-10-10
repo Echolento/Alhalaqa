@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 const mockService = {
-  from: vi.fn(() => {
+  from: vi.fn((_table: string) => {
     const builder: Record<string, any> = {
       select: vi.fn(() => builder),
       eq: vi.fn(() => builder),

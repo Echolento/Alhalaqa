@@ -15,16 +15,15 @@
 // (proof is kept even when push is unavailable, mirroring uploadPaymentProof).
 // A true single-transaction RPC is a follow-up — see gaps in the slice report.
 
-import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent, getOwnTeacherId } from '@/lib/ownership'
 import { buildVerdictPayload } from '@/lib/push-payloads'
 import { sendPushNotification } from '@/lib/push'
 import { logActivity } from '@/lib/log-activity'
 import { PAYMENT_PROOFS_BUCKET } from '@/lib/payment-proof-validation'
 import { describePeriod } from '@/lib/period-label'
-import { advanceDueDate } from '@/lib/billing-next'
-import { normalizeFrequency } from '@/lib/billing-period'
+import { advanceStudentCycle } from '@/lib/billing-cycle'
 import { revalidatePath } from 'next/cache'
 
 interface ProofRow {
@@ -33,6 +32,7 @@ interface ProofRow {
   teacher_id: string
   payer_profile_id: string
   period_key: string
+  storage_path: string
   status: 'pending' | 'verified' | 'rejected' | 'undone'
   teacher_note: string | null
 }
@@ -46,28 +46,6 @@ interface StudentPriceRow {
   teacher_id?: string
 }
 
-/**
- * Settle advancement (next-due engine): after a period is paid, the
- * student's next_due_date moves one interval past the SETTLED period due —
- * never the pay date, so late payment never drifts the rhythm. One-way
- * ratchet: when the stored date already passed the settled period (second
- * proof, same cycle), it is left alone — never retreated.
- */
-export async function advanceStudentCycle(
-  service: ReturnType<typeof createServiceClient>,
-  studentId: string,
-  settledPeriodKey: string,
-  frequency: unknown,
-  currentNextDue: string | null | undefined,
-): Promise<string | null> {
-  if (!currentNextDue || currentNextDue <= settledPeriodKey) {
-    const next = advanceDueDate(settledPeriodKey, normalizeFrequency(frequency as never))
-    await service.from('students').update({ next_due_date: next }).eq('id', studentId)
-    return next
-  }
-  return null
-}
-
 interface TeacherPriceRow {
   id: string
   default_monthly_price: number | null
@@ -76,7 +54,7 @@ interface TeacherPriceRow {
 async function fetchProof(service: ReturnType<typeof createServiceClient>, proofId: string) {
   const { data } = await service
     .from('payment_proofs')
-    .select('id, student_id, teacher_id, payer_profile_id, period_key, status, teacher_note')
+    .select('id, student_id, teacher_id, payer_profile_id, period_key, storage_path, status, teacher_note')
     .eq('id', proofId)
     .maybeSingle()
   return (data ?? null) as ProofRow | null
@@ -125,13 +103,9 @@ async function notifyPayer(params: {
  * and no duplicate push.
  */
 export async function verifyProof(proofId: string, teacherNote?: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const proof = await fetchProof(service, proofId)
   if (!proof) return { error: 'الإيصال غير موجود' }
@@ -215,7 +189,7 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
 
   await logActivity(
     {
-      actionType: 'proof_verified' as never,
+      actionType: 'proof_verified',
       entityType: 'payment_proof',
       entityId: proof.id,
       details: {
@@ -225,7 +199,7 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
         amount: effectiveAmount,
         description: `تحقق من إيصال — ${studentName}`,
       },
-    } as never,
+    },
     user.id,
   )
 
@@ -253,16 +227,12 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
  * payer still notified with the teacher note. Idempotent on double-reject.
  */
 export async function rejectProof(proofId: string, teacherNote: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const note = (teacherNote ?? '').trim()
   if (!note) return { error: 'سبب الرفض مطلوب — اكتب ملاحظة لولي الأمر.' }
-
-  const service = createServiceClient()
 
   const proof = await fetchProof(service, proofId)
   if (!proof) return { error: 'الإيصال غير موجود' }
@@ -295,7 +265,7 @@ export async function rejectProof(proofId: string, teacherNote: string) {
 
   await logActivity(
     {
-      actionType: 'proof_rejected' as never,
+      actionType: 'proof_rejected',
       entityType: 'payment_proof',
       entityId: proof.id,
       details: {
@@ -305,7 +275,7 @@ export async function rejectProof(proofId: string, teacherNote: string) {
         note,
         description: `رفض إيصال — ${studentName}`,
       },
-    } as never,
+    },
     user.id,
   )
 
@@ -346,20 +316,16 @@ export interface UnpaidQueueItem {
  * is service-role only, so URLs are signed here, never exposed raw).
  */
 export async function getUnpaidQueue() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
   const ownTeacherId = await getOwnTeacherId(service, user.id)
   if (!ownTeacherId) return { error: 'Forbidden' }
 
   const { data, error } = await service
     .from('payment_proofs')
     .select(
-      'id, student_id, period_key, storage_path, status, teacher_note, created_at, payer_profile_id',
+      'id, student_id, period_key, storage_path, status, teacher_note, created_at',
     )
     .eq('teacher_id', ownTeacherId)
     .eq('status', 'pending')
@@ -421,13 +387,9 @@ export async function getUnpaidQueue() {
  * from unpaidQueueItemUrl). Ownership-checked; wrong teacher => Forbidden.
  */
 export async function getProofReceipt(proofId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
   const proof = await fetchProof(service, proofId)
   if (!proof) return { error: 'الإيصال غير موجود' }
 
@@ -448,37 +410,10 @@ export async function getProofReceipt(proofId: string) {
   try {
     const { data: signed } = await service.storage
       .from(PAYMENT_PROOFS_BUCKET)
-      .createSignedUrl(
-        (proof as unknown as { storage_path?: string }).storage_path ?? '',
-        3600,
-      )
-    void proof
+      .createSignedUrl(proof.storage_path, 3600)
     imageUrl = ((signed as { signedUrl?: string } | null)?.signedUrl ?? null) as string | null
   } catch {
     imageUrl = null
-  }
-
-  // Re-read storage_path for the URL (fetchProof selects a narrow column
-  // set; fall back to a direct lookup when absent).
-  if (!imageUrl) {
-    try {
-      const { data: full } = await service
-        .from('payment_proofs')
-        .select('storage_path')
-        .eq('id', proof.id)
-        .maybeSingle()
-      const path = (full as { storage_path?: string } | null)?.storage_path
-      if (path) {
-        const { data: signed } = await service.storage
-          .from(PAYMENT_PROOFS_BUCKET)
-          .createSignedUrl(path, 3600)
-        imageUrl = ((signed as { signedUrl?: string } | null)?.signedUrl ?? null) as
-          | string
-          | null
-      }
-    } catch {
-      imageUrl = null
-    }
   }
 
   return {

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireUser } from '@/lib/action-context'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
@@ -261,10 +262,9 @@ export async function getUser() {
 }
 
 export async function getUserProfile() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return null
+  const ctx = await requireUser()
+  if ('error' in ctx) return null
+  const { user, supabase } = ctx
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -275,18 +275,10 @@ export async function getUserProfile() {
   return profile
 }
 
-export async function getUserRole(): Promise<UserRole | null> {
-  const profile = await getUserProfile()
-  return profile?.role || null
-}
-
 export async function updateUserProfile(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const rawPhone = formData.get('phone') as string
   const fullName = formData.get('full_name') as string
@@ -298,7 +290,7 @@ export async function updateUserProfile(formData: FormData) {
   }
 
   // Service write scoped to the caller's own row (#25: no anon-key writes).
-  const { error } = await createServiceClient()
+  const { error } = await service
     .from('profiles')
     .update({
       phone: phone || null,
@@ -315,12 +307,9 @@ export async function updateUserProfile(formData: FormData) {
 }
 
 export async function updateTeacherSettings(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
@@ -341,7 +330,7 @@ export async function updateTeacherSettings(formData: FormData) {
     instapayHandle = handleCheck.normalized
   }
 
-  const { error } = await createServiceClient()
+  const { error } = await service
     .from('teachers')
     .upsert(
       {
@@ -376,18 +365,15 @@ export async function updateTeacherSettings(formData: FormData) {
  * longer read here even if a stale form posts it.
  */
 export async function completeOnboarding(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
   const defaultFrequency = normalizeFrequency(formData.get('default_frequency') as string | null)
 
-  const { error } = await createServiceClient()
+  const { error } = await service
     .from('teachers')
     .upsert(
       {
@@ -417,12 +403,9 @@ export async function completeOnboarding(formData: FormData) {
  * an explanation. Always finishes to the dashboard.
  */
 export async function completeInstapayOnboarding(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const rawLink = ((formData.get('instapay_link') as string) || '').trim()
   const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
@@ -441,7 +424,7 @@ export async function completeInstapayOnboarding(formData: FormData) {
     instapayHandle = handleCheck.normalized
   }
 
-  const { error } = await createServiceClient()
+  const { error } = await service
     .from('teachers')
     .upsert(
       {

@@ -1,8 +1,9 @@
 import { getTeacherProofQueue } from '@/lib/payment-proofs'
 import { getUnpaidQueue, getProofReceipt } from '@/lib/payment-proof-verdict'
 import { describePeriod } from '@/lib/period-label'
+import { normalizeFrequency } from '@/lib/billing-period'
 import { UNPAID_COPY } from '@/lib/unpaid-queue-copy'
-import { UnpaidQueue } from '@/components/unpaid/unpaid-queue'
+import { UnpaidQueue, type UnpaidQueueViewItem } from '@/components/unpaid/unpaid-queue'
 import { Card, CardContent } from '@/components/ui/card'
 
 // Frozen Unpaid-queue URL contract (see unpaidQueueItemUrl in
@@ -21,8 +22,8 @@ export default async function UnpaidPage({
     studentFilter ? getTeacherProofQueue(studentFilter) : Promise.resolve(null),
   ])
 
-  if (teacherScoped && (teacherScoped as { error?: string }).error) {
-    const msg = (teacherScoped as { error: string }).error
+  if (teacherScoped && teacherScoped.error) {
+    const msg = teacherScoped.error
     return (
       <div className="mx-auto w-full max-w-2xl p-4" dir="rtl">
         <Card>
@@ -38,8 +39,8 @@ export default async function UnpaidPage({
     )
   }
 
-  if ((global as { error?: string }).error && !teacherScoped) {
-    const msg = (global as { error: string }).error
+  if (global.error && !teacherScoped) {
+    const msg = global.error
     return (
       <div className="mx-auto w-full max-w-2xl p-4" dir="rtl">
         <Card>
@@ -55,51 +56,34 @@ export default async function UnpaidPage({
     )
   }
 
-  let items =
-    ((global as { items?: Array<{
-      id: string
-      studentId: string
-      studentName: string
-      periodKey: string
-      periodLabel?: string
-      frequency?: string
-      storagePath: string
-      imageUrl: string | null
-      createdAt: string
-    }> }).items ?? []).map((it) => ({
+  let items: UnpaidQueueViewItem[] =
+    (global.items ?? []).map((it) => ({
       ...it,
       periodLabel:
-        it.periodLabel ?? describePeriod(it.periodKey, it.frequency).teacherLabel,
+        it.periodLabel ?? describePeriod(it.periodKey, normalizeFrequency(it.frequency)).teacherLabel,
     })).slice()
 
   // Student-scoped reuse: restrict the enriched global list to proofs the
   // per-student teacher queue returns (pending only). Keeps screenshots
   // (signed URLs) while honouring the read-only getTeacherProofQueue import.
-  if (teacherScoped && (teacherScoped as { proofs?: Array<{ id: string; status: string }> }).proofs) {
-    const scoped = (teacherScoped as { proofs: Array<{ id: string; status: string }> }).proofs
-    const scopedFrequency = ((teacherScoped as { frequency?: string }).frequency) || 'monthly'
+  if (teacherScoped && teacherScoped.proofs) {
+    const scoped = teacherScoped.proofs
+    const scopedFrequency = teacherScoped.frequency || 'monthly'
     const pendingIds = new Set(scoped.filter((p) => p.status === 'pending').map((p) => p.id))
     items = items.filter((it) => pendingIds.has(it.id))
     // Proofs known to the per-student queue but missing from the global
     // snapshot (race / pagination) still surface, without screenshots.
     const knownIds = new Set(items.map((it) => it.id))
     for (const p of scoped.filter((q) => q.status === 'pending' && !knownIds.has(q.id))) {
-      const full = p as unknown as {
-        id: string
-        student_id?: string
-        period_key?: string
-        storage_path?: string
-        created_at?: string
-      }
       items.push({
-        id: full.id,
-        studentId: String(full.student_id ?? studentFilter ?? ''),
+        id: p.id,
+        studentId: String(p.student_id ?? studentFilter ?? ''),
         studentName: 'طالب',
-        periodKey: String(full.period_key ?? ''),
-        periodLabel: describePeriod(String(full.period_key ?? ''), scopedFrequency).teacherLabel,
-        storagePath: String(full.storage_path ?? ''),
+        periodKey: String(p.period_key ?? ''),
+        periodLabel: describePeriod(String(p.period_key ?? ''), normalizeFrequency(scopedFrequency)).teacherLabel,
+        storagePath: String(p.storage_path ?? ''),
         imageUrl: null,
-        createdAt: String(full.created_at ?? ''),
+        createdAt: String(p.created_at ?? ''),
       })
     }
   }
@@ -109,16 +93,7 @@ export default async function UnpaidPage({
   // the frozen push URL always lands on something meaningful.
   if (highlightReceiptId && !items.some((it) => it.id === highlightReceiptId)) {
     const single = await getProofReceipt(highlightReceiptId)
-    const entry = (single as { proof?: {
-      id: string
-      student_id: string
-      period_key: string
-      status: string
-      imageUrl?: string | null
-      studentName?: string
-      frequency?: string
-      storage_path?: string
-    } }).proof
+    const entry = single.proof
     if (entry && entry.status === 'pending') {
       items = [
         {
@@ -126,7 +101,7 @@ export default async function UnpaidPage({
           studentId: entry.student_id,
           studentName: entry.studentName ?? 'طالب',
           periodKey: entry.period_key,
-          periodLabel: describePeriod(entry.period_key, entry.frequency).teacherLabel,
+          periodLabel: describePeriod(entry.period_key, normalizeFrequency(entry.frequency)).teacherLabel,
           storagePath: entry.storage_path ?? '',
           imageUrl: entry.imageUrl ?? null,
           createdAt: '',

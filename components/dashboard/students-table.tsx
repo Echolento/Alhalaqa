@@ -205,12 +205,12 @@ export function StudentsTable({ students, currency = 'SAR' }: StudentsTableProps
   const handleSaveNextDue = async (studentId: string) => {
     setDayLoading(true)
     const result = await updateStudentNextDue(studentId, nextDueDraft)
-    if ((result as any).success) {
+    if ('success' in result) {
       toast({ title: 'تم الحفظ' })
       setDayPickerOpen(null)
       window.location.reload()
     } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
     }
     setDayLoading(false)
   }

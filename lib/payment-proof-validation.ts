@@ -16,8 +16,6 @@ export const ALLOWED_PROOF_MIME_TYPES = [
   'image/heif',
 ] as const
 
-export type AllowedProofMimeType = (typeof ALLOWED_PROOF_MIME_TYPES)[number]
-
 export const ALLOWED_PROOF_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'] as const
 
 export type ProofStatus = 'pending' | 'verified' | 'rejected' | 'undone'

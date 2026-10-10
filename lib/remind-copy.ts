@@ -81,4 +81,3 @@ export const REMIND_COPY = {
     `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.`,
 } as const
 
-export type RemindCopy = typeof REMIND_COPY

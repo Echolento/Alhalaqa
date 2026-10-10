@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const teacherId = params.id;
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id: teacherId } = await params;
   const supabase = await createClient();
 
   // Fetch teacher profile with full_name

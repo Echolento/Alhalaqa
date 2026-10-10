@@ -32,10 +32,11 @@ import { FormattedDate } from '@/components/ui/formatted-date'
 import { getCurrencySymbol } from '@/lib/currencies'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
+import type { StudentView, PaymentView } from '@/lib/types'
 
 interface PaymentsListProps {
-  students: any[]
-  payments: any[]
+  students: StudentView[]
+  payments: PaymentView[]
   month: string
   currency: string
 }
@@ -131,8 +132,8 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
       } else {
         toast({ variant: 'destructive', title: 'فشل الحفظ', description: result.error || 'حدث خطأ غير معروف' })
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'خطأ في النظام', description: err.message })
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'خطأ في النظام', description: err instanceof Error ? err.message : undefined })
     } finally {
       setLoading(null)
     }
@@ -143,12 +144,12 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
     setLoading(studentId)
     try {
       const result = await updateStudentNextDue(studentId, nextDueDraft)
-      if ((result as any).success) {
+      if ('success' in result) {
         setEditingDay(null)
         router.refresh()
         toast({ title: '✓ تم الحفظ', description: 'تم تحديث تاريخ الاستحقاق بنجاح' })
       } else {
-        toast({ variant: 'destructive', title: 'خطأ', description: (result as any).error })
+        toast({ variant: 'destructive', title: 'خطأ', description: result.error })
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'خطأ', description: 'فشل تحديث تاريخ الاستحقاق' })
@@ -167,7 +168,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
         students.map((student) => {
           const payment = localPayments.find((p) => p.student_id === student.id)
           const isPaid = payment?.paid || false
-          const status = getPaymentStatus(isPaid, { pending: !isPaid && !!(student as any).hasPendingProof })
+          const status = getPaymentStatus(isPaid, { pending: !isPaid && !!student.hasPendingProof })
           const isEditing = editingPrice === student.id
 
           return (
@@ -206,7 +207,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                               onBlur={() => handleSavePrice(student.id)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                  ;(e.target as any).blur()
+                                  ;(e.target as HTMLInputElement).blur()
                                 }
                                 if (e.key === 'Escape') setEditingPrice(null)
                                 if (e.key === 'Enter' || e.key === 'Escape') e.preventDefault()
@@ -222,7 +223,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                           </div>
                         ) : (
                           <button 
-                            onClick={() => handleStartEdit(student.id, student.monthly_price)}
+                            onClick={() => handleStartEdit(student.id, student.monthly_price ?? 0)}
                             className="flex items-center gap-1 hover:text-primary transition-colors"
                           >
                             <span className="font-bold text-primary">{student.monthly_price} {currencySymbol}</span>
@@ -322,7 +323,7 @@ export function PaymentsList({ students, payments, month, currency }: PaymentsLi
                           <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                         ) : "تحديد كمدفوع"}
                       </Button>
-                      {student.claimed_by && !(student as any).hasPendingProof ? (
+                      {student.claimed_by && !student.hasPendingProof ? (
                         <RemindButton
                           studentId={student.id}
                           studentName={student.full_name || student.name || 'طالب'}

@@ -1,18 +1,17 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
+import { requireUser } from './action-context'
 import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
 import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
-import { advanceStudentCycle } from './payment-proof-verdict'
+import { advanceStudentCycle } from './billing-cycle'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
 
 export async function getTeacherPayments(month?: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { students: [], payments: [] }
+  const ctx = await requireUser()
+  if ('error' in ctx) return { students: [], payments: [], currency: 'SAR', expected: 0, collected: 0 }
+  const { user, supabase } = ctx
 
   const { data: teacher } = await supabase
     .from('teachers')
@@ -20,7 +19,7 @@ export async function getTeacherPayments(month?: string) {
     .eq('profile_id', user.id)
     .maybeSingle()
 
-  if (!teacher) return { students: [], payments: [], currency: 'SAR' }
+  if (!teacher) return { students: [], payments: [], currency: 'SAR', expected: 0, collected: 0 }
 
   const monthKey = month || getCurrentMonthKey()
 
@@ -124,10 +123,9 @@ export async function getTeacherPayments(month?: string) {
 }
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
@@ -185,10 +183,9 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
 }
 
 export async function toggleStudentPayment(studentId: string, month?: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
@@ -298,10 +295,9 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 }
 
 export async function updateStudentPaymentDay(studentId: string, paymentDay: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
@@ -340,10 +336,9 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
 }
 
 export async function updateStudentFrequency(studentId: string, frequency: BillingFrequency) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }

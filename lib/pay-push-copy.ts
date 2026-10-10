@@ -65,4 +65,3 @@ export const PAY_PUSH_COPY = {
   skipAriaLabel: 'تخطي تفعيل الإشعارات مؤقتاً',
 } as const
 
-export type PayPushCopy = typeof PAY_PUSH_COPY

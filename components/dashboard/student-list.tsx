@@ -29,10 +29,11 @@ import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { formatDueDateAr } from '@/lib/billing-next'
+import type { StudentView, PaymentView } from '@/lib/types'
 
 interface StudentListProps {
-  students: any[]
-  payments: any[]
+  students: StudentView[]
+  payments: PaymentView[]
   month: string
   currency: string
   initialCollected: number
@@ -64,7 +65,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
     const newPaid = !payment?.paid
     // Target the period this student's row actually belongs to (prepay settles
     // a cycle that isn't the wall-clock month), so undo hits the right row.
-    const targetMonth = (payment as { month?: string } | undefined)?.month ?? month
+    const targetMonth = payment?.month ?? month
     const now = new Date().toISOString()
     const price = Number(students.find((s) => s.id === studentId)?.monthly_price) || 0
     setLocalPayments((prev) =>
@@ -165,7 +166,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
             const isPaid = payment?.paid || false
             // A receipt awaiting verification: amber, and tapping goes straight
             // to the verification queue (not the profile).
-            const hasPending = !isPaid && !!(student as any).hasPendingProof
+            const hasPending = !isPaid && !!student.hasPendingProof
             const status = getPaymentStatus(isPaid, { pending: hasPending })
             const cardHref = hasPending
               ? `/dashboard/unpaid?student=${student.id}`
@@ -202,7 +203,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
                           <span>الاشتراك: <span className="font-bold text-primary">{student.monthly_price} {currencySymbol}</span></span>
-                          <span>الاستحقاق {formatDueDateAr((student as any).next_due_date)}</span>
+                          <span>الاستحقاق {formatDueDateAr(student.next_due_date)}</span>
                         </div>
                       </div>
                     </Link>
@@ -261,7 +262,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                             ) : 'تحديد كمدفوع'}
                           </Button>
-                          {student.claimed_by && !(student as any).hasPendingProof ? (
+                          {student.claimed_by && !student.hasPendingProof ? (
                             <RemindButton
                               studentId={student.id}
                               studentName={student.full_name || student.name || 'طالب'}

@@ -1,10 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent } from '@/lib/ownership'
 import { buildManualRemindPayload } from '@/lib/push-payloads'
-import { sendPushNotification } from '@/lib/push'
+import { getPushSubscription, sendPushNotification } from '@/lib/push'
 
 // Manual Remind trigger (#29 slice 1). The button UI lands in slice 2;
 // this function is the reusable trigger. It deliberately ignores the
@@ -17,11 +16,9 @@ export async function triggerManualRemind(params: {
   currency?: string
   periodKey?: string
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
   const ownerTeacherId = await assertOwnsStudent(service, user.id, params.studentId)
   if (!ownerTeacherId) return { error: 'Forbidden' }
 
@@ -34,11 +31,7 @@ export async function triggerManualRemind(params: {
     periodKey: params.periodKey,
   })
 
-  const { data: subscription } = await service
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('profile_id', params.payerProfileId)
-    .maybeSingle()
+  const subscription = await getPushSubscription(service, params.payerProfileId)
 
   if (!subscription) return { success: false, reason: 'no_subscription' }
 

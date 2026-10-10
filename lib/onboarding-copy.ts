@@ -46,4 +46,3 @@ export const ONBOARDING_COPY = {
   nextDueLabel: 'تاريخ أول فاتورة',
 } as const
 
-export type OnboardingCopy = typeof ONBOARDING_COPY

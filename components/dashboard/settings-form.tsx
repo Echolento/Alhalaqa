@@ -45,7 +45,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
 
-  const roleLabels = {
+  const roleLabels: Record<string, string> = {
     admin: 'مشرف',
     teacher: 'معلم',
     student: 'طالب',

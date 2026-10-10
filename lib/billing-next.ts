@@ -81,3 +81,27 @@ export function dueOverdueInfo(
   const daysOverdue = Math.floor((now.getTime() - start.getTime()) / DAY_MS)
   return { overdue: daysOverdue >= graceDays, daysOverdue: Math.max(0, daysOverdue) }
 }
+
+/**
+ * The student's outstanding due date: next_due_date, or the systemic first
+ * bill (1st of next month) for legacy rows without one. Single source for
+ * the "never the wall clock" convention.
+ */
+export function outstandingDueISO(
+  row: { next_due_date?: string | null },
+  today: Date = new Date(),
+): string {
+  return row.next_due_date ?? firstOfNextMonth(today)
+}
+
+/**
+ * The outstanding cycle's period key — derived from the outstanding due date
+ * + frequency. The one helper every nag/proof/pay path should use instead of
+ * re-deriving `duePeriodKey(next_due_date ?? firstOfNextMonth(), freq)`.
+ */
+export function outstandingCycleKey(
+  row: { next_due_date?: string | null; frequency?: unknown },
+  today: Date = new Date(),
+): string {
+  return duePeriodKey(outstandingDueISO(row, today), normalizeFrequency(row.frequency))
+}

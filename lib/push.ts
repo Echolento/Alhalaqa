@@ -1,4 +1,19 @@
 import webpush from 'web-push'
+import type { createServiceClient } from '@/lib/supabase/service'
+
+type ServiceClient = ReturnType<typeof createServiceClient>
+
+export async function getPushSubscription(
+  service: ServiceClient,
+  profileId: string,
+): Promise<{ endpoint: string; p256dh: string; auth: string } | null> {
+  const { data } = await service
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  return (data as { endpoint: string; p256dh: string; auth: string } | null) ?? null
+}
 
 function getVapidKeys() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY

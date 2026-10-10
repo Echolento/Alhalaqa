@@ -46,4 +46,3 @@ export const UNPAID_COPY = {
   statusPending: 'قيد المراجعة',
 } as const
 
-export type UnpaidCopy = typeof UNPAID_COPY

@@ -4,7 +4,7 @@
 // #36 slice 8/8 — invite / claim identity server actions.
 // IMPORTS ONLY from frozen lanes (never edits them):
 //   assertOwnsStudent (lib/ownership.ts) + service-role writes (#25 posture)
-//   + logActivity (lib/log-activity.ts, additive `as never` casts)
+//   + logActivity (lib/log-activity.ts, typed ActionType)
 //   + pure issuer/redeemer/rate gate (lib/claim-tokens.ts)
 //   + Arabic strings (lib/claim-copy.ts, single source).
 //
@@ -36,8 +36,8 @@
 //       follow-up — see gaps in the slice report.
 
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent, getOwnTeacherId } from '@/lib/ownership'
 import { logActivity } from '@/lib/log-activity'
 import {
@@ -169,13 +169,9 @@ async function clearAttempts(service: Service, key: string) {
  * all prior live tokens for that student (R3). Wrong teacher => Forbidden.
  */
 export async function issueClaimLink(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   // One roundtrip instead of two: fetch the row + the caller's teacher id
   // together, then compare in code (same check as assertOwnsStudent).
@@ -216,11 +212,11 @@ export async function issueClaimLink(studentId: string) {
 
   await logActivity(
     {
-      actionType: 'claim_link_issued' as never,
+      actionType: 'claim_link_issued',
       entityType: 'student',
       entityId: studentId,
       details: { description: `دعوة ولي أمر — ${(student as { id: string }).id}` },
-    } as never,
+    },
     user.id,
   )
 
@@ -232,13 +228,9 @@ export async function issueClaimLink(studentId: string) {
 
 /** Claim status per student — derivable from students.claimed_by. */
 export async function getClaimStatus(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const { data: student } = await service
     .from('students')
@@ -345,13 +337,9 @@ export async function resolveClaimPreview(rawToken: string) {
  * Rate-limited per profile+IP (R4); single-use + expiry via the pure gate.
  */
 export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
   const nowMs = Date.now()
   const attemptKey = opts?.attemptKey ?? (await deriveAttemptKey(user.id))
 
@@ -433,11 +421,11 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
 
   await logActivity(
     {
-      actionType: 'claim_redeemed' as never,
+      actionType: 'claim_redeemed',
       entityType: 'student',
       entityId: s.id,
       details: { student_name: studentName, description: `ربط ولي أمر — ${studentName}` },
-    } as never,
+    },
     user.id,
   )
 
@@ -464,13 +452,9 @@ export interface ClaimedHubStudent {
  * the neutral label (the hub component owns the final fallback too).
  */
 export async function listMyClaimedStudents() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const { data, error } = (await service
     .from('students')
@@ -561,16 +545,13 @@ export async function lookupStudentsByPhone(rawPhone: string) {
  * the in-code skip (no steal, like R7). Single tap, whole family.
  */
 export async function claimByPhone(rawPhone: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const phone = formatPhoneNumber((rawPhone ?? '').trim())
   if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.phoneClaimInvalidPhone }
 
-  const service = createServiceClient()
   const nowMs = Date.now()
   const attemptKey = await deriveAttemptKey(user.id)
   if (await isRateLimited(service, attemptKey, nowMs)) {
@@ -597,11 +578,11 @@ export async function claimByPhone(rawPhone: string) {
     claimed.push(toHubStudent({ ...s, claimed_by: user.id }))
     await logActivity(
       {
-        actionType: 'claim_redeemed' as never,
+        actionType: 'claim_redeemed',
         entityType: 'student',
         entityId: s.id,
         details: { student_name: s.name || 'طالب', description: `ربط برقم الهاتف — ${s.name || 'طالب'}` },
-      } as never,
+      },
       user.id,
     )
   }
@@ -616,13 +597,9 @@ export async function claimByPhone(rawPhone: string) {
  * only the link is cut, so re-claiming (phone or invite link) just works.
  */
 export async function unlinkStudent(studentId: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
   const { data: student } = await service
     .from('students')
     .select('id, claimed_by')
@@ -640,11 +617,11 @@ export async function unlinkStudent(studentId: string) {
 
   await logActivity(
     {
-      actionType: 'claim_unlinked' as never,
+      actionType: 'claim_unlinked',
       entityType: 'student',
       entityId: studentId,
       details: { description: 'فك ربط برقم الهاتف' },
-    } as never,
+    },
     user.id,
   )
   return { success: true as const }
@@ -657,13 +634,9 @@ export async function unlinkStudent(studentId: string) {
  * phone-utils; invalid numbers never write.
  */
 export async function updateClaimedPhone(studentId: string, rawPhone: string) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized' }
-
-  const service = createServiceClient()
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
 
   const { data: student } = await service
     .from('students')
