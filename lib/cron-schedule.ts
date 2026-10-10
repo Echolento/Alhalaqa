@@ -8,7 +8,7 @@
 
 export const CAIRO_TZ = 'Africa/Cairo'
 
-export const NAG_HOUR = 16
+export const NAG_HOUR = 10
 export const DIGEST_MORNING_HOUR = 8
 export const DIGEST_EVENING_HOUR = 20
 export const ESCALATION_MIN_DAYS = 3

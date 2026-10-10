@@ -17,7 +17,7 @@ vi.mock('@/lib/push', () => ({
 
 // September = Cairo UTC+3. Hours below pin exact Cairo trigger windows.
 const AT_08 = new Date('2026-09-24T05:00:00Z') // 08:00 Cairo
-const AT_10 = new Date('2026-09-24T13:00:00Z') // 16:00 Cairo (temp test hour)
+const AT_10 = new Date('2026-09-24T07:00:00Z') // 10:00 Cairo
 const AT_20 = new Date('2026-09-24T17:00:00Z') // 20:00 Cairo
 const AT_03 = new Date('2026-09-24T00:00:00Z') // 03:00 Cairo (dead hour)
 

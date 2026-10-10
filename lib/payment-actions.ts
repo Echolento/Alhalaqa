@@ -238,6 +238,11 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
 
   if (newPaid) {
     await advanceStudentCycle(service, studentId, monthKey, cycleFrequency, cycleDue)
+  } else if (!cycleDue || monthKey < cycleDue) {
+    // Undo reverses the advance too: point the outstanding cycle back at the
+    // now-unpaid period, so the payer's view (keyed off next_due_date) re-syncs
+    // instead of still reading the advanced cycle as paid. Never moves it later.
+    await service.from('students').update({ next_due_date: monthKey }).eq('id', studentId)
   }
 
   await logActivity({
@@ -255,6 +260,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   revalidatePath('/dashboard/payments')
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
+  revalidatePath('/pay')
   return { success: true }
 }
 

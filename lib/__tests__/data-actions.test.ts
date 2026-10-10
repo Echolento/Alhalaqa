@@ -544,6 +544,37 @@ describe('toggleStudentPayment', () => {
     expect((await toggleStudentPayment(studentId)).success).toBe(true)
     expect(studentUpdates.some((u) => 'next_due_date' in (u ?? {}))).toBe(false)
   })
+
+  it('undo of the settled cycle retreats the next-due date (payer re-sync)', async () => {
+    const studentUpdates: any[] = []
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder()
+      if (table === 'teachers') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: teacherId } })
+        return b
+      }
+      if (table === 'students') {
+        b.maybeSingle = vi.fn().mockResolvedValue({
+          data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-11-01' },
+        })
+        b.update = vi.fn((payload: any) => {
+          studentUpdates.push(payload)
+          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        })
+        return b
+      }
+      if (table === 'student_payments') {
+        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
+        b.single = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
+        return b
+      }
+      return b
+    })
+
+    const { toggleStudentPayment } = await import('@/lib/data-actions')
+    expect((await toggleStudentPayment(studentId, '2026-10-01')).success).toBe(true)
+    expect(studentUpdates).toContainEqual({ next_due_date: '2026-10-01' })
+  })
 })
 
 describe('getTeacherPayments', () => {
