@@ -4,6 +4,11 @@
 // passthrough and caching/offline behaviour is unchanged.
 self.addEventListener('fetch', () => {})
 
+// Take over as soon as a new version installs, so icon fixes apply without
+// waiting for every tab/client to close.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
@@ -13,11 +18,16 @@ self.addEventListener('push', (event) => {
     const body = data.body || ''
     const url = data.url || '/dashboard'
 
+    // Absolute URLs are required: Android Chrome does not reliably resolve
+    // relative notification icon paths and falls back to a domain monogram.
+    // `icon` = large coloured logo; `badge` = small monochrome status-bar glyph.
+    const origin = self.location.origin
+
     event.waitUntil(
       self.registration.showNotification(title, {
         body,
-        icon: '/icon-512.png',
-        badge: '/icon-512.png',
+        icon: `${origin}/icon-512.png`,
+        badge: `${origin}/badge-96.png`,
         data: { url },
       }),
     )

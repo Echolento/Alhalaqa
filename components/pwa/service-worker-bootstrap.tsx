@@ -14,9 +14,15 @@ import { useEffect } from 'react'
 export function ServiceWorkerBootstrap() {
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Non-fatal (private mode, unsupported host, etc.).
-    })
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        // Nudge an update check on every load so icon/payload fixes land fast.
+        reg.update().catch(() => {})
+      })
+      .catch(() => {
+        // Non-fatal (private mode, unsupported host, etc.).
+      })
   }, [])
   return null
 }
