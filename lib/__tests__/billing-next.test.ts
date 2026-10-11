@@ -11,6 +11,8 @@ import {
   dueOverdueInfo,
   isValidDueDate,
   formatDueDateAr,
+  outstandingDueISO,
+  outstandingCycleKey,
 } from '@/lib/billing-next'
 
 describe('firstOfNextMonth', () => {
@@ -82,5 +84,39 @@ describe('dueOverdueInfo', () => {
 
   it('counts days overdue from the due date', () => {
     expect(dueOverdueInfo('2026-10-01', new Date(2026, 9, 5), 3).daysOverdue).toBe(4)
+  })
+})
+
+// Characterization for the "outstanding cycle" convention: every nag/proof/pay
+// path derives the period from next_due_date (never the wall clock); legacy
+// rows without one bill the 1st of next month.
+describe('outstandingDueISO', () => {
+  it('returns the stored next_due_date when present', () => {
+    expect(outstandingDueISO({ next_due_date: '2026-10-05' })).toBe('2026-10-05')
+  })
+
+  it('falls back to the 1st of next month for legacy rows', () => {
+    expect(outstandingDueISO({}, new Date(2026, 8, 20))).toBe('2026-10-01')
+    expect(outstandingDueISO({ next_due_date: null }, new Date(2026, 8, 20))).toBe('2026-10-01')
+  })
+})
+
+describe('outstandingCycleKey', () => {
+  it('monthly keys by the due month', () => {
+    expect(outstandingCycleKey({ next_due_date: '2026-10-05', frequency: 'monthly' })).toBe('2026-10-01')
+  })
+
+  it('weekly/biweekly key by the due date itself', () => {
+    expect(outstandingCycleKey({ next_due_date: '2026-09-20', frequency: 'weekly' })).toBe('2026-09-20')
+    expect(outstandingCycleKey({ next_due_date: '2026-09-20', frequency: 'biweekly' })).toBe('2026-09-20')
+  })
+
+  it('defaults unknown/missing frequency to monthly', () => {
+    expect(outstandingCycleKey({ next_due_date: '2026-10-05' })).toBe('2026-10-01')
+    expect(outstandingCycleKey({ next_due_date: '2026-10-05', frequency: 'garbage' })).toBe('2026-10-01')
+  })
+
+  it('legacy rows (no due date) key off the 1st of next month', () => {
+    expect(outstandingCycleKey({}, new Date(2026, 8, 20))).toBe('2026-10-01')
   })
 })
