@@ -76,6 +76,7 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
   const builder: Record<string, any> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    in: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
     insert: vi.fn((row: any) => {
@@ -355,5 +356,67 @@ describe('getPayScreenInfo', () => {
     const result = await getPayScreenInfo('stu-1')
 
     expect((result as any).periodKey).toBe(firstOfNextMonth(new Date()))
+  })
+
+  // Filter-aware builder so the three student_payments reads (paid row,
+  // reopened/unpaid row, any-historical-paid row) resolve distinctly.
+  function filterAwareService(rows: Record<string, any[]>) {
+    const builder = (table: string) => {
+      const filters: Array<[string, any]> = []
+      const b: any = {}
+      b.select = () => b
+      b.eq = (c: string, v: any) => { filters.push([c, v]); return b }
+      b.in = (c: string, vs: any[]) => { filters.push([c, vs]); return b }
+      b.limit = () => b
+      b.order = () => b
+      b.maybeSingle = async () => {
+        const match = (rows[table] ?? []).find((row) =>
+          filters.every(([c, v]) => (Array.isArray(v) ? v.includes(row[c]) : row[c] === v)),
+        )
+        return { data: match ?? null }
+      }
+      return b
+    }
+    return { from: (table: string) => builder(table) }
+  }
+
+  it('reads paid-up when the outstanding cycle has not come due (no reopen)', async () => {
+    mockService.from.mockImplementation(
+      filterAwareService({
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-11-01' }],
+        teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 200, instapay_link: null, instapay_handle: null }],
+        payment_proofs: [],
+        student_payments: [{ id: 'b', student_id: 'stu-1', month: '2026-10-01', paid: true }],
+      }).from,
+    )
+    const { getPayScreenInfo } = await import('@/lib/payment-proofs')
+
+    const result = await getPayScreenInfo('stu-1')
+
+    expect((result as any).isPaidForPeriod).toBe(false)
+    expect((result as any).isPaidUp).toBe(true)
+  })
+
+  it('is NOT paid-up when the outstanding cycle was reopened (undone receipt + unpaid row)', async () => {
+    // Mirrors "echo pay up": an old paid row must not mask a cycle the teacher
+    // just reopened (explicit unpaid row) with a revoked receipt.
+    mockService.from.mockImplementation(
+      filterAwareService({
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'weekly', monthly_price: 50, next_due_date: '2026-11-01' }],
+        teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 50, instapay_link: null, instapay_handle: null }],
+        payment_proofs: [{ id: 'p1', student_id: 'stu-1', period_key: '2026-11-01', status: 'undone' }],
+        student_payments: [
+          { id: 'a', student_id: 'stu-1', month: '2026-11-01', paid: false },
+          { id: 'b', student_id: 'stu-1', month: '2026-10-01', paid: true },
+        ],
+      }).from,
+    )
+    const { getPayScreenInfo } = await import('@/lib/payment-proofs')
+
+    const result = await getPayScreenInfo('stu-1')
+
+    expect((result as any).isPaidForPeriod).toBe(false)
+    expect((result as any).hasPending).toBe(false)
+    expect((result as any).isPaidUp).toBe(false)
   })
 })

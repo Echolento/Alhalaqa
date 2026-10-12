@@ -289,12 +289,34 @@ export async function getPayScreenInfo(studentId: string) {
     .eq('paid', true)
     .maybeSingle()
 
+  // The outstanding cycle is owed AGAIN when it was explicitly reopened (an
+  // unpaid settlement row survives the undo) or its receipt was revoked
+  // (undone/rejected). Both are authoritative "not settled" signals — the
+  // "any historical paid row" check below must never mask them.
+  const [{ data: reopenedRow }, { data: revokedProof }] = await Promise.all([
+    service
+      .from('student_payments')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('month', periodKey)
+      .eq('paid', false)
+      .maybeSingle(),
+    service
+      .from('payment_proofs')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('period_key', periodKey)
+      .in('status', ['rejected', 'undone'])
+      .maybeSingle(),
+  ])
+  const reopened = !!reopenedRow || !!revokedProof
+
   // Paid up: the family settled a cycle and the next one has NOT come due yet.
   // Without this, the prepay ratchet immediately presents the next cycle as due
   // right after a payment, which reads as "paying again".
   const todayISO = toISODate(new Date())
   let isPaidUp = false
-  if (dueISO > todayISO && !paidRow && !pending) {
+  if (dueISO > todayISO && !paidRow && !pending && !reopened) {
     const { data: anyPaid } = await service
       .from('student_payments')
       .select('id')

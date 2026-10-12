@@ -65,6 +65,23 @@ describe('advanceStudentCycle', () => {
     expect(ctx.lastStudentUpdate).toBeNull()
   })
 
+  it('does not skip an owed cycle when settling a later (prepaid) one', async () => {
+    // Outstanding is 2026-10-08 (weekly) but the teacher settles a prepaid
+    // 2026-11-01 cycle out of order: next_due must stay on the owed cycle.
+    const { advanceStudentCycle } = await import('@/lib/billing-cycle')
+
+    const next = await advanceStudentCycle(
+      mockService,
+      'stu-1',
+      '2026-11-01',
+      'weekly',
+      '2026-10-08',
+    )
+
+    expect(next).toBeNull()
+    expect(ctx.lastStudentUpdate).toBeNull()
+  })
+
   it('defaults unknown frequency to monthly', async () => {
     const { advanceStudentCycle } = await import('@/lib/billing-cycle')
 
