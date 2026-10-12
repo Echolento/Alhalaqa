@@ -143,8 +143,9 @@ export function buildOverdueEscalationPayload(params: {
 }
 
 /**
- * Twice-daily teacher digest (8am + 8pm Cairo): pending receipts waiting +
- * overdue names + unreachable (unclaimed) count.
+ * Twice-daily teacher digest (8am + 8pm Cairo): overdue names + pending receipts
+ * + unreachable (unclaimed) count. Parallel, count-first lines so it scans in a
+ * glance — the old run-on ("متأخرون: … • بلا ولي مربوط: 2") read as one sentence.
  */
 export function buildDailyDigestPayload(params: {
   teacherProfileId: string
@@ -153,21 +154,18 @@ export function buildDailyDigestPayload(params: {
   unclaimedCount: number
   evening?: boolean
 }): PushTarget | null {
-  if (
-    params.pendingCount === 0 &&
-    params.overdueNames.length === 0 &&
-    params.unclaimedCount === 0
-  ) {
+  const overdue = params.overdueNames.length
+  if (params.pendingCount === 0 && overdue === 0 && params.unclaimedCount === 0) {
     return null
   }
   const parts: string[] = []
-  if (params.pendingCount > 0) parts.push(`إيصالات بانتظارك: ${params.pendingCount}`)
-  if (params.overdueNames.length > 0) {
-    const names = params.overdueNames.slice(0, 3).join('، ')
-    const more = params.overdueNames.length > 3 ? ` +${params.overdueNames.length - 3}` : ''
-    parts.push(`متأخرون: ${names}${more}`)
+  if (overdue > 0) {
+    const names = params.overdueNames.slice(0, 2).join('، ')
+    const more = overdue > 2 ? ` و${overdue - 2} غيرهم` : ''
+    parts.push(`متأخرون عن الدفع: ${names}${more}`)
   }
-  if (params.unclaimedCount > 0) parts.push(`بلا ولي مربوط: ${params.unclaimedCount}`)
+  if (params.pendingCount > 0) parts.push(`بانتظار مراجعتك: ${params.pendingCount}`)
+  if (params.unclaimedCount > 0) parts.push(`بلا ولي أمر: ${params.unclaimedCount}`)
   return {
     profileId: params.teacherProfileId,
     payload: {

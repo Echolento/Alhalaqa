@@ -76,7 +76,9 @@ describe('escalation + digest payloads', () => {
       evening: false,
     })
     expect(morning?.payload.title).toBe('ملخص الصباح')
-    expect(morning?.payload.body).toContain('2')
+    expect(morning?.payload.body).toBe(
+      'متأخرون عن الدفع: أحمد • بانتظار مراجعتك: 2 • بلا ولي أمر: 1',
+    )
     expect(morning?.payload.url).toBe('/dashboard/unpaid')
     const evening = buildDailyDigestPayload({
       teacherProfileId: 't',
@@ -86,5 +88,16 @@ describe('escalation + digest payloads', () => {
       evening: true,
     })
     expect(evening?.payload.title).toBe('ملخص المساء')
+  })
+
+  it('caps the overdue name list and phrases the unclaimed count clearly', () => {
+    const out = buildDailyDigestPayload({
+      teacherProfileId: 't',
+      pendingCount: 0,
+      overdueNames: ['أحمد', 'محمد', 'علي'],
+      unclaimedCount: 2,
+      evening: true,
+    })
+    expect(out?.payload.body).toBe('متأخرون عن الدفع: أحمد، محمد و1 غيرهم • بلا ولي أمر: 2')
   })
 })
