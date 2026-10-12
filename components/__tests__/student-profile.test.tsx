@@ -59,4 +59,16 @@ describe('StudentProfile', () => {
     fireEvent.click(screen.getAllByText('حذف الطالب')[1])
     expect(screen.getByText('تأكيد الحذف')).toBeInTheDocument()
   })
+
+  it('shows the previous-period-paid badge when the previous cycle settled', () => {
+    render(
+      <StudentProfile
+        student={{ ...student, paidLastPeriod: true }}
+        payments={payments}
+        month="2025-06-01"
+        currency="SAR"
+      />,
+    )
+    expect(screen.getByTestId('profile-paid-last-period')).toHaveTextContent('الفترة السابقة مدفوعة')
+  })
 })

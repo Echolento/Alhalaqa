@@ -73,6 +73,28 @@ export function advanceDueDate(dueISO: string, frequency: BillingFrequency | nul
   return toISODate(next)
 }
 
+/** The due date one interval BEFORE the given one (mirror of advanceDueDate). */
+export function previousDueDate(dueISO: string, frequency: BillingFrequency | null | undefined): string {
+  const freq = normalizeFrequency(frequency)
+  const due = parseISODate(dueISO)
+  if (freq === 'weekly') return toISODate(new Date(due.getTime() - 7 * DAY_MS))
+  if (freq === 'biweekly') return toISODate(new Date(due.getTime() - 14 * DAY_MS))
+  const day = due.getDate()
+  const prev = new Date(due.getFullYear(), due.getMonth() - 1, 1)
+  const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate()
+  prev.setDate(Math.min(day, lastDay))
+  return toISODate(prev)
+}
+
+/**
+ * History key of the cycle immediately BEFORE the outstanding one. Used to tell
+ * "the family already settled the previous period" so a just-paid student that
+ * ratchets to a new unpaid cycle doesn't read as a failed registration.
+ */
+export function previousCycleKey(dueISO: string, frequency: BillingFrequency | null | undefined): string {
+  return duePeriodKey(previousDueDate(dueISO, frequency), normalizeFrequency(frequency))
+}
+
 /**
  * History key for proofs/payments, derived from the due date being paid.
  * Monthly keys by due month (YYYY-MM-01); weekly/biweekly by the due date

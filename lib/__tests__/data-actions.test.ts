@@ -765,6 +765,29 @@ describe('getTeacherPayments', () => {
     expect(paid?.month).toBe('2026-11-01')
   })
 
+  it('flags paidLastPeriod when the outstanding cycle is unpaid but the previous was settled', async () => {
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly', next_due_date: '2026-10-01' }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [{ id: 'p1', student_id: studentId, month: '2026-09-01', paid: true, amount_paid: 100 }],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-10-01')
+
+    const s = result.students.find((x: any) => x.id === studentId) as any
+    expect(s?.paidLastPeriod).toBe(true)
+    expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
+  })
+
   it('month expected scales with frequency (weekly pays several cycles, not one)', async () => {
     const weeklyId = 'student-w'
     mockSupabase.from.mockImplementation(() => {

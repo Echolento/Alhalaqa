@@ -58,6 +58,16 @@ describe('PayScreen', () => {
     expect(screen.queryByTestId('instapay-link')).not.toBeInTheDocument()
   })
 
+  it('reassures the payer when the previous period was paid (not a lost payment)', () => {
+    render(<PayScreen data={{ ...baseData, paidLastPeriod: true }} proofs={[]} />)
+    expect(screen.getByTestId('paid-last-period')).toHaveTextContent('الفترة السابقة مدفوعة')
+  })
+
+  it('hides the previous-period note when it does not apply', () => {
+    render(<PayScreen data={baseData} proofs={[]} />)
+    expect(screen.queryByTestId('paid-last-period')).not.toBeInTheDocument()
+  })
+
   it('offers an image-only upload input (camera/gallery)', () => {
     render(<PayScreen data={baseData} proofs={[]} />)
     const input = screen.getByTestId('receipt-upload') as HTMLInputElement

@@ -18,6 +18,7 @@ import {
   outstandingCycleKey,
   outstandingDueISO,
   parseISODate,
+  previousCycleKey,
   toISODate,
 } from '@/lib/billing-next'
 import { getInstaPayContract } from '@/lib/instapay'
@@ -289,6 +290,18 @@ export async function getPayScreenInfo(studentId: string) {
     .eq('paid', true)
     .maybeSingle()
 
+  // Previous period settled? Shown to the payer so "this period unpaid" doesn't
+  // read as if their earlier payment was lost.
+  const prevKey = previousCycleKey(dueISO, freq)
+  const { data: prevPaidRow } = await service
+    .from('student_payments')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('month', prevKey)
+    .eq('paid', true)
+    .maybeSingle()
+  const paidLastPeriod = !paidRow && !!prevPaidRow
+
   // The family is NOT paid up when any cycle at or before the outstanding one
   // is explicitly unpaid (the outstanding cycle reopened by an undo, or an
   // earlier cycle the ratchet/next-due editor left behind), or the outstanding
@@ -343,5 +356,6 @@ export async function getPayScreenInfo(studentId: string) {
     hasPending: !!pending,
     isPaidForPeriod: !!paidRow,
     isPaidUp,
+    paidLastPeriod,
   }
 }

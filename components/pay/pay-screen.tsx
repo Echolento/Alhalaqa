@@ -38,6 +38,8 @@ export interface PayScreenData {
   isPaidForPeriod: boolean
   /** Settled and the next cycle isn't due yet → show "nothing due", no pay. */
   isPaidUp?: boolean
+  /** Previous cycle settled but this one isn't → reassure the payer it registered. */
+  paidLastPeriod?: boolean
 }
 
 const STATUS_LABEL: Record<PaymentProof['status'], string> = {
@@ -126,6 +128,18 @@ export function PayScreen(props: {
 
       {!settled && !paidUp ? (
         <>
+          {data.paidLastPeriod ? (
+            <div className="flex justify-center">
+              <Badge
+                variant="outline"
+                data-testid="paid-last-period"
+                className="text-[11px] px-2 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50/50"
+              >
+                الفترة السابقة مدفوعة — هذه فترة جديدة
+              </Badge>
+            </div>
+          ) : null}
+
           {/* What is owed */}
           <Card>
             <CardHeader>

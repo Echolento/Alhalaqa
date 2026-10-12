@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from './ownership'
-import { outstandingCycleKey } from '@/lib/billing-next'
+import { outstandingCycleKey, outstandingDueISO, previousCycleKey } from '@/lib/billing-next'
 
 export interface StudentPaymentRecord {
   student_id: string
@@ -65,6 +65,14 @@ export async function getStudentProfile(studentId: string) {
   const hasPendingProof =
     !!pendingProof && (pendingProof as { period_key?: string }).period_key === outstandingKey
 
+  // "Previous period paid": the outstanding cycle is unpaid but the one right
+  // before it was settled (so a just-paid student flipping to a new unpaid cycle
+  // doesn't read as a failed registration).
+  const prevKey = previousCycleKey(outstandingDueISO(student), (student as any).frequency)
+  const outstandingPaid = payments.some((p) => p.month === outstandingKey && p.paid)
+  const prevPaid = payments.some((p) => p.month === prevKey && p.paid)
+  const paidLastPeriod = !outstandingPaid && prevPaid
+
   return {
     student: {
       id: (student as any).id,
@@ -77,6 +85,7 @@ export async function getStudentProfile(studentId: string) {
       next_due_date: ((student as any).next_due_date ?? null) as string | null,
       claimed_by: (student as any).claimed_by ?? null,
       hasPendingProof,
+      paidLastPeriod,
     },
     payments,
     currency: teacher?.currency || 'SAR',

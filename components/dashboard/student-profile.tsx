@@ -218,13 +218,22 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         <CardContent className="p-4 md:p-6 flex items-center gap-3">
           {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <Clock className="w-7 h-7 text-red-600 shrink-0" />}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-black text-2xl md:text-4xl truncate">{student.full_name || student.name}</h1>
+            <h1 className="font-black text-2xl md:text-4xl truncate">{student.full_name || student.name}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Badge variant={status.badgeVariant} className={status.badgeClass}>
                 {status.label}
               </Badge>
+              {student.paidLastPeriod ? (
+                <Badge
+                  data-testid="profile-paid-last-period"
+                  variant="outline"
+                  className="text-[10px] px-2 py-0.5"
+                >
+                  الفترة السابقة مدفوعة
+                </Badge>
+              ) : null}
               {student.claimed_by ? (
-                <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent">
+                <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
                   ولي الأمر مربوط
                 </Badge>
               ) : null}

@@ -423,4 +423,23 @@ describe('getPayScreenInfo', () => {
     expect((result as any).hasPending).toBe(false)
     expect((result as any).isPaidUp).toBe(false)
   })
+
+  it('flags paidLastPeriod when the outstanding cycle is unpaid but the previous one was settled', async () => {
+    // Due 2026-10-01 (in the past) unpaid; 2026-09-01 settled → reassure, not paid-up.
+    mockService.from.mockImplementation(
+      filterAwareService({
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-10-01' }],
+        teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 200, instapay_link: null, instapay_handle: null }],
+        payment_proofs: [],
+        student_payments: [{ id: 'b', student_id: 'stu-1', month: '2026-09-01', paid: true }],
+      }).from,
+    )
+    const { getPayScreenInfo } = await import('@/lib/payment-proofs')
+
+    const result = await getPayScreenInfo('stu-1')
+
+    expect((result as any).isPaidForPeriod).toBe(false)
+    expect((result as any).isPaidUp).toBe(false)
+    expect((result as any).paidLastPeriod).toBe(true)
+  })
 })

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireUser } from './action-context'
 import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
-import { duePeriodKey, firstOfNextMonth, outstandingCycleKey, toISODate } from './billing-next'
+import { duePeriodKey, firstOfNextMonth, outstandingCycleKey, previousCycleKey, toISODate } from './billing-next'
 import { advanceStudentCycle } from './billing-cycle'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
@@ -102,6 +102,20 @@ export async function getTeacherPayments(month?: string) {
       return rows.filter(p => p.month === s.currentMonthKey)[0]
     })
     .filter(Boolean)
+
+  // "Previous period paid" reassurance: the outstanding cycle is unpaid but the
+  // one right before it was settled — so a student who just paid (and ratcheted
+  // to a fresh unpaid cycle) doesn't read as if the toggle never registered.
+  for (const s of normalizedStudents) {
+    const rows = rowsByStudent.get(s.id) ?? []
+    const outstandingPaid = rows.some(
+      r => (r as { month?: string; paid?: boolean }).month === s.currentMonthKey && (r as { paid?: boolean }).paid,
+    )
+    const dueISO = ((s as { next_due_date?: string | null }).next_due_date) ?? firstOfNextMonth(today)
+    const prevKey = previousCycleKey(dueISO, s.frequency)
+    ;(s as { paidLastPeriod?: boolean }).paidLastPeriod =
+      !outstandingPaid && rows.some(r => (r as { month?: string; paid?: boolean }).month === prevKey && (r as { paid?: boolean }).paid)
+  }
 
   // Month totals honour frequency: an interval student contributes one price
   // per cycle that STARTS in the selected month (weekly ≈ 4, biweekly ≈ 2),

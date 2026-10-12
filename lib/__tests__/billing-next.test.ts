@@ -8,6 +8,8 @@ import {
   firstOfNextMonth,
   firstBillDate,
   advanceDueDate,
+  previousDueDate,
+  previousCycleKey,
   duePeriodKey,
   dueOverdueInfo,
   isValidDueDate,
@@ -39,6 +41,17 @@ describe('firstBillDate', () => {
     const days = (new Date(weekly).getTime() - today.getTime()) / 86_400_000
     expect(days).toBeGreaterThanOrEqual(0)
     expect(days).toBeLessThanOrEqual(14)
+  })
+})
+
+describe('previousCycleKey', () => {
+  it('weekly → the prior 7-day cycle key', () => {
+    expect(previousDueDate('2026-10-12', 'weekly')).toBe('2026-10-05')
+    expect(previousCycleKey('2026-10-12', 'weekly')).toBe('2026-10-05')
+  })
+
+  it('monthly → the prior month key', () => {
+    expect(previousCycleKey('2026-10-15', 'monthly')).toBe('2026-09-01')
   })
 })
 

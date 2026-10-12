@@ -182,11 +182,20 @@ export function StudentList({ students, payments, month, currency, initialCollec
                   <Link href={cardHref} className="flex items-center gap-3 w-full min-w-0">
                       {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-lg md:text-2xl truncate">{student.full_name || student.name}</h3>
+                        <h3 className="font-black text-lg md:text-2xl truncate">{student.full_name || student.name}</h3>
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <Badge variant={status.badgeVariant} className={status.badgeClass}>
                             {status.label}
                           </Badge>
+                          {student.paidLastPeriod ? (
+                            <Badge
+                              data-testid={`paid-last-period-${student.id}`}
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5"
+                            >
+                              الفترة السابقة مدفوعة
+                            </Badge>
+                          ) : null}
                           {student.claimed_by ? (
                             <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
                               ولي الأمر مربوط
