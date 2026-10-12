@@ -5,7 +5,7 @@
 // late payment never drifts the rhythm. Grace/overdue counts from the due
 // date. Local-day math (same convention as lib/billing-period.ts).
 
-import { normalizeFrequency, type BillingFrequency } from '@/lib/billing-period'
+import { getPeriodKey, normalizeFrequency, type BillingFrequency } from '@/lib/billing-period'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -38,6 +38,22 @@ export function formatDueDateAr(iso: string | null | undefined): string {
 /** Default first bill: the 1st of next month (pointed out in UI copy). */
 export function firstOfNextMonth(from: Date = new Date()): string {
   return toISODate(new Date(from.getFullYear(), from.getMonth() + 1, 1))
+}
+
+/**
+ * First bill for a NEW student. Monthly keeps the 1st-of-next-month convention;
+ * weekly/biweekly start on the NEXT cycle of the student's own grid. The old
+ * always-first-of-next-month default billed a weekly student a whole month out
+ * (the pay screen read "بعد 3 أسابيع" for a cycle that should be ~a week away).
+ */
+export function firstBillDate(
+  frequency: BillingFrequency | null | undefined,
+  today: Date = new Date(),
+  anchorDay?: number,
+): string {
+  const freq = normalizeFrequency(frequency)
+  if (freq === 'monthly') return firstOfNextMonth(today)
+  return advanceDueDate(getPeriodKey(today, freq, anchorDay), freq)
 }
 
 /**

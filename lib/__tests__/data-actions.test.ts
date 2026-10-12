@@ -167,9 +167,9 @@ describe('addStudent', () => {
     expect(result.student.name).toBe('Ali')
   })
 
-  it('inherits teacher defaults (frequency + first-of-next-month) and stops writing payment_day', async () => {
+  it('inherits teacher defaults (frequency + frequency-aware first bill) and stops writing payment_day', async () => {
     let capturedInsert: any
-    const { firstOfNextMonth } = await import('@/lib/billing-next')
+    const { firstBillDate } = await import('@/lib/billing-next')
     mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
@@ -195,7 +195,7 @@ describe('addStudent', () => {
     const result = await addStudent('Ali', '+201022222222')
     expect(result.success).toBe(true)
     expect(capturedInsert.frequency).toBe('weekly')
-    expect(capturedInsert.next_due_date).toBe(firstOfNextMonth(new Date()))
+    expect(capturedInsert.next_due_date).toBe(firstBillDate('weekly', new Date()))
     expect(capturedInsert.monthly_price).toBe(200)
     expect('payment_day' in capturedInsert).toBe(false)
   })
@@ -320,8 +320,8 @@ describe('updateStudentNextDue', () => {
 })
 
 describe('getBillingDefaults', () => {
-  it('returns teacher frequency + price + first-of-next-month for the form', async () => {
-    const { firstOfNextMonth } = await import('@/lib/billing-next')
+  it('returns teacher frequency + price + frequency-aware first bill for the form', async () => {
+    const { firstBillDate } = await import('@/lib/billing-next')
     mockService.from.mockImplementation((table: string) => {
       const b = createBuilder()
       if (table === 'teachers') {
@@ -339,7 +339,7 @@ describe('getBillingDefaults', () => {
     expect(result).toMatchObject({
       frequency: 'weekly',
       price: 250,
-      nextDueDate: firstOfNextMonth(new Date()),
+      nextDueDate: firstBillDate('weekly', new Date()),
     })
   })
 
@@ -909,9 +909,9 @@ describe('addMultipleStudents', () => {
     expect(result.success).toBe(true)
   })
 
-  it('defaults frequency + first-of-next-month for all students (no payment_day)', async () => {
+  it('defaults frequency + frequency-aware first bill for all students (no payment_day)', async () => {
     let capturedPayload: any
-    const { firstOfNextMonth } = await import('@/lib/billing-next')
+    const { firstBillDate } = await import('@/lib/billing-next')
     mockService.from.mockImplementation((_tableName?: string) => {
       const b = createBuilder()
       b.eq = vi.fn().mockReturnValue({
@@ -935,7 +935,7 @@ describe('addMultipleStudents', () => {
     expect(result.success).toBe(true)
     expect(capturedPayload).toHaveLength(2)
     expect(capturedPayload[0].frequency).toBe('biweekly')
-    expect(capturedPayload[0].next_due_date).toBe(firstOfNextMonth(new Date()))
+    expect(capturedPayload[0].next_due_date).toBe(firstBillDate('biweekly', new Date()))
     expect('payment_day' in capturedPayload[0]).toBe(false)
   })
 

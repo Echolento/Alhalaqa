@@ -5,7 +5,7 @@ import { requireUser } from './action-context'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
 import { normalizeFrequency, type BillingFrequency } from './billing-period'
-import { firstOfNextMonth, isValidDueDate } from './billing-next'
+import { firstBillDate, isValidDueDate } from './billing-next'
 
 export async function getTeacherStudents() {
   const ctx = await requireUser()
@@ -43,7 +43,7 @@ export async function getTeacherStudents() {
  */
 export async function getBillingDefaults() {
   const ctx = await requireUser()
-  const fallback = { frequency: 'monthly' as const, price: 0, nextDueDate: firstOfNextMonth() }
+  const fallback = { frequency: 'monthly' as const, price: 0, nextDueDate: firstBillDate('monthly') }
   if ('error' in ctx) return fallback
   const { user, service } = ctx
   const teacherId = await getOwnTeacherId(service, user.id)
@@ -54,10 +54,11 @@ export async function getBillingDefaults() {
     .eq('id', teacherId)
     .maybeSingle()
   if (!teacher) return fallback
+  const frequency = normalizeFrequency((teacher as { default_frequency?: unknown }).default_frequency)
   return {
-    frequency: normalizeFrequency((teacher as { default_frequency?: unknown }).default_frequency),
+    frequency,
     price: Number((teacher as { default_monthly_price?: unknown }).default_monthly_price) || 0,
-    nextDueDate: firstOfNextMonth(),
+    nextDueDate: firstBillDate(frequency),
   }
 }
 
@@ -108,7 +109,7 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
     typeof (opts as { nextDueDate?: unknown }).nextDueDate === 'string' &&
     isValidDueDate((opts as { nextDueDate?: string }).nextDueDate)
       ? ((opts as { nextDueDate?: string }).nextDueDate as string)
-      : firstOfNextMonth()
+      : firstBillDate(frequency)
 
   const { data, error } = await service
     .from('students')
@@ -245,7 +246,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     phone: s.phone || null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
     frequency: bulkFrequency,
-    next_due_date: firstOfNextMonth(),
+    next_due_date: firstBillDate(bulkFrequency),
   }))
 
   const { error } = await service.from('students').insert(inserts)

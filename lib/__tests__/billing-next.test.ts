@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   firstOfNextMonth,
+  firstBillDate,
   advanceDueDate,
   duePeriodKey,
   dueOverdueInfo,
@@ -19,6 +20,25 @@ describe('firstOfNextMonth', () => {
   it('returns the 1st of the following month', () => {
     expect(firstOfNextMonth(new Date(2026, 8, 20))).toBe('2026-10-01')
     expect(firstOfNextMonth(new Date(2026, 11, 5))).toBe('2027-01-01')
+  })
+})
+
+describe('firstBillDate', () => {
+  it('monthly → 1st of next month', () => {
+    expect(firstBillDate('monthly', new Date(2026, 8, 20))).toBe('2026-10-01')
+  })
+
+  it('weekly/biweekly → a near cycle boundary, never a month out', () => {
+    const today = new Date(2026, 9, 12)
+    const monthOut = firstOfNextMonth(today)
+    const weekly = firstBillDate('weekly', today)
+    const biweekly = firstBillDate('biweekly', today)
+    // The old default billed a whole month out; the fix keeps it within a cycle.
+    expect(weekly < monthOut).toBe(true)
+    expect(biweekly < monthOut).toBe(true)
+    const days = (new Date(weekly).getTime() - today.getTime()) / 86_400_000
+    expect(days).toBeGreaterThanOrEqual(0)
+    expect(days).toBeLessThanOrEqual(14)
   })
 })
 
