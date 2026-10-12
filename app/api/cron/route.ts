@@ -209,7 +209,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // ——— 08:00 digest: email (existing) + push ———
+    // ——— 08:00 digest: email (existing) + one daily push ———
     if (triggers.includes('digest_morning')) {
       if (await claimFire(supabase, 'digest_morning', dateKey, teacher.id)) {
         let email: string | undefined
@@ -228,9 +228,8 @@ export async function GET(request: Request) {
         const built = buildDailyDigestPayload({
           teacherProfileId: teacher.profile_id,
           pendingCount: (pendingProofs || []).length,
-          overdueNames: overdue.map((s) => s.name),
+          overdueCount: overdue.length,
           unclaimedCount,
-          evening: false,
         })
         const push = built
           ? await pushToProfile(supabase, built.profileId, built.payload)
@@ -238,24 +237,6 @@ export async function GET(request: Request) {
         teacherRes.triggers.digest_morning = { email: emailRes, push }
       } else {
         teacherRes.triggers.digest_morning = { skipped: 'already_fired' }
-      }
-    }
-
-    // ——— 20:00 digest: push only ———
-    if (triggers.includes('digest_evening')) {
-      if (await claimFire(supabase, 'digest_evening', dateKey, teacher.id)) {
-        const built = buildDailyDigestPayload({
-          teacherProfileId: teacher.profile_id,
-          pendingCount: (pendingProofs || []).length,
-          overdueNames: overdue.map((s) => s.name),
-          unclaimedCount,
-          evening: true,
-        })
-        teacherRes.triggers.digest_evening = built
-          ? await pushToProfile(supabase, built.profileId, built.payload)
-          : { sent: false, reason: 'nothing_to_report' }
-      } else {
-        teacherRes.triggers.digest_evening = { skipped: 'already_fired' }
       }
     }
 

@@ -30,9 +30,9 @@ describe('cron-schedule (Cairo hour gates)', () => {
     ])
   })
 
-  it('fires morning digest at 08:00, evening at 20:00, nothing at 03:00', () => {
+  it('fires the digest at 08:00 only, nothing at 20:00 or 03:00', () => {
     expect(dueTriggers(new Date('2026-09-24T05:00:00Z'))).toEqual(['digest_morning'])
-    expect(dueTriggers(new Date('2026-09-24T17:00:00Z'))).toEqual(['digest_evening'])
+    expect(dueTriggers(new Date('2026-09-24T17:00:00Z'))).toEqual([])
     expect(dueTriggers(new Date('2026-09-24T00:00:00Z'))).toEqual([])
   })
 
@@ -59,45 +59,35 @@ describe('escalation + digest payloads', () => {
     expect(built?.payload.url).toBe('/dashboard')
   })
 
-  it('digest covers pending + overdue + unclaimed, null when clean', () => {
+  it('digest lists overdue + pending + unclaimed counts, null when clean', () => {
     expect(
       buildDailyDigestPayload({
         teacherProfileId: 't',
         pendingCount: 0,
-        overdueNames: [],
+        overdueCount: 0,
         unclaimedCount: 0,
       }),
     ).toBeNull()
-    const morning = buildDailyDigestPayload({
+    const out = buildDailyDigestPayload({
       teacherProfileId: 't',
       pendingCount: 2,
-      overdueNames: ['أحمد'],
+      overdueCount: 3,
       unclaimedCount: 1,
-      evening: false,
     })
-    expect(morning?.payload.title).toBe('ملخص الصباح')
-    expect(morning?.payload.body).toBe(
-      'متأخرون عن الدفع: أحمد • بانتظار مراجعتك: 2 • بلا ولي أمر: 1',
+    expect(out?.payload.title).toBe('متابعة اليوم')
+    expect(out?.payload.body).toBe(
+      'متأخرون عن الدفع: 3\nبانتظار مراجعتك: 2\nبلا ولي أمر: 1',
     )
-    expect(morning?.payload.url).toBe('/dashboard/unpaid')
-    const evening = buildDailyDigestPayload({
-      teacherProfileId: 't',
-      pendingCount: 0,
-      overdueNames: ['أحمد'],
-      unclaimedCount: 0,
-      evening: true,
-    })
-    expect(evening?.payload.title).toBe('ملخص المساء')
+    expect(out?.payload.url).toBe('/dashboard/unpaid')
   })
 
-  it('caps the overdue name list and phrases the unclaimed count clearly', () => {
+  it('only lists the groups that have something', () => {
     const out = buildDailyDigestPayload({
       teacherProfileId: 't',
       pendingCount: 0,
-      overdueNames: ['أحمد', 'محمد', 'علي'],
-      unclaimedCount: 2,
-      evening: true,
+      overdueCount: 1,
+      unclaimedCount: 0,
     })
-    expect(out?.payload.body).toBe('متأخرون عن الدفع: أحمد، محمد و1 غيرهم • بلا ولي أمر: 2')
+    expect(out?.payload.body).toBe('متأخرون عن الدفع: 1')
   })
 })

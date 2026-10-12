@@ -3,17 +3,16 @@
 // Approved plan: hourly CI tick, Cairo hour-gates decide what fires.
 //   - 10:00 → payer daily nags (due day onward, no cap, skip while pending)
 //   - 10:00 → teacher escalation (overdue day 3+, daily while overdue)
-//   - 08:00 + 20:00 → teacher digest (pending + overdue + unclaimed)
+//   - 08:00 → teacher digest (overdue + pending + unclaimed), once a day
 // Toggle is dead: automation always on. Manual Remind untouched.
 
 export const CAIRO_TZ = 'Africa/Cairo'
 
 export const NAG_HOUR = 10
 export const DIGEST_MORNING_HOUR = 8
-export const DIGEST_EVENING_HOUR = 20
 export const ESCALATION_MIN_DAYS = 3
 
-export type CronTrigger = 'payer_nag' | 'escalation' | 'digest_morning' | 'digest_evening'
+export type CronTrigger = 'payer_nag' | 'escalation' | 'digest_morning'
 
 /** Cairo wall-clock hour (0-23) for a given instant. DST-safe via Intl. */
 export function cairoHour(now: Date = new Date()): number {
@@ -46,6 +45,5 @@ export function dueTriggers(now: Date = new Date()): CronTrigger[] {
     triggers.push('payer_nag', 'escalation')
   }
   if (hour === DIGEST_MORNING_HOUR) triggers.push('digest_morning')
-  if (hour === DIGEST_EVENING_HOUR) triggers.push('digest_evening')
   return triggers
 }

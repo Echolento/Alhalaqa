@@ -208,7 +208,7 @@ describe('GET /api/cron (timing engine)', () => {
     expect(teacherCalls[0][1].title).toContain('تدخلك')
   })
 
-  it('08:00 sends email + morning digest, no payer nags', async () => {
+  it('08:00 sends email + the daily digest, no payer nags', async () => {
     vi.setSystemTime(AT_08)
     const { GET } = await import('@/app/api/cron/route')
     const body = await (await GET(authedReq())).json()
@@ -220,18 +220,17 @@ describe('GET /api/cron (timing engine)', () => {
       ([sub]: any[]) => sub.endpoint === 'https://push.example/teacher',
     )
     expect(teacherCalls.length).toBe(1)
-    expect(teacherCalls[0][1].title).toBe('ملخص الصباح')
+    expect(teacherCalls[0][1].title).toBe('متابعة اليوم')
   })
 
-  it('20:00 sends evening digest push only, no email', async () => {
+  it('20:00 fires nothing — the digest is once daily at 08:00', async () => {
     vi.setSystemTime(AT_20)
     const { GET } = await import('@/app/api/cron/route')
     const body = await (await GET(authedReq())).json()
 
-    expect(body.triggers).toContain('digest_evening')
+    expect(body.triggers).toEqual([])
     expect(mockSendEmail).not.toHaveBeenCalled()
-    expect(mockSendPush).toHaveBeenCalledOnce()
-    expect(mockSendPush.mock.calls[0][1].title).toBe('ملخص المساء')
+    expect(mockSendPush).not.toHaveBeenCalled()
   })
 
   it('dead hour fires nothing', async () => {
