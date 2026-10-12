@@ -97,7 +97,15 @@ export async function getTeacherPayments(month?: string) {
       const rows = (rowsByStudent.get(s.id) ?? [])
         .slice()
         .sort((a, b) => String(b.month).localeCompare(String(a.month)))
-      // Same rule as StudentProfile: the displayed cycle's row, else the latest.
+      // Interval students: the shown cycle IS the outstanding cycle, so an
+      // absent row means unpaid — never inherit an unrelated older row (the
+      // filter leaves nothing here, and filter(Boolean) drops it).
+      if (s.frequency !== 'monthly') {
+        return rows.filter(p => p.month === s.currentMonthKey)[0]
+      }
+      // Monthly keeps the prepay fallback: the settled cycle is usually not the
+      // wall-clock month, so an absent row for the shown month means look at the
+      // latest.
       return rows.find(p => p.month === s.currentMonthKey) ?? rows[0] ?? null
     })
     .filter(Boolean)

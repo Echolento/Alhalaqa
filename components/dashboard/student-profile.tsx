@@ -83,7 +83,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   // weekly student read as a contradiction.
   const freqWord =
     FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
-  const current = payments.find((p) => p.month === month) || payments[0]
+  // Interval students' shown cycle IS their outstanding cycle: a missing row
+  // means unpaid, never inherit an unrelated older row. Monthly keeps the
+  // prepay fallback (the settled cycle is usually not the shown month).
+  const current =
+    payments.find((p) => p.month === month) ??
+    ((student.frequency || 'monthly') === 'monthly' ? payments[0] : undefined)
   const isPaid = current?.paid || false
   const status = getPaymentStatus(isPaid, { pending: !isPaid && !!student.hasPendingProof })
 

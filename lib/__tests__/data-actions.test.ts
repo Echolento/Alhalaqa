@@ -695,6 +695,52 @@ describe('getTeacherPayments', () => {
     expect(paid?.month).toBe('2026-11-01')
   })
 
+  it('interval student with no row for the outstanding cycle reads unpaid (no latest-row fallback)', async () => {
+    // Weekly student owes 2026-10-05 (next_due) but only has an older paid row.
+    // The shown cycle IS the outstanding cycle, so it must NOT inherit that row.
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'weekly', next_due_date: '2026-10-05' }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [{ id: 'p1', student_id: studentId, month: '2026-09-28', paid: true, amount_paid: 100 }],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-10-01')
+
+    expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
+  })
+
+  it('monthly student keeps the prepay fallback (settled cycle is not the shown month)', async () => {
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly' }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [{ id: 'p1', student_id: studentId, month: '2026-11-01', paid: true, amount_paid: 100 }],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-10-01')
+
+    const paid = result.payments.find((p: any) => p.student_id === studentId) as any
+    expect(paid?.paid).toBe(true)
+    expect(paid?.month).toBe('2026-11-01')
+  })
+
   it('month expected scales with frequency (weekly pays several cycles, not one)', async () => {
     const weeklyId = 'student-w'
     mockSupabase.from.mockImplementation(() => {
