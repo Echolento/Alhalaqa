@@ -77,6 +77,7 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     in: vi.fn(() => builder),
+    lte: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
     insert: vi.fn((row: any) => {
@@ -358,20 +359,23 @@ describe('getPayScreenInfo', () => {
     expect((result as any).periodKey).toBe(firstOfNextMonth(new Date()))
   })
 
-  // Filter-aware builder so the three student_payments reads (paid row,
-  // reopened/unpaid row, any-historical-paid row) resolve distinctly.
+  // Filter-aware builder so the student_payments reads (paid row, unpaid row at
+  // or before the cycle, any-historical-paid row) resolve distinctly.
   function filterAwareService(rows: Record<string, any[]>) {
     const builder = (table: string) => {
-      const filters: Array<[string, any]> = []
+      const filters: Array<[string, string, any]> = []
       const b: any = {}
       b.select = () => b
-      b.eq = (c: string, v: any) => { filters.push([c, v]); return b }
-      b.in = (c: string, vs: any[]) => { filters.push([c, vs]); return b }
+      b.eq = (c: string, v: any) => { filters.push([c, 'eq', v]); return b }
+      b.in = (c: string, vs: any[]) => { filters.push([c, 'in', vs]); return b }
+      b.lte = (c: string, v: any) => { filters.push([c, 'lte', v]); return b }
       b.limit = () => b
       b.order = () => b
       b.maybeSingle = async () => {
         const match = (rows[table] ?? []).find((row) =>
-          filters.every(([c, v]) => (Array.isArray(v) ? v.includes(row[c]) : row[c] === v)),
+          filters.every(([c, op, v]) =>
+            op === 'in' ? v.includes(row[c]) : op === 'lte' ? row[c] <= v : row[c] === v,
+          ),
         )
         return { data: match ?? null }
       }

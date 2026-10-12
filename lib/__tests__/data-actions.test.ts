@@ -621,8 +621,8 @@ describe('getTeacherPayments', () => {
       })
       b.order = vi.fn().mockResolvedValue({
         data: [
-          { id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1 },
-          { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 15 },
+          { id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, next_due_date: '2024-06-01' },
+          { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 15, next_due_date: '2024-06-01' },
         ],
       })
         b.in = vi.fn().mockResolvedValue({
@@ -641,7 +641,7 @@ describe('getTeacherPayments', () => {
     expect(result.payments).toHaveLength(2)
   })
 
-  it('weekly student keeps own cycle even when dashboard passes a month', async () => {
+  it('every student keeps their outstanding cycle even when the dashboard passes a month', async () => {
     const studentId2 = 'student-2'
     mockSupabase.from.mockImplementation(() => {
       const b = createBuilder()
@@ -650,8 +650,8 @@ describe('getTeacherPayments', () => {
       })
       b.order = vi.fn().mockResolvedValue({
         data: [
-          { id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly' },
-          { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 1, frequency: 'weekly' },
+          { id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly', next_due_date: '2024-07-01' },
+          { id: studentId2, name: 'Noor', monthly_price: 200, payment_day: 1, frequency: 'weekly', next_due_date: '2024-06-10' },
         ],
       })
       b.in = vi.fn().mockResolvedValue({ data: [] })
@@ -662,9 +662,10 @@ describe('getTeacherPayments', () => {
     const result = await getTeacherPayments('2024-06-01')
     const monthly = result.students.find((s: any) => s.id === studentId) as any
     const weekly = result.students.find((s: any) => s.id === studentId2) as any
-    expect(monthly?.currentMonthKey).toBe('2024-06-01')
-    expect(weekly?.currentMonthKey).not.toBe('2024-06-01')
-    expect(weekly?.currentMonthKey).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    // Both tie to their OUTSTANDING cycle, not the passed month.
+    expect(monthly?.currentMonthKey).toBe('2024-07-01')
+    expect(weekly?.currentMonthKey).toBe('2024-06-10')
+    expect(monthly?.currentMonthKey).not.toBe('2024-06-01')
   })
 
   it('reads a student as paid when the settled cycle is not the displayed month (prepay)', async () => {
@@ -718,14 +719,37 @@ describe('getTeacherPayments', () => {
     expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
   })
 
-  it('monthly student keeps the prepay fallback (settled cycle is not the shown month)', async () => {
+  it('lapsed monthly student reads unpaid even when an older cycle was paid (no latest-row fallback)', async () => {
+    // next_due 2026-11-01 is unpaid; only 2026-09-01 was ever paid. The old
+    // "latest row" fallback read this as PAID while the payer saw unpaid.
     mockSupabase.from.mockImplementation(() => {
       const b = createBuilder()
       b.maybeSingle = vi.fn().mockResolvedValue({
         data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
       })
       b.order = vi.fn().mockResolvedValue({
-        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly' }],
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly', next_due_date: '2026-11-01' }],
+      })
+      b.in = vi.fn().mockResolvedValue({
+        data: [{ id: 'p1', student_id: studentId, month: '2026-09-01', paid: true, amount_paid: 100 }],
+      })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-12-01')
+
+    expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
+  })
+
+  it('monthly student reads the settled row for their OUTSTANDING cycle', async () => {
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly', next_due_date: '2026-11-01' }],
       })
       b.in = vi.fn().mockResolvedValue({
         data: [{ id: 'p1', student_id: studentId, month: '2026-11-01', paid: true, amount_paid: 100 }],

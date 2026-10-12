@@ -289,6 +289,13 @@ export async function deleteStudent(studentId: string) {
     .delete()
     .eq('student_id', studentId)
 
+  // Proofs too — otherwise orphaned receipts keep surfacing in the unpaid queue
+  // and via getProofReceipt after the student is gone.
+  await service
+    .from('payment_proofs')
+    .delete()
+    .eq('student_id', studentId)
+
   await logActivity({
     actionType: 'student_delete',
     entityType: 'student',
@@ -298,5 +305,6 @@ export async function deleteStudent(studentId: string) {
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
+  revalidatePath('/dashboard/unpaid')
   return { success: true }
 }

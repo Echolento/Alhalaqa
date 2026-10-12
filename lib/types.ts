@@ -43,6 +43,8 @@ export interface StudentView {
   next_due_date?: string | null
   claimed_by?: string | null
   hasPendingProof?: boolean
+  /** The student's outstanding cycle key (from next_due_date). */
+  currentMonthKey?: string
   payer_profile_id?: string | null
   payerProfileId?: string | null
 }

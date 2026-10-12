@@ -82,6 +82,21 @@ describe('advanceStudentCycle', () => {
     expect(ctx.lastStudentUpdate).toBeNull()
   })
 
+  it('advances from the real due date, preserving a monthly payment_day (15th → 15th)', async () => {
+    const { advanceStudentCycle } = await import('@/lib/billing-cycle')
+
+    const next = await advanceStudentCycle(
+      mockService,
+      'stu-1',
+      '2026-10-01',
+      'monthly',
+      '2026-10-15',
+    )
+
+    expect(next).toBe('2026-11-15')
+    expect(ctx.lastStudentUpdate).toEqual({ next_due_date: '2026-11-15' })
+  })
+
   it('defaults unknown frequency to monthly', async () => {
     const { advanceStudentCycle } = await import('@/lib/billing-cycle')
 

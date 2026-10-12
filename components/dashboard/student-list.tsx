@@ -63,11 +63,12 @@ export function StudentList({ students, payments, month, currency, initialCollec
     setLoading(studentId)
     const payment = localPayments.find((p) => p.student_id === studentId)
     const newPaid = !payment?.paid
-    // Target the period this student's row actually belongs to (prepay settles
-    // a cycle that isn't the wall-clock month), so undo hits the right row.
-    const targetMonth = payment?.month ?? month
+    const row = students.find((s) => s.id === studentId)
+    // Target the student's OUTSTANDING cycle (the same one the pay screen and
+    // cron use), so the toggle/undo hits the right row for every frequency.
+    const targetMonth = row?.currentMonthKey ?? payment?.month ?? month
     const now = new Date().toISOString()
-    const price = Number(students.find((s) => s.id === studentId)?.monthly_price) || 0
+    const price = Number(row?.monthly_price) || 0
     setLocalPayments((prev) =>
       prev.some((p) => p.student_id === studentId)
         ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: newPaid, paid_at: newPaid ? now : null } : p))
@@ -269,7 +270,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
                               amount={Number(student.monthly_price) || undefined}
                               currency={currency}
-                              periodKey={month}
+                              periodKey={student.currentMonthKey ?? month}
                               phone={student.phone ?? null}
                             />
                           ) : null}

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireUser } from './action-context'
 import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
-import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
+import { duePeriodKey, firstOfNextMonth, outstandingCycleKey, toISODate } from './billing-next'
 import { advanceStudentCycle } from './billing-cycle'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
@@ -32,13 +32,12 @@ export async function getTeacherPayments(month?: string) {
   const today = new Date()
   const normalizedStudents = (students || []).map(s => {
     const frequency = normalizeFrequency((s as any).frequency)
-    // The cycle this student is viewed against: monthly ties to the selected
-    // month (a real ledger); interval students tie to their OUTSTANDING cycle
-    // derived from next_due_date — the source of truth — never the wall clock.
-    const cycleKey =
-      frequency === 'monthly'
-        ? monthKey
-        : duePeriodKey(((s as any).next_due_date ?? firstOfNextMonth(today)) as string, frequency)
+    // Every student is viewed against their OUTSTANDING cycle (next_due_date,
+    // the source of truth) — the same cycle the payer pay screen and the cron
+    // use. The selected `month` drives only the expected/collected totals, never
+    // the per-student status (a wall-clock month made the list disagree with the
+    // payer and read a lapsed student as paid).
+    const cycleKey = outstandingCycleKey(s, today)
     return {
       id: s.id,
       full_name: s.name || 'طالب',
@@ -53,30 +52,30 @@ export async function getTeacherPayments(month?: string) {
   })
 
   // Pending-confirmation proofs turn the card amber instead of red. Matched by
-  // STUDENT (not period): the proof is stored against the outstanding due cycle,
-  // which is not the dashboard's displayed period. Mirrors getStudentProfile.
-  const pendingStudentIds = new Set<string>()
+  // (student, outstanding cycle) — the SAME period the pay screen uses. A stale
+  // pending proof for a cycle that already advanced must not amber the current one.
+  const pendingKeys = new Set<string>()
   {
     const ids = normalizedStudents.map(s => s.id)
     if (ids.length > 0) {
       const { data: pendingProofs } = await supabase
         .from('payment_proofs')
-        .select('student_id')
+        .select('student_id, period_key')
         .eq('status', 'pending')
         .in('student_id', ids)
       for (const proof of pendingProofs || []) {
-        pendingStudentIds.add((proof as { student_id: string }).student_id)
+        const p = proof as { student_id: string; period_key: string }
+        pendingKeys.add(`${p.student_id}_${p.period_key}`)
       }
     }
   }
   for (const s of normalizedStudents) {
-    (s as any).hasPendingProof = pendingStudentIds.has(s.id)
+    (s as any).hasPendingProof = pendingKeys.has(`${s.id}_${s.currentMonthKey}`)
   }
 
-  // Payments: mirror the profile's status rule — the row for the displayed
-  // period if one exists, else the student's MOST RECENT row. Prepay records the
-  // SETTLED cycle, which is usually not the wall-clock month, so a
-  // period-scoped fetch made paid students read as unpaid and desynced totals.
+  // Payments: the row for each student's OUTSTANDING cycle (currentMonthKey),
+  // or nothing → unpaid. No latest-row fallback: the shown cycle is the owed
+  // cycle, so a missing row means the family owes it.
   const ids = normalizedStudents.map(s => s.id)
   const rowsByStudent = new Map<string, Record<string, unknown>[]>()
   if (ids.length > 0) {
@@ -97,16 +96,10 @@ export async function getTeacherPayments(month?: string) {
       const rows = (rowsByStudent.get(s.id) ?? [])
         .slice()
         .sort((a, b) => String(b.month).localeCompare(String(a.month)))
-      // Interval students: the shown cycle IS the outstanding cycle, so an
-      // absent row means unpaid — never inherit an unrelated older row (the
-      // filter leaves nothing here, and filter(Boolean) drops it).
-      if (s.frequency !== 'monthly') {
-        return rows.filter(p => p.month === s.currentMonthKey)[0]
-      }
-      // Monthly keeps the prepay fallback: the settled cycle is usually not the
-      // wall-clock month, so an absent row for the shown month means look at the
-      // latest.
-      return rows.find(p => p.month === s.currentMonthKey) ?? rows[0] ?? null
+      // The shown cycle IS the outstanding cycle for every frequency, so an
+      // absent row means unpaid — no "latest row" fallback (that made a lapsed
+      // student read as paid whenever an older cycle was settled).
+      return rows.filter(p => p.month === s.currentMonthKey)[0]
     })
     .filter(Boolean)
 

@@ -21,7 +21,7 @@ export default async function DashboardPage({
   if (!user) redirect('/auth/login')
 
   const { month } = await searchParams
-  const currentMonth = month || new Date().toISOString().slice(0, 7) + '-01'
+  const currentMonth = month || getCurrentMonthKey()
   const { students, payments, currency, expected, collected } = await getTeacherPayments(currentMonth)
   // Teacher-as-payer shortcut: visible only when the caller owns ≥1 claim.
   const showMyPayments = await callerHasClaimedStudents()

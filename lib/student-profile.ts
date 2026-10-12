@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from './ownership'
+import { outstandingCycleKey } from '@/lib/billing-next'
 
 export interface StudentPaymentRecord {
   student_id: string
@@ -52,11 +53,17 @@ export async function getStudentProfile(studentId: string) {
 
   const { data: pendingProof } = await service
     .from('payment_proofs')
-    .select('id')
+    .select('id, period_key')
     .eq('student_id', studentId)
     .eq('status', 'pending')
     .limit(1)
     .maybeSingle()
+
+  // Pending only counts for the student's OUTSTANDING cycle (same rule as the
+  // payments list + pay screen); a stale proof for an advanced cycle is ignored.
+  const outstandingKey = outstandingCycleKey(student)
+  const hasPendingProof =
+    !!pendingProof && (pendingProof as { period_key?: string }).period_key === outstandingKey
 
   return {
     student: {
@@ -69,7 +76,7 @@ export async function getStudentProfile(studentId: string) {
       frequency: (student as any).frequency === 'weekly' || (student as any).frequency === 'biweekly' ? (student as any).frequency : 'monthly',
       next_due_date: ((student as any).next_due_date ?? null) as string | null,
       claimed_by: (student as any).claimed_by ?? null,
-      hasPendingProof: !!pendingProof,
+      hasPendingProof,
     },
     payments,
     currency: teacher?.currency || 'SAR',

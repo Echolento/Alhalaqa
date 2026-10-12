@@ -24,17 +24,18 @@ export async function advanceStudentCycle(
   frequency: unknown,
   currentNextDue: string | null | undefined,
 ): Promise<string | null> {
-  // Never skip an owed cycle. When the outstanding due is BEFORE the settled
-  // period, the teacher settled a later (prepaid / out-of-order) cycle while an
-  // earlier one is still unpaid — advancing here would run next_due past that
-  // owed cycle and the family would never be asked for it. Leave it alone.
-  if (currentNextDue && currentNextDue < settledPeriodKey) {
-    return null
-  }
-  if (!currentNextDue || currentNextDue <= settledPeriodKey) {
-    const next = advanceDueDate(settledPeriodKey, normalizeFrequency(frequency))
-    await service.from('students').update({ next_due_date: next }).eq('id', studentId)
-    return next
-  }
-  return null
+  const freq = normalizeFrequency(frequency)
+  // Only the cycle that is currently outstanding advances the ratchet: the
+  // stored due must fall inside the settled period's window [key, key+interval).
+  // Settling an earlier (missed) cycle or a later (prepaid / out-of-order) one
+  // leaves next_due alone — advancing would run it past a cycle still owed.
+  const windowEnd = advanceDueDate(settledPeriodKey, freq)
+  const isOutstanding =
+    !currentNextDue || (currentNextDue >= settledPeriodKey && currentNextDue < windowEnd)
+  if (!isOutstanding) return null
+  // Advance from the REAL due date (not the period key) so a monthly student on
+  // payment_day 15 keeps the 15th instead of collapsing to the 1st.
+  const next = advanceDueDate(currentNextDue ?? settledPeriodKey, freq)
+  await service.from('students').update({ next_due_date: next }).eq('id', studentId)
+  return next
 }
