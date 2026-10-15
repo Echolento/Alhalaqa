@@ -10,6 +10,7 @@
 // contract buildReceiptUploadedPayload from lib/push-payloads.ts.
 
 import { describePeriod } from '@/lib/period-label'
+import * as Sentry from '@sentry/nextjs'
 import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent } from '@/lib/ownership'
 import { normalizeFrequency } from '@/lib/billing-period'
@@ -59,88 +60,135 @@ export async function uploadPaymentProof(params: {
   sizeBytes: number
   fileBytes: Uint8Array | Buffer
 }) {
-  const ctx = await requireUser()
-  if ('error' in ctx) return ctx
-  const { user, service } = ctx
-
-  const fileCheck = validateProofFile({
-    fileName: params.fileName,
-    mimeType: params.mimeType,
-    sizeBytes: params.sizeBytes,
-  })
-  if (!fileCheck.ok) return { error: fileCheck.error }
-
-  const { data: student } = await service
-    .from('students')
-    .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
-    .eq('id', params.studentId)
-    .maybeSingle()
-
-  const s = student as StudentBillingRow | null
-  if (!s) return { error: 'الطالب غير موجود' }
-
-  // Period key is server-computed from the OUTSTANDING next-due cycle —
-  // never the wall clock, never trusted from the client.
-  const periodKey = outstandingCycleKey(s)
-
-  const storagePath = buildProofStoragePath({
-    teacherId: s.teacher_id,
-    studentId: s.id,
-    periodKey,
-    fileName: params.fileName,
-  })
-
-  const { error: uploadError } = await service.storage
-    .from(PAYMENT_PROOFS_BUCKET)
-    .upload(storagePath, params.fileBytes, {
-      contentType: fileCheck.normalizedMime,
-      upsert: false,
-    })
-  if (uploadError) return { error: 'فشل رفع الإيصال — حاول مرة أخرى' }
-
-  const { data: proof, error: insertError } = await service
-    .from('payment_proofs')
-    .insert({
-      student_id: s.id,
-      teacher_id: s.teacher_id,
-      payer_profile_id: user.id,
-      period_key: periodKey,
-      storage_path: storagePath,
-      status: 'pending',
-    })
-    .select('id')
-    .single()
-
-  if (insertError || !proof) return { error: 'فشل حفظ الإيصال — حاول مرة أخرى' }
-
-  const proofId = (proof as { id: string }).id
-
-  // Best-effort teacher push: proof is kept even when push is unavailable.
   try {
-    const { data: teacher } = await service
-      .from('teachers')
-      .select('profile_id')
-      .eq('id', s.teacher_id)
+    const ctx = await requireUser()
+    if ('error' in ctx) return ctx
+    const { user, service } = ctx
+
+    const fileCheck = validateProofFile({
+      fileName: params.fileName,
+      mimeType: params.mimeType,
+      sizeBytes: params.sizeBytes,
+    })
+    if (!fileCheck.ok) {
+      Sentry.captureMessage('receipt upload rejected (validation)', {
+        level: 'warning',
+        tags: { area: 'receipt-upload', reason: 'validation' },
+        extra: {
+          studentId: params.studentId,
+          fileName: params.fileName,
+          mimeType: params.mimeType,
+          sizeBytes: params.sizeBytes,
+          rejection: fileCheck.error,
+        },
+      })
+      return { error: fileCheck.error }
+    }
+
+    const { data: student } = await service
+      .from('students')
+      .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
+      .eq('id', params.studentId)
       .maybeSingle()
 
-    const teacherProfileId = (teacher as { profile_id: string } | null)?.profile_id
-    if (teacherProfileId) {
-      const subscription = await getPushSubscription(service, teacherProfileId)
+    const s = student as StudentBillingRow | null
+    if (!s) return { error: 'الطالب غير موجود' }
 
-      if (subscription) {
-        const target = buildReceiptUploadedPayload({
-          teacherProfileId,
-          studentName: s.name || 'طالب',
-          receiptId: proofId,
-        })
-        await sendPushNotification(subscription, target.payload)
-      }
+    // Period key is server-computed from the OUTSTANDING next-due cycle —
+    // never the wall clock, never trusted from the client.
+    const periodKey = outstandingCycleKey(s)
+
+    const storagePath = buildProofStoragePath({
+      teacherId: s.teacher_id,
+      studentId: s.id,
+      periodKey,
+      fileName: params.fileName,
+    })
+
+    const { error: uploadError } = await service.storage
+      .from(PAYMENT_PROOFS_BUCKET)
+      .upload(storagePath, params.fileBytes, {
+        contentType: fileCheck.normalizedMime,
+        upsert: false,
+      })
+    if (uploadError) {
+      Sentry.captureException(new Error(`receipt storage upload failed: ${uploadError.message}`), {
+        tags: { area: 'receipt-upload', reason: 'storage' },
+        extra: {
+          studentId: s.id,
+          bucket: PAYMENT_PROOFS_BUCKET,
+          storagePath,
+          sizeBytes: params.sizeBytes,
+          mimeType: fileCheck.normalizedMime,
+        },
+      })
+      return { error: 'فشل رفع الإيصال — حاول مرة أخرى' }
     }
-  } catch {
-    // Push is advisory — ignore transport failures.
-  }
 
-  return { success: true, proofId, periodKey, storagePath }
+    const { data: proof, error: insertError } = await service
+      .from('payment_proofs')
+      .insert({
+        student_id: s.id,
+        teacher_id: s.teacher_id,
+        payer_profile_id: user.id,
+        period_key: periodKey,
+        storage_path: storagePath,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !proof) {
+      Sentry.captureException(new Error(`receipt proof insert failed: ${insertError?.message ?? 'no row'}`), {
+        tags: { area: 'receipt-upload', reason: 'insert' },
+        extra: { studentId: s.id, periodKey, storagePath },
+      })
+      return { error: 'فشل حفظ الإيصال — حاول مرة أخرى' }
+    }
+
+    const proofId = (proof as { id: string }).id
+
+    // Best-effort teacher push: proof is kept even when push is unavailable.
+    try {
+      const { data: teacher } = await service
+        .from('teachers')
+        .select('profile_id')
+        .eq('id', s.teacher_id)
+        .maybeSingle()
+
+      const teacherProfileId = (teacher as { profile_id: string } | null)?.profile_id
+      if (teacherProfileId) {
+        const subscription = await getPushSubscription(service, teacherProfileId)
+
+        if (subscription) {
+          const target = buildReceiptUploadedPayload({
+            teacherProfileId,
+            studentName: s.name || 'طالب',
+            receiptId: proofId,
+          })
+          await sendPushNotification(subscription, target.payload)
+        }
+      }
+    } catch {
+      // Push is advisory — ignore transport failures.
+    }
+
+    return { success: true, proofId, periodKey, storagePath }
+  } catch (err) {
+    // Anything unexpected (e.g. the Server Action body limit rejecting the
+    // request, a missing service key) surfaces here — capture it so a "keeps
+    // failing" upload is diagnosable instead of a silent generic toast.
+    Sentry.captureException(err, {
+      tags: { area: 'receipt-upload', reason: 'thrown' },
+      extra: {
+        studentId: params.studentId,
+        fileName: params.fileName,
+        mimeType: params.mimeType,
+        sizeBytes: params.sizeBytes,
+      },
+    })
+    return { error: 'فشل رفع الإيصال — حاول مرة أخرى' }
+  }
 }
 
 /**

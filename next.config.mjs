@@ -8,6 +8,10 @@ const nextConfig = {
     // request cap; the client downscales well below it anyway.
     serverActions: {
       bodySizeLimit: '4mb',
+      // Server Actions are CSRF-checked against the request Host. The payer
+      // subdomain (pay.alhalaqa.com) can post the receipt upload while the
+      // canonical host serves it — allow the app's own hosts explicitly.
+      allowedOrigins: ['alhalaqa.com', '*.alhalaqa.com'],
     },
   },
   typescript: {
