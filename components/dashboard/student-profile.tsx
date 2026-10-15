@@ -243,21 +243,23 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
               {student.monthly_price} {currencySymbol} · الاستحقاق {formatDueDateAr(student.next_due_date)}
             </p>
           </div>
-          <Button
-            onClick={handleToggle}
-            disabled={loading}
-            className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
-            variant={rowPaid ? 'ghost' : 'default'}
-          >
-            {loading ? (
-              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-            ) : rowPaid ? (
-              <>
-                <Undo2 className="w-4 h-4" />
-                تراجع
-              </>
-            ) : 'تحديد كمدفوع'}
-          </Button>
+          {isPaid && !rowPaid ? null : (
+            <Button
+              onClick={handleToggle}
+              disabled={loading}
+              className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
+              variant={rowPaid ? 'ghost' : 'default'}
+            >
+              {loading ? (
+                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+              ) : rowPaid ? (
+                <>
+                  <Undo2 className="w-4 h-4" />
+                  تراجع
+                </>
+              ) : 'تحديد كمدفوع'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

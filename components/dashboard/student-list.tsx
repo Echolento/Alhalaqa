@@ -234,7 +234,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                       className={isPaid ? 'shrink-0' : 'w-full sm:w-auto flex flex-col gap-2'}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {isPaid && rowPaid ? (
+                      {rowPaid ? (
                         <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -273,7 +273,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      ) : (
+                      ) : !isPaid ? (
                         <div className="flex flex-col gap-2">
                           <Button
                             variant="default"
@@ -297,7 +297,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                             />
                           ) : null}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>

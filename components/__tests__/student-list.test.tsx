@@ -90,6 +90,13 @@ describe('StudentList (merged home)', () => {
     expect(screen.queryByTestId('missing-phone-s3')).not.toBeInTheDocument()
   })
 
+  it('a settled (not-yet-due) student shows green with NO mark-as-paid button', () => {
+    const rows = [{ id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, settled: true }]
+    render(<StudentList {...props} students={rows} payments={[]} />)
+    expect(screen.getByText('مدفوع')).toBeInTheDocument()
+    expect(screen.queryByText('تحديد كمدفوع')).not.toBeInTheDocument()
+  })
+
   it('each row links to profile', () => {
     const { container } = render(<StudentList {...props} />)
     const link = container.querySelector('a[href="/dashboard/students/s1"]')
