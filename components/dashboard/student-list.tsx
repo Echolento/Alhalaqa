@@ -20,6 +20,12 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 import { AlertTriangle } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toggleStudentPayment } from '@/lib/payment-actions'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
@@ -38,9 +44,12 @@ interface StudentListProps {
   currency: string
   initialCollected: number
   initialExpected: number
+  /** Ids of the overdue students — the ?overdue=1 email overlay lists just these. */
+  overdueIds?: string[]
+  showOverdue?: boolean
 }
 
-export function StudentList({ students, payments, month, currency, initialCollected, initialExpected }: StudentListProps) {
+export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
@@ -49,6 +58,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
   const [collected, setCollected] = useState(initialCollected)
   const { toast } = useToast()
   const currencySymbol = getCurrencySymbol(currency)
+  const overdueList = overdueIds.length ? students.filter((s) => overdueIds.includes(s.id)) : []
 
   useEffect(() => {
     setLocalPayments(payments)
@@ -178,8 +188,8 @@ export function StudentList({ students, payments, month, currency, initialCollec
                 onClick={() => router.push(cardHref)}
                 className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg cursor-pointer ${status.cardClass}`}
               >
-                <CardContent className="p-3 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <Link href={cardHref} className="flex items-center gap-3 w-full min-w-0">
+                <CardContent className={`flex justify-between gap-3 ${isPaid ? 'items-center px-3 py-2 md:px-4 md:py-2.5' : 'p-3 md:p-5 flex-col sm:flex-row items-center'}`}>
+                  <Link href={cardHref} className="flex items-center gap-3 min-w-0 flex-1">
                       {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <h3 className="font-black text-lg md:text-2xl truncate">{student.full_name || student.name}</h3>
@@ -218,7 +228,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                       </div>
                     </Link>
                     <div
-                      className="w-full sm:w-auto flex flex-col gap-2"
+                      className={isPaid ? 'shrink-0' : 'w-full sm:w-auto flex flex-col gap-2'}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {isPaid ? (
@@ -226,16 +236,16 @@ export function StudentList({ students, payments, month, currency, initialCollec
                           <AlertDialogTrigger asChild>
                             <Button
                               variant="ghost"
+                              size="icon"
+                              aria-label="تراجع عن الدفع"
+                              data-testid={`undo-${student.id}`}
                               disabled={loading === student.id}
-                              className="w-auto font-bold min-h-[44px] ms-auto text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-11 w-11 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               {loading === student.id ? (
                                 <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
                               ) : (
-                                <>
-                                  <Undo2 className="w-4 h-4" />
-                                  تراجع
-                                </>
+                                <Undo2 className="w-4 h-4" />
                               )}
                             </Button>
                           </AlertDialogTrigger>
@@ -292,6 +302,59 @@ export function StudentList({ students, payments, month, currency, initialCollec
           })}
         </div>
       )}
+
+      {/* ?overdue=1 (the "still hasn't paid" email CTA): overlay the roster with
+          just the overdue students the email named. */}
+      <Dialog open={showOverdue} onOpenChange={(open) => { if (!open) router.replace('/dashboard') }}>
+        <DialogContent dir="rtl" className="max-w-md" data-testid="overdue-overlay">
+          <DialogHeader>
+            <DialogTitle>متأخرون عن الدفع ({overdueList.length})</DialogTitle>
+          </DialogHeader>
+          {overdueList.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              لا يوجد متأخرون — كل الطلاب سدّدوا.
+            </p>
+          ) : (
+            <div className="max-h-[60vh] space-y-2 overflow-auto">
+              {overdueList.map((student) => {
+                const paid = localPayments.find((p) => p.student_id === student.id)?.paid || false
+                return (
+                  <div
+                    key={student.id}
+                    data-testid={`overdue-row-${student.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{student.full_name || student.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {student.monthly_price} {currencySymbol} · الاستحقاق {formatDueDateAr(student.next_due_date)}
+                      </p>
+                    </div>
+                    {paid ? (
+                      <Badge variant="secondary" className="shrink-0 bg-emerald-100 text-emerald-700 border-transparent">
+                        مدفوع
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleToggle(student.id)}
+                        disabled={loading === student.id}
+                        className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {loading === student.id ? (
+                          <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                        ) : (
+                          'تحديد كمدفوع'
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

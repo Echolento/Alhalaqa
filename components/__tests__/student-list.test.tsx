@@ -96,6 +96,17 @@ describe('StudentList (merged home)', () => {
     expect(link).toBeInTheDocument()
   })
 
+  it('overlays only the overdue students when showOverdue (?overdue=1 email CTA)', () => {
+    const rows = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01' },
+    ]
+    render(<StudentList {...props} students={rows} payments={[]} overdueIds={['s2']} showOverdue />)
+    expect(screen.getByTestId('overdue-overlay')).toBeInTheDocument()
+    expect(screen.getByTestId('overdue-row-s2')).toBeInTheDocument()
+    expect(screen.queryByTestId('overdue-row-s1')).not.toBeInTheDocument()
+  })
+
   it('row shows price + next-due readouts and shared green/red status', () => {
     const rows = [
       { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01' },
@@ -118,23 +129,23 @@ describe('StudentList (merged home)', () => {
 
   it('undo button opens confirm dialog instead of navigating', () => {
     render(<StudentList {...props} />)
-    fireEvent.click(screen.getByText('تراجع'))
+    fireEvent.click(screen.getByTestId('undo-s1'))
     expect(screen.getByText('تراجع عن الدفع')).toBeInTheDocument()
     expect(screen.getByText('نعم، تراجع')).toBeInTheDocument()
   })
 
   it('confirming undo closes the dialog (no haunting later toggles)', async () => {
     render(<StudentList {...props} />)
-    fireEvent.click(screen.getByText('تراجع'))
+    fireEvent.click(screen.getByTestId('undo-s1'))
     expect(screen.getByText('تراجع عن الدفع')).toBeInTheDocument()
     fireEvent.click(screen.getByText('نعم، تراجع'))
     expect(await screen.findByText('تحديد كمدفوع')).toBeInTheDocument()
     expect(screen.queryByText('تراجع عن الدفع')).not.toBeInTheDocument()
   })
 
-  it('undo is low-emphasis ghost, never full-width red', () => {
+  it('undo is a compact inline icon, never full-width red', () => {
     render(<StudentList {...props} />)
-    const btn = screen.getByText('تراجع')
+    const btn = screen.getByTestId('undo-s1')
     expect(btn.className).not.toContain('bg-destructive')
     expect(btn.className).not.toContain('w-full')
   })

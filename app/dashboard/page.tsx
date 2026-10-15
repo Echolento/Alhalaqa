@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getTeacherPayments } from '@/lib/payment-actions'
 import { callerHasClaimedStudents } from '@/lib/claim-actions'
+import { getOverdueStudents } from '@/lib/overdue'
 import { MyPaymentsLink } from '@/components/dashboard/my-payments-link'
 import { TeacherNotifyPrompt } from '@/components/dashboard/teacher-notify-prompt'
 import { StudentList } from '@/components/dashboard/student-list'
@@ -13,18 +14,38 @@ import { prevMonthKey, nextMonthKey, getCurrentMonthKey } from '@/lib/billing-pe
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; overdue?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
 
-  const { month } = await searchParams
+  const { month, overdue } = await searchParams
   const currentMonth = month || getCurrentMonthKey()
   const { students, payments, currency, expected, collected } = await getTeacherPayments(currentMonth)
   // Teacher-as-payer shortcut: visible only when the caller owns ≥1 claim.
   const showMyPayments = await callerHasClaimedStudents()
+
+  // ?overdue=1 (the "still hasn't paid" email CTA) overlays the list with just
+  // the overdue students — same set the email named (grace 0).
+  const overdueIds = overdue
+    ? getOverdueStudents(
+        students.map((s) => ({
+          id: s.id,
+          name: s.full_name || 'طالب',
+          frequency: s.frequency,
+          next_due_date: s.next_due_date,
+        })),
+        payments.map((p) => ({
+          student_id: String(p.student_id ?? ''),
+          month: String(p.month ?? ''),
+          paid: !!p.paid,
+        })),
+        new Date(),
+        0,
+      ).map((o) => o.id)
+    : []
 
   const monthDate = new Date(currentMonth)
   const monthLabel = monthDate.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long', year: 'numeric' })
@@ -69,6 +90,8 @@ export default async function DashboardPage({
         currency={currency}
         initialCollected={collected}
         initialExpected={expected}
+        overdueIds={overdueIds}
+        showOverdue={!!overdue}
       />
     </div>
   )
