@@ -40,7 +40,7 @@ export function PayUploadContainer(props: {
           tags: { area: 'receipt-upload', phase: 'client', reason: 'too_large' },
           extra: { studentId: props.studentId, sizeBytes: prepared.sizeBytes, downscaled: prepared.downscaled },
         })
-        setUploadError('حجم الصورة كبير جدًا — اختر صورة أصغر')
+        setUploadError('الصورة كبيرة جدًا — خذ لقطة شاشة (سكرين شوت) للإيصال من تطبيق الدفع وارفعها بدل الصورة')
         return
       }
       const result = await uploadPaymentProof({

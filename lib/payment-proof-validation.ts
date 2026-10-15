@@ -83,7 +83,10 @@ export function validateProofFile(input: {
     return { ok: false, error: 'ملف الإيصال غير صالح — أعد اختيار الصورة' }
   }
   if (size > MAX_PROOF_BYTES) {
-    return { ok: false, error: 'حجم الصورة يتجاوز الحد المسموح (5MB) — اختر صورة أصغر' }
+    return {
+      ok: false,
+      error: 'الصورة أكبر من 5MB — خذ لقطة شاشة (سكرين شوت) للإيصال من تطبيق الدفع وارفعها بدل الصورة',
+    }
   }
   return { ok: true, normalizedMime: mime, extension: ext }
 }

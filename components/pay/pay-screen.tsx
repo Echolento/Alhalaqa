@@ -211,7 +211,8 @@ export function PayScreen(props: {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">٢) ارفع صورة الإيصال</CardTitle>
               <p className="text-xs text-muted-foreground">
-                بعد الدفع، صوّر الإيصال وارفعه هنا ليصل إلى المعلم.
+                بعد الدفع، ارفع صورة الإيصال هنا ليصل إلى المعلم. لقطة شاشة
+                (سكرين شوت) من تطبيق الدفع هي الأسهل والأسرع.
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
