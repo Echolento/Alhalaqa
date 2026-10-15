@@ -106,15 +106,20 @@ export async function getTeacherPayments(month?: string) {
   // "Previous period paid" reassurance: the outstanding cycle is unpaid but the
   // one right before it was settled — so a student who just paid (and ratcheted
   // to a fresh unpaid cycle) doesn't read as if the toggle never registered.
+  // A cycle that isn't DUE YET counts as settled too: a student due on the 18th
+  // is not "لم يدفع" on the 14th.
+  const todayISO = toISODate(today)
   for (const s of normalizedStudents) {
     const rows = rowsByStudent.get(s.id) ?? []
     const outstandingPaid = rows.some(
       r => (r as { month?: string; paid?: boolean }).month === s.currentMonthKey && (r as { paid?: boolean }).paid,
     )
     const dueISO = ((s as { next_due_date?: string | null }).next_due_date) ?? firstOfNextMonth(today)
+    const settled = outstandingPaid || dueISO > todayISO
+    ;(s as { settled?: boolean }).settled = settled
     const prevKey = previousCycleKey(dueISO, s.frequency)
     ;(s as { paidLastPeriod?: boolean }).paidLastPeriod =
-      !outstandingPaid && rows.some(r => (r as { month?: string; paid?: boolean }).month === prevKey && (r as { paid?: boolean }).paid)
+      !settled && rows.some(r => (r as { month?: string; paid?: boolean }).month === prevKey && (r as { paid?: boolean }).paid)
   }
 
   // Month totals honour frequency: an interval student contributes one price

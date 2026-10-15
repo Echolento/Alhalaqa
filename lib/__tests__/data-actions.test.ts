@@ -788,6 +788,27 @@ describe('getTeacherPayments', () => {
     expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
   })
 
+  it('reads a future-due student as settled — due on the 18th is not unpaid on the 14th', async () => {
+    mockSupabase.from.mockImplementation(() => {
+      const b = createBuilder()
+      b.maybeSingle = vi.fn().mockResolvedValue({
+        data: { id: teacherId, currency: 'SAR', default_monthly_price: 100 },
+      })
+      b.order = vi.fn().mockResolvedValue({
+        data: [{ id: studentId, name: 'Sami', monthly_price: 100, payment_day: 1, frequency: 'monthly', next_due_date: '2999-01-01' }],
+      })
+      b.in = vi.fn().mockResolvedValue({ data: [] })
+      return b
+    })
+
+    const { getTeacherPayments } = await import('@/lib/data-actions')
+    const result = await getTeacherPayments('2026-10-01')
+
+    const s = result.students.find((x: any) => x.id === studentId) as any
+    expect(s?.settled).toBe(true)
+    expect(s?.paidLastPeriod).toBe(false)
+  })
+
   it('month expected scales with frequency (weekly pays several cycles, not one)', async () => {
     const weeklyId = 'student-w'
     mockSupabase.from.mockImplementation(() => {

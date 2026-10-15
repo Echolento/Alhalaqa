@@ -84,9 +84,10 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   const freqWord =
     FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
   // The shown cycle is the student's outstanding cycle; a missing row means
-  // unpaid (no latest-row fallback).
+  // unpaid — unless the cycle isn't DUE YET (settled), which reads as paid.
   const current = payments.find((p) => p.month === month)
-  const isPaid = current?.paid || false
+  const rowPaid = current?.paid || false
+  const isPaid = rowPaid || !!student.settled
   const status = getPaymentStatus(isPaid, { pending: !isPaid && !!student.hasPendingProof })
 
   const [loading, setLoading] = useState(false)
@@ -245,12 +246,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           <Button
             onClick={handleToggle}
             disabled={loading}
-            className={isPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
-            variant={isPaid ? 'ghost' : 'default'}
+            className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
+            variant={rowPaid ? 'ghost' : 'default'}
           >
             {loading ? (
               <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-            ) : isPaid ? (
+            ) : rowPaid ? (
               <>
                 <Undo2 className="w-4 h-4" />
                 تراجع

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from './ownership'
-import { outstandingCycleKey, outstandingDueISO, previousCycleKey } from '@/lib/billing-next'
+import { outstandingCycleKey, outstandingDueISO, previousCycleKey, toISODate } from '@/lib/billing-next'
 
 export interface StudentPaymentRecord {
   student_id: string
@@ -67,11 +67,14 @@ export async function getStudentProfile(studentId: string) {
 
   // "Previous period paid": the outstanding cycle is unpaid but the one right
   // before it was settled (so a just-paid student flipping to a new unpaid cycle
-  // doesn't read as a failed registration).
-  const prevKey = previousCycleKey(outstandingDueISO(student), (student as any).frequency)
+  // doesn't read as a failed registration). A cycle that isn't DUE YET counts as
+  // settled too — a student due on the 18th is not "لم يدفع" on the 14th.
+  const dueISO = outstandingDueISO(student)
+  const prevKey = previousCycleKey(dueISO, (student as any).frequency)
   const outstandingPaid = payments.some((p) => p.month === outstandingKey && p.paid)
   const prevPaid = payments.some((p) => p.month === prevKey && p.paid)
-  const paidLastPeriod = !outstandingPaid && prevPaid
+  const settled = outstandingPaid || dueISO > toISODate(new Date())
+  const paidLastPeriod = !settled && prevPaid
 
   return {
     student: {
@@ -85,6 +88,7 @@ export async function getStudentProfile(studentId: string) {
       next_due_date: ((student as any).next_due_date ?? null) as string | null,
       claimed_by: (student as any).claimed_by ?? null,
       hasPendingProof,
+      settled,
       paidLastPeriod,
     },
     payments,

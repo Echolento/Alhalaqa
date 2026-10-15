@@ -43,6 +43,8 @@ export interface StudentView {
   next_due_date?: string | null
   claimed_by?: string | null
   hasPendingProof?: boolean
+  /** Outstanding cycle is paid OR not yet due → the student is up to date. */
+  settled?: boolean
   /** Outstanding cycle unpaid but the previous one settled → reassure the teacher. */
   paidLastPeriod?: boolean
   /** The student's outstanding cycle key (from next_due_date). */
