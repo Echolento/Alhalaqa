@@ -3,6 +3,10 @@
 -- The ratchet DECISION stays pure in TS (nextDueAfterSettle); the caller passes
 -- the computed next_due (null = leave next_due untouched).
 
+-- Drop the earlier 5-arg overload if a prior run created it (adding a param to
+-- create-or-replace creates a NEW overload rather than replacing).
+drop function if exists public.settle_cycle(uuid, text, numeric, date, uuid);
+
 create or replace function public.settle_cycle(
   p_student_id uuid,
   p_cycle_key  text,
