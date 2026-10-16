@@ -19,6 +19,7 @@ const mockSupabase = {
 const mockService: any = {
   from: vi.fn(),
   storage: { from: vi.fn() },
+  rpc: vi.fn(),
 }
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -89,8 +90,14 @@ beforeEach(() => {
   ctx.lastPaymentUpdate = null
   ctx.paymentWriteCount = 0
   ctx.lastStudentUpdate = null
+  ctx.rpcCalls = []
 
   mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'teacher-user-1' } } })
+
+  mockService.rpc.mockImplementation((name: string, args: any) => {
+    ctx.rpcCalls.push([name, args])
+    return Promise.resolve({ data: null, error: null })
+  })
 
   mockService.from.mockImplementation((table: string) => {
     if (table === 'payment_proofs') {
@@ -150,15 +157,16 @@ describe('verifyProof happy path', () => {
     const result = await verifyProof('proof-1')
 
     expect(result).toMatchObject({ success: true, proofId: 'proof-1' })
-    // Atomic pair: proof flip + period paid.
-    expect(ctx.lastProofUpdate).toMatchObject({ status: 'verified' })
-    expect(ctx.lastPaymentInsert).toMatchObject({
-      student_id: 'stu-1',
-      month: '2026-09-01',
-      paid: true,
-      amount_paid: 200,
+    // Atomic settlement via one RPC: proof flip + period paid + ratchet move.
+    const [rpcName, rpcArgs] = ctx.rpcCalls[0]
+    expect(rpcName).toBe('settle_cycle')
+    expect(rpcArgs).toMatchObject({
+      p_student_id: 'stu-1',
+      p_cycle_key: '2026-09-01',
+      p_amount: 200,
+      p_next_due: '2026-10-01',
+      p_proof_id: 'proof-1',
     })
-    expect(ctx.lastPaymentInsert.paid_at).toBeTruthy()
     // Activity log (additive cast, never edits shared types).
     expect(mockLog).toHaveBeenCalledOnce()
     // Payer verdict push via the frozen pay-screen URL contract.
@@ -180,6 +188,7 @@ describe('verifyProof idempotency', () => {
     expect(result).toMatchObject({ success: true, idempotent: true })
     expect(ctx.lastProofUpdate).toBeNull()
     expect(ctx.paymentWriteCount).toBe(0)
+    expect(ctx.rpcCalls.length).toBe(0)
     expect(mockSendPush).not.toHaveBeenCalled()
     expect(mockLog).not.toHaveBeenCalled()
   })
@@ -230,6 +239,7 @@ describe('wrong-teacher isolation', () => {
     expect((result as { error?: string }).error).toBe('Forbidden')
     expect(ctx.lastProofUpdate).toBeNull()
     expect(ctx.paymentWriteCount).toBe(0)
+    expect(ctx.rpcCalls.length).toBe(0)
     expect(mockSendPush).not.toHaveBeenCalled()
     expect(mockLog).not.toHaveBeenCalled()
   })
@@ -254,7 +264,7 @@ describe('verifyProof advances the next-due cycle', () => {
     const result = await verifyProof('proof-1')
 
     expect(result).toMatchObject({ success: true })
-    expect(ctx.lastStudentUpdate).toMatchObject({ next_due_date: '2026-10-01' })
+    expect(ctx.rpcCalls[0][1].p_next_due).toBe('2026-10-01')
   })
 
   it('weekly settlement advances 7 days from the period due', async () => {
@@ -264,7 +274,7 @@ describe('verifyProof advances the next-due cycle', () => {
 
     await verifyProof('proof-1')
 
-    expect(ctx.lastStudentUpdate).toMatchObject({ next_due_date: '2026-09-27' })
+    expect(ctx.rpcCalls[0][1].p_next_due).toBe('2026-09-27')
   })
 
   it('never retreats an already-advanced date (double settle, same period)', async () => {
@@ -273,7 +283,7 @@ describe('verifyProof advances the next-due cycle', () => {
 
     await verifyProof('proof-1')
 
-    expect(ctx.lastStudentUpdate).toBeNull()
+    expect(ctx.rpcCalls[0][1].p_next_due).toBeNull()
   })
 })
 

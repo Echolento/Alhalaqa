@@ -1,41 +1,28 @@
 // lib/billing-cycle.ts
-// Service-level next-due ratchet. The pure date math lives in billing-next.ts;
-// this is the one place a settled cycle advances students.next_due_date.
-// Kept out of the proof-verdict action file so any billing write (teacher
-// toggle, proof verdict) shares a single, documented primitive.
+// The next-due ratchet. The pure decision lives here (testable); the atomic
+// write lives in the settle_cycle / reopen_cycle Postgres functions so a
+// settlement can never leave a half-applied state.
 
-import { createServiceClient } from '@/lib/supabase/service'
 import { advanceDueDate } from '@/lib/billing-next'
 import { normalizeFrequency } from '@/lib/billing-period'
 
-type Service = ReturnType<typeof createServiceClient>
-
 /**
- * Settle advancement (next-due engine): after a period is paid, the
- * student's next_due_date moves one interval past the SETTLED period due —
- * never the pay date, so late payment never drifts the rhythm. One-way
- * ratchet: when the stored date already passed the settled period (second
- * proof, same cycle), it is left alone — never retreated.
+ * The next due date after settling `settledPeriodKey`, or null when the settled
+ * cycle is NOT the one currently outstanding — an earlier still-owed cycle, or a
+ * later prepaid one. Advancing would run next_due past a cycle still owed.
+ *
+ * Advancing anchors to the REAL due date (not the period key) so a monthly
+ * student on payment_day 15 keeps the 15th instead of collapsing to the 1st.
  */
-export async function advanceStudentCycle(
-  service: Service,
-  studentId: string,
+export function nextDueAfterSettle(
   settledPeriodKey: string,
   frequency: unknown,
   currentNextDue: string | null | undefined,
-): Promise<string | null> {
+): string | null {
   const freq = normalizeFrequency(frequency)
-  // Only the cycle that is currently outstanding advances the ratchet: the
-  // stored due must fall inside the settled period's window [key, key+interval).
-  // Settling an earlier (missed) cycle or a later (prepaid / out-of-order) one
-  // leaves next_due alone — advancing would run it past a cycle still owed.
   const windowEnd = advanceDueDate(settledPeriodKey, freq)
   const isOutstanding =
     !currentNextDue || (currentNextDue >= settledPeriodKey && currentNextDue < windowEnd)
   if (!isOutstanding) return null
-  // Advance from the REAL due date (not the period key) so a monthly student on
-  // payment_day 15 keeps the 15th instead of collapsing to the 1st.
-  const next = advanceDueDate(currentNextDue ?? settledPeriodKey, freq)
-  await service.from('students').update({ next_due_date: next }).eq('id', studentId)
-  return next
+  return advanceDueDate(currentNextDue ?? settledPeriodKey, freq)
 }

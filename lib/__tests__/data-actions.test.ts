@@ -74,8 +74,13 @@ function serviceRouter(table: string) {
   return b
 }
 
+const rpcCalls: Array<[string, any]> = []
 const mockService = {
   from: vi.fn((table: string) => serviceRouter(table)),
+  rpc: vi.fn((name: string, args: any) => {
+    rpcCalls.push([name, args])
+    return Promise.resolve({ data: null, error: null })
+  }),
 }
 
 vi.mock('@/lib/supabase/service', () => ({
@@ -91,6 +96,7 @@ const studentId = 'student-1'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  rpcCalls.length = 0
   mockService.from.mockImplementation((table: string) => serviceRouter(table))
   mockSupabase.auth.getUser.mockResolvedValue({
     data: { user: { id: 'user-1' } },
@@ -477,9 +483,7 @@ describe('toggleStudentPayment', () => {
     expect((await toggleStudentPayment(studentId)).success).toBe(true)
   })
 
-  it('settles the outstanding next-due cycle and advances one interval on pay', async () => {
-    const studentUpdates: any[] = []
-    let paymentInsert: any = null
+  it('settles the outstanding next-due cycle via the atomic settle_cycle RPC', async () => {
     mockService.from.mockImplementation((table: string) => {
       const b = createBuilder()
       if (table === 'teachers') {
@@ -490,19 +494,10 @@ describe('toggleStudentPayment', () => {
         b.maybeSingle = vi.fn().mockResolvedValue({
           data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-10-01' },
         })
-        b.update = vi.fn((payload: any) => {
-          studentUpdates.push(payload)
-          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
-        })
         return b
       }
       if (table === 'student_payments') {
-        b.maybeSingle = vi.fn().mockResolvedValue({ data: null })
         b.single = vi.fn().mockResolvedValue({ data: null })
-        b.insert = vi.fn((payload: any) => {
-          paymentInsert = payload
-          return Promise.resolve({ error: null })
-        })
         return b
       }
       return b
@@ -510,12 +505,20 @@ describe('toggleStudentPayment', () => {
 
     const { toggleStudentPayment } = await import('@/lib/data-actions')
     expect((await toggleStudentPayment(studentId)).success).toBe(true)
-    expect(paymentInsert).toMatchObject({ student_id: studentId, month: '2026-10-01', paid: true })
-    expect(studentUpdates).toContainEqual({ next_due_date: '2026-11-01' })
+    expect(rpcCalls[0]).toEqual([
+      'settle_cycle',
+      {
+        p_student_id: studentId,
+        p_cycle_key: '2026-10-01',
+        p_amount: 200,
+        p_next_due: '2026-11-01',
+        p_proof_id: null,
+        p_teacher_note: null,
+      },
+    ])
   })
 
   it('undo to unpaid never moves the next-due date', async () => {
-    const studentUpdates: any[] = []
     mockService.from.mockImplementation((table: string) => {
       const b = createBuilder()
       if (table === 'teachers') {
@@ -526,14 +529,9 @@ describe('toggleStudentPayment', () => {
         b.maybeSingle = vi.fn().mockResolvedValue({
           data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-11-01' },
         })
-        b.update = vi.fn((payload: any) => {
-          studentUpdates.push(payload)
-          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
-        })
         return b
       }
       if (table === 'student_payments') {
-        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
         b.single = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
         return b
       }
@@ -542,11 +540,11 @@ describe('toggleStudentPayment', () => {
 
     const { toggleStudentPayment } = await import('@/lib/data-actions')
     expect((await toggleStudentPayment(studentId)).success).toBe(true)
-    expect(studentUpdates.some((u) => 'next_due_date' in (u ?? {}))).toBe(false)
+    expect(rpcCalls[0][0]).toBe('reopen_cycle')
+    expect(rpcCalls[0][1].p_next_due).toBeNull()
   })
 
   it('undo of the settled cycle retreats the next-due date (payer re-sync)', async () => {
-    const studentUpdates: any[] = []
     mockService.from.mockImplementation((table: string) => {
       const b = createBuilder()
       if (table === 'teachers') {
@@ -557,14 +555,9 @@ describe('toggleStudentPayment', () => {
         b.maybeSingle = vi.fn().mockResolvedValue({
           data: { id: studentId, teacher_id: teacherId, name: 'S', monthly_price: 200, frequency: 'monthly', next_due_date: '2026-11-01' },
         })
-        b.update = vi.fn((payload: any) => {
-          studentUpdates.push(payload)
-          return { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
-        })
         return b
       }
       if (table === 'student_payments') {
-        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
         b.single = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
         return b
       }
@@ -573,11 +566,11 @@ describe('toggleStudentPayment', () => {
 
     const { toggleStudentPayment } = await import('@/lib/data-actions')
     expect((await toggleStudentPayment(studentId, '2026-10-01')).success).toBe(true)
-    expect(studentUpdates).toContainEqual({ next_due_date: '2026-10-01' })
+    expect(rpcCalls[0][0]).toBe('reopen_cycle')
+    expect(rpcCalls[0][1].p_next_due).toBe('2026-10-01')
   })
 
-  it('undo revokes the cycle verified receipt (status to undone)', async () => {
-    const proofUpdates: any[] = []
+  it('undo routes through reopen_cycle (which revokes the verified receipt)', async () => {
     mockService.from.mockImplementation((table: string) => {
       const b = createBuilder()
       if (table === 'teachers') {
@@ -591,15 +584,7 @@ describe('toggleStudentPayment', () => {
         return b
       }
       if (table === 'student_payments') {
-        b.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
         b.single = vi.fn().mockResolvedValue({ data: { id: 'p1', paid: true } })
-        return b
-      }
-      if (table === 'payment_proofs') {
-        b.update = vi.fn((payload: any) => {
-          proofUpdates.push(payload)
-          return b
-        })
         return b
       }
       return b
@@ -607,7 +592,8 @@ describe('toggleStudentPayment', () => {
 
     const { toggleStudentPayment } = await import('@/lib/data-actions')
     expect((await toggleStudentPayment(studentId, '2026-10-01')).success).toBe(true)
-    expect(proofUpdates).toContainEqual(expect.objectContaining({ status: 'undone' }))
+    expect(rpcCalls[0][0]).toBe('reopen_cycle')
+    expect(rpcCalls[0][1]).toMatchObject({ p_student_id: studentId, p_cycle_key: '2026-10-01' })
   })
 })
 

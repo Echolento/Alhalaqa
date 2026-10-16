@@ -23,7 +23,7 @@ import { sendPushNotification } from '@/lib/push'
 import { logActivity } from '@/lib/log-activity'
 import { PAYMENT_PROOFS_BUCKET } from '@/lib/payment-proof-validation'
 import { describePeriod } from '@/lib/period-label'
-import { advanceStudentCycle } from '@/lib/billing-cycle'
+import { nextDueAfterSettle } from '@/lib/billing-cycle'
 import { revalidatePath } from 'next/cache'
 
 interface ProofRow {
@@ -136,56 +136,25 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
   const t = (teacher ?? null) as TeacherPriceRow | null
   const studentName = s?.name || 'طالب'
   const effectiveAmount = Number(s?.monthly_price) || Number(t?.default_monthly_price) || 0
-  const nowIso = new Date().toISOString()
-
-  const { error: proofError } = (await service
-    .from('payment_proofs')
-    .update({
-      status: 'verified',
-      teacher_note: teacherNote?.trim() ? teacherNote.trim() : null,
-      updated_at: nowIso,
-    })
-    .eq('id', proof.id)) as unknown as { error: { message: string } | null }
-  if (proofError) return { error: proofError.message }
-
-  const { data: existing } = await service
-    .from('student_payments')
-    .select('id, paid')
-    .eq('student_id', proof.student_id)
-    .eq('month', proof.period_key)
-    .maybeSingle()
-
-  if ((existing as { id: string } | null)?.id) {
-    const { error: payError } = (await service
-      .from('student_payments')
-      .update({
-        paid: true,
-        paid_at: nowIso,
-        amount_paid: effectiveAmount,
-        updated_at: nowIso,
-      })
-      .eq('id', (existing as { id: string }).id)) as unknown as {
-      error: { message: string } | null
-    }
-    if (payError) return { error: payError.message }
-  } else {
-    const { error: payError } = (await service.from('student_payments').insert({
-      student_id: proof.student_id,
-      month: proof.period_key,
-      paid: true,
-      paid_at: nowIso,
-      amount_paid: effectiveAmount,
-    })) as unknown as { error: { message: string } | null }
-    if (payError) return { error: payError.message }
-  }
-
-  await advanceStudentCycle(
-    service,
-    proof.student_id,
+  // Atomic settlement: proof -> verified, payment row -> paid, next_due
+  // advanced (or left alone) in ONE transaction via the settle_cycle RPC. The
+  // ratchet decision stays pure (nextDueAfterSettle); push + activity are
+  // advisory and follow.
+  const nextDue = nextDueAfterSettle(
     proof.period_key,
     (s as { frequency?: unknown } | null)?.frequency,
     (s as { next_due_date?: string | null } | null)?.next_due_date,
   )
+
+  const { error: settleError } = await service.rpc('settle_cycle', {
+    p_student_id: proof.student_id,
+    p_cycle_key: proof.period_key,
+    p_amount: effectiveAmount,
+    p_next_due: nextDue,
+    p_proof_id: proof.id,
+    p_teacher_note: teacherNote?.trim() ? teacherNote.trim() : null,
+  })
+  if (settleError) return { error: settleError.message }
 
   await logActivity(
     {

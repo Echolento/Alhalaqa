@@ -5,7 +5,7 @@ import { requireUser } from './action-context'
 import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
 import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
 import { billingState } from './billing-state'
-import { advanceStudentCycle } from './billing-cycle'
+import { nextDueAfterSettle } from './billing-cycle'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
 
@@ -215,55 +215,35 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   const teacher = Array.isArray(s.teacher) ? s.teacher[0] : s.teacher
   const effectivePrice = s?.monthly_price || teacher?.default_monthly_price || 0
 
-  let newPaid: boolean
+  const existingRow = existing as { id: string; paid: boolean } | null
+  const newPaid = !existingRow || !existingRow.paid
 
-  if (!existing) {
-    newPaid = true
-    const { error } = await service
-      .from('student_payments')
-      .insert({
-        student_id: studentId,
-        month: monthKey,
-        paid: true,
-        paid_at: new Date().toISOString(),
-        amount_paid: effectivePrice
-      })
-    if (error) return { error: error.message }
-  } else {
-    newPaid = !existing.paid
-    const { error } = await service
-      .from('student_payments')
-      .update({
-        paid: newPaid,
-        paid_at: newPaid ? new Date().toISOString() : null,
-        amount_paid: newPaid ? effectivePrice : 0,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-    if (error) return { error: error.message }
-  }
-
+  // One atomic RPC per direction: the row flip + the ratchet move (+ revoking
+  // accepted receipts on undo) happen together, so a partial failure can never
+  // leave the ledger disagreeing with next_due_date.
   if (newPaid) {
-    await advanceStudentCycle(service, studentId, monthKey, cycleFrequency, cycleDue)
+    const nextDue = nextDueAfterSettle(monthKey, cycleFrequency, cycleDue)
+    const { error } = await service.rpc('settle_cycle', {
+      p_student_id: studentId,
+      p_cycle_key: monthKey,
+      p_amount: effectivePrice,
+      p_next_due: nextDue,
+      p_proof_id: null,
+      p_teacher_note: null,
+    })
+    if (error) return { error: error.message }
   } else {
-    // Undo reverses the advance too: point the outstanding cycle back at the
+    // Undo reverses the advance too: retreat the outstanding cycle to the
     // now-unpaid period's DUE date (period keys are month-firsts — restoring
-    // the real due date keeps monthly payment days intact), so the payer's view
-    // re-syncs instead of still reading the advanced cycle as paid.
-    // Never moves it later (only retreats when the untoggled cycle is older).
+    // the real due date keeps monthly payment days intact), never later.
     const retreatDue = toISODate(getPeriodDueDate(monthKey, cycleFrequency, cyclePayDay))
-    if (!cycleDue || retreatDue < cycleDue) {
-      await service.from('students').update({ next_due_date: retreatDue }).eq('id', studentId)
-    }
-    // Revoke accepted receipts for the reopened cycle so the payer's history
-    // stops claiming "مقبول". Silent (no push) — undo is a teacher correction;
-    // the receipt image is kept as an audit trail.
-    await service
-      .from('payment_proofs')
-      .update({ status: 'undone', updated_at: new Date().toISOString() })
-      .eq('student_id', studentId)
-      .eq('period_key', monthKey)
-      .eq('status', 'verified')
+    const nextDue = !cycleDue || retreatDue < cycleDue ? retreatDue : null
+    const { error } = await service.rpc('reopen_cycle', {
+      p_student_id: studentId,
+      p_cycle_key: monthKey,
+      p_next_due: nextDue,
+    })
+    if (error) return { error: error.message }
   }
 
   await logActivity({
