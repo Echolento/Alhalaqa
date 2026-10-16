@@ -179,6 +179,7 @@ export async function issueClaimLink(studentId: string) {
     service
       .from('students')
       .select('id, teacher_id')
+      .is('deleted_at', null)
       .eq('id', studentId)
       .maybeSingle(),
     getOwnTeacherId(service, user.id),
@@ -235,6 +236,7 @@ export async function getClaimStatus(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, teacher_id, claimed_by')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return { error: 'الطالب غير موجود' }
@@ -306,7 +308,7 @@ export async function resolveClaimPreview(rawToken: string) {
   if (!row) return { error: CLAIM_COPY.claimInvalidDescription, state: 'invalid' as ClaimPreviewState }
 
   const [{ data: student }, { data: teacher }] = await Promise.all([
-    service.from('students').select('id, name').eq('id', row.student_id).maybeSingle(),
+    service.from('students').select('id, name').is('deleted_at', null).eq('id', row.student_id).maybeSingle(),
     service.from('teachers').select('id, profile_id').eq('id', row.teacher_id).maybeSingle(),
   ])
 
@@ -389,6 +391,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
   const { data: student } = await service
     .from('students')
     .select('id, teacher_id, name, claimed_by, phone')
+    .is('deleted_at', null)
     .eq('id', row.student_id)
     .maybeSingle()
   const s = (student ?? null) as StudentClaimRow | null
@@ -414,7 +417,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     .eq('id', row.id)
 
   if (!s.claimed_by) {
-    await service.from('students').update({ claimed_by: user.id }).eq('id', s.id)
+    await service.from('students').update({ claimed_by: user.id }).is('deleted_at', null).eq('id', s.id)
   }
 
   await clearAttempts(service, attemptKey)
@@ -459,6 +462,7 @@ export async function listMyClaimedStudents() {
   const { data, error } = (await service
     .from('students')
     .select('id, name, teacher_id, teachers!inner(profile_id, profiles!inner(full_name))')
+    .is('deleted_at', null)
     .eq('claimed_by', user.id)) as unknown as {
     data: Array<{
       id: string
@@ -530,6 +534,7 @@ export async function lookupStudentsByPhone(rawPhone: string) {
   const { data, error } = (await service
     .from('students')
     .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
+    .is('deleted_at', null)
     .eq('phone', phone)
     .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
   if (error) return { error: CLAIM_COPY.phoneClaimLookupFail }
@@ -561,6 +566,7 @@ export async function claimByPhone(rawPhone: string) {
   const { data, error } = (await service
     .from('students')
     .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
+    .is('deleted_at', null)
     .eq('phone', phone)
     .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
   if (error) return { error: CLAIM_COPY.phoneClaimFail }
@@ -572,6 +578,7 @@ export async function claimByPhone(rawPhone: string) {
     const { error: linkError } = (await service
       .from('students')
       .update({ claimed_by: user.id })
+      .is('deleted_at', null)
       .eq('id', s.id)
       .is('claimed_by', null)) as unknown as { error: unknown }
     if (linkError) continue
@@ -603,6 +610,7 @@ export async function unlinkStudent(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, claimed_by')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   const s = (student ?? null) as { id: string; claimed_by: string | null } | null
@@ -612,6 +620,7 @@ export async function unlinkStudent(studentId: string) {
   const { error: updateError } = (await service
     .from('students')
     .update({ claimed_by: null })
+    .is('deleted_at', null)
     .eq('id', studentId)) as unknown as { error: unknown }
   if (updateError) return { error: CLAIM_COPY.phoneClaimUnlinkFail }
 
@@ -641,6 +650,7 @@ export async function updateClaimedPhone(studentId: string, rawPhone: string) {
   const { data: student } = await service
     .from('students')
     .select('id, claimed_by')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   const s = (student ?? null) as { id: string; claimed_by: string | null } | null
@@ -653,6 +663,7 @@ export async function updateClaimedPhone(studentId: string, rawPhone: string) {
   const { error: updateError } = (await service
     .from('students')
     .update({ phone })
+    .is('deleted_at', null)
     .eq('id', studentId)) as unknown as { error: unknown }
   if (updateError) return { error: CLAIM_COPY.claimPhoneSaveFail }
 

@@ -17,6 +17,7 @@ const mockService: any = {
     const c: any = {}
     c.select = vi.fn(() => c)
     c.eq = vi.fn(() => c)
+    c.is = vi.fn(() => c)
     if (table === 'payment_proofs') {
       c.maybeSingle = vi.fn(async () => ({ data: ctx.proof, error: null }))
       c.order = vi.fn(async () => ({ data: ctx.queue, error: null }))

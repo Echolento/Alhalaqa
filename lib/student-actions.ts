@@ -23,6 +23,7 @@ export async function getTeacherStudents() {
   const { data: students } = await supabase
     .from('students')
     .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by, created_at, updated_at, teacher_id')
+    .is('deleted_at', null)
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
 
@@ -275,27 +276,20 @@ export async function deleteStudent(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('name')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .single()
 
+  // Soft-delete: stamp deleted_at so the row (and its payment/proof history)
+  // survives. Recovery is one UPDATE via restoreStudent — nothing the UI,
+  // the dashboard, or a stray script does can make a student vanish again.
   const { error } = await service
     .from('students')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (error) return { error: error.message }
-
-  await service
-    .from('student_payments')
-    .delete()
-    .eq('student_id', studentId)
-
-  // Proofs too — otherwise orphaned receipts keep surfacing in the unpaid queue
-  // and via getProofReceipt after the student is gone.
-  await service
-    .from('payment_proofs')
-    .delete()
-    .eq('student_id', studentId)
 
   await logActivity({
     actionType: 'student_delete',
@@ -307,5 +301,48 @@ export async function deleteStudent(studentId: string) {
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/unpaid')
+  return { success: true }
+}
+
+/**
+ * Undo a soft-delete: clears deleted_at for a student the caller owns,
+ * including one already soft-deleted (assertOwnsStudent only sees live rows,
+ * so ownership is checked directly here). Recovery path for accidents —
+ * exposed via the admin bridge; no list UI entry exists by design.
+ */
+export async function restoreStudent(studentId: string) {
+  const ctx = await requireUser()
+  if ('error' in ctx) return ctx
+  const { user, service } = ctx
+
+  const teacherId = await getOwnTeacherId(service, user.id)
+  if (!teacherId) return { error: 'الطالب غير موجود' }
+
+  const { data: student } = await service
+    .from('students')
+    .select('id, name, teacher_id')
+    .eq('id', studentId)
+    .maybeSingle()
+  const row = student as { id: string; name: string | null; teacher_id: string } | null
+  if (!row || row.teacher_id !== teacherId) {
+    return { error: 'الطالب غير موجود' }
+  }
+
+  const { error } = await service
+    .from('students')
+    .update({ deleted_at: null })
+    .eq('id', studentId)
+
+  if (error) return { error: error.message }
+
+  await logActivity({
+    actionType: 'student_restore',
+    entityType: 'student',
+    entityId: studentId,
+    details: { student_name: row.name },
+  }, user.id)
+
+  revalidatePath('/dashboard/students')
+  revalidatePath('/dashboard')
   return { success: true }
 }

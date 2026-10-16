@@ -40,6 +40,7 @@ function makeBuilder(table: string): any {
   const builder: any = {}
   builder.select = vi.fn(() => builder)
   builder.eq = vi.fn(() => builder)
+  builder.is = vi.fn(() => builder)
   builder.in = vi.fn(() => builder)
   builder.order = vi.fn(() => builder)
   builder.limit = vi.fn(() => builder)

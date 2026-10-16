@@ -42,6 +42,7 @@ export async function getStudentProfile(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by, teacher_id, teachers(currency, default_monthly_price)')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return null

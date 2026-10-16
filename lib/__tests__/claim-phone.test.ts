@@ -19,6 +19,7 @@ function chainFor(table: string): Record<string, unknown> {
   const chain = () => b
   b.select = vi.fn(chain)
   b.eq = vi.fn(chain)
+  b.is = vi.fn(chain)
   b.update = vi.fn((row: unknown) => {
     ctx.updates[table] = [...(ctx.updates[table] ?? []), row]
     return b

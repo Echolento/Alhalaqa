@@ -20,6 +20,11 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({
     from: vi.fn(() => ({
       select: vi.fn(() => ({
+        is: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ data: mockServiceRow.row })),
+          })),
+        })),
         eq: vi.fn(() => ({
           maybeSingle: vi.fn(() => Promise.resolve({ data: mockServiceRow.row })),
         })),

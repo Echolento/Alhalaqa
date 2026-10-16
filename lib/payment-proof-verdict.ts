@@ -123,6 +123,7 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
     service
       .from('students')
       .select('id, name, monthly_price, frequency, next_due_date')
+      .is('deleted_at', null)
       .eq('id', proof.student_id)
       .maybeSingle(),
     service
@@ -228,6 +229,7 @@ export async function rejectProof(proofId: string, teacherNote: string) {
   const { data: student } = await service
     .from('students')
     .select('id, name')
+    .is('deleted_at', null)
     .eq('id', proof.student_id)
     .maybeSingle()
   const studentName = ((student as { name?: string | null } | null)?.name || 'طالب') as string
@@ -312,6 +314,7 @@ export async function getUnpaidQueue() {
     const { data: students } = await service
       .from('students')
       .select('id, name, frequency')
+      .is('deleted_at', null)
       .in('id', studentIds)
     for (const s of ((students ?? []) as Array<{ id: string; name: string | null; frequency?: string | null }>) ?? []) {
       nameById.set(s.id, s.name || 'طالب')
@@ -321,6 +324,9 @@ export async function getUnpaidQueue() {
 
   const items: UnpaidQueueItem[] = []
   for (const p of proofs) {
+    // A receipt whose student vanished from the live-student map (deleted)
+    // stays out of the queue — the row survives as history, not as work.
+    if (!nameById.has(String(p['student_id']))) continue
     const storagePath = String(p['storage_path'] ?? '')
     let imageUrl: string | null = null
     try {
@@ -370,6 +376,7 @@ export async function getProofReceipt(proofId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, name, frequency')
+    .is('deleted_at', null)
     .eq('id', proof.student_id)
     .maybeSingle()
   const studentName = ((student as { name?: string | null } | null)?.name || 'طالب') as string

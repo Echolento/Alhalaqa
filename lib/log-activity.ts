@@ -52,6 +52,7 @@ export async function logActivity(opts: LogActivityOptions, knownUserId?: string
       `${d.student_name || 'طالب'}: ${d.new_status === 'paid' ? '✅ مدفوع' : '❌ غير مدفوع'} — ${d.month || ''}`,
     student_add: d => `➕ طالب جديد: ${d.student_name || ''}`,
     student_delete: d => `🗑️ حذف طالب: ${d.student_name || ''}`,
+    student_restore: d => `♻️ استرجاع طالب: ${d.student_name || ''}`,
     student_update: d => `✏️ تحديث طالب: ${d.student_name || ''}`,
     student_bulk_add: d => `📥 إضافة ${d.count || 0} طالب/طلاب دفعة واحدة`,
     price_update: d => `💰 تحديث سعر الطالب ${d.student_name || ''}: ${d.old_price} ← ${d.new_price}`,

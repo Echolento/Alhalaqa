@@ -419,7 +419,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           </div>
           <div className="flex-1">
             <p className="font-bold text-sm">حذف الطالب</p>
-            <p className="text-xs text-muted-foreground">يحذف الطالب وكل سجلات الدفع</p>
+            <p className="text-xs text-muted-foreground">يخفي الطالب من القوائم — سجلات الدفع محفوظة ويمكن الاسترجاع</p>
           </div>
           <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
             <AlertDialogTrigger asChild>
@@ -432,7 +432,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                 </div>
                 <AlertDialogTitle>حذف الطالب</AlertDialogTitle>
                 <AlertDialogDescription>
-                  هل أنت متأكد من حذف {student.full_name || student.name}؟ سيتم حذف جميع سجلات الدفع المرتبطة به.
+                  هل أنت متأكد من حذف {student.full_name || student.name}؟ سيُخفى من القوائم مع بقاء سجلات الدفع — ويمكن استرجاعه لاحقًا.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

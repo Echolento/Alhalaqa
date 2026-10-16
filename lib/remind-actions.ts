@@ -24,6 +24,7 @@ async function fetchOutstandingCycleKey(studentId: string): Promise<string> {
     const { data } = await service
       .from('students')
       .select('frequency, next_due_date')
+      .is('deleted_at', null)
       .eq('id', studentId)
       .maybeSingle()
     const row = (data ?? null) as { frequency?: unknown; next_due_date?: string | null } | null

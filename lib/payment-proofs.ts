@@ -38,6 +38,7 @@ interface StudentBillingRow {
   frequency: unknown
   monthly_price: number | null
   next_due_date: string | null
+  claimed_by: string | null
 }
 
 interface TeacherBillingRow {
@@ -83,12 +84,21 @@ export async function uploadPaymentProof(params: {
 
     const { data: student } = await service
       .from('students')
-      .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
+      .select('id, teacher_id, name, frequency, monthly_price, next_due_date, claimed_by')
+      .is('deleted_at', null)
       .eq('id', params.studentId)
       .maybeSingle()
 
     const s = student as StudentBillingRow | null
     if (!s) return { error: 'الطالب غير موجود' }
+
+    // Upload gate (was missing): the caller must own the row — either the
+    // teacher (ownership) or the claiming payer. Anyone else gets Forbidden
+    // instead of injecting receipts into a stranger's review queue.
+    const ownerTeacherId = await assertOwnsStudent(service, user.id, s.id)
+    if (!ownerTeacherId && s.claimed_by !== user.id) {
+      return { error: 'Forbidden' }
+    }
 
     // Period key is server-computed from the OUTSTANDING next-due cycle —
     // never the wall clock, never trusted from the client.
@@ -199,6 +209,7 @@ export async function listProofHistory(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, teacher_id, frequency')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   if (!student) return { error: 'الطالب غير موجود' }
@@ -269,6 +280,7 @@ export async function getTeacherProofQueue(studentId: string) {
   const { data: studentRow } = await service
     .from('students')
     .select('frequency')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   const frequency = ((studentRow as { frequency?: string | null } | null)?.frequency) || 'monthly'
@@ -290,6 +302,7 @@ export async function getPayScreenInfo(studentId: string) {
   const { data: student } = await service
     .from('students')
     .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 

@@ -117,6 +117,7 @@ export async function GET(request: Request) {
     const { data: students } = await supabase
       .from('students')
       .select('id, name, phone, monthly_price, frequency, next_due_date, claimed_by')
+      .is('deleted_at', null)
       .eq('teacher_id', teacher.id)
       .eq('is_active', true)
 

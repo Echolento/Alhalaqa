@@ -76,6 +76,7 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
   const builder: Record<string, any> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    is: vi.fn(() => builder),
     in: vi.fn(() => builder),
     lte: vi.fn(() => builder),
     order: vi.fn(() => builder),
@@ -234,6 +235,39 @@ describe('uploadPaymentProof', () => {
     expect(mockUpload).not.toHaveBeenCalled()
     expect(mockSendPush).not.toHaveBeenCalled()
   })
+
+  it('rejects upload from a stranger (not owner, not claimant) with Forbidden', async () => {
+    // Row belongs to another teacher and nobody claimed it: the caller is
+    // neither, so no receipt may enter that teacher's review queue.
+    ctx.student = { ...ctx.student, teacher_id: 't-other', claimed_by: null }
+    const { uploadPaymentProof } = await import('@/lib/payment-proofs')
+
+    const result = await uploadPaymentProof({
+      studentId: 'stu-1',
+      fileName: 'receipt.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 100_000,
+      fileBytes: new Uint8Array([1]),
+    })
+
+    expect(result.error).toBe('Forbidden')
+    expect(mockUpload).not.toHaveBeenCalled()
+  })
+
+  it('lets the claiming payer upload (owner check or claim, either opens the gate)', async () => {
+    ctx.student = { ...ctx.student, teacher_id: 't-other', claimed_by: 'payer-1' }
+    const { uploadPaymentProof } = await import('@/lib/payment-proofs')
+
+    const result = await uploadPaymentProof({
+      studentId: 'stu-1',
+      fileName: 'receipt.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 100_000,
+      fileBytes: new Uint8Array([1]),
+    })
+
+    expect(result.success).toBe(true)
+  })
 })
 
 describe('ownership checks', () => {
@@ -376,12 +410,13 @@ describe('getPayScreenInfo', () => {
       const matched = () =>
         (rows[table] ?? []).filter((row) =>
           filters.every(([c, op, v]) =>
-            op === 'in' ? v.includes(row[c]) : op === 'lte' ? row[c] <= v : row[c] === v,
+            op === 'in' ? v.includes(row[c]) : op === 'lte' ? row[c] <= v : op === 'is' ? (v === null ? row[c] == null : row[c] === v) : row[c] === v,
           ),
         )
       const b: any = {}
       b.select = () => b
       b.eq = (c: string, v: any) => { filters.push([c, 'eq', v]); return b }
+      b.is = (c: string, v: any) => { filters.push([c, 'is', v]); return b }
       b.in = (c: string, vs: any[]) => { filters.push([c, 'in', vs]); return b }
       b.lte = (c: string, v: any) => { filters.push([c, 'lte', v]); return b }
       b.limit = () => b

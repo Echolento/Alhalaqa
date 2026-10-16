@@ -16,6 +16,7 @@ function chainFor(table: string): Record<string, unknown> {
   const chain = () => b
   b.select = vi.fn(chain)
   b.eq = vi.fn(chain)
+  b.is = vi.fn(chain)
   b.maybeSingle = vi.fn(() => Promise.resolve({ data: ctx.rows[table] ?? null }))
   // Terminal list read.
   b.then = undefined

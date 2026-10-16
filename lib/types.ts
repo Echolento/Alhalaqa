@@ -14,6 +14,7 @@ export type ActionType =
   | 'payment_toggle'
   | 'student_add'
   | 'student_delete'
+  | 'student_restore'
   | 'student_update'
   | 'student_bulk_add'
   | 'price_update'

@@ -47,17 +47,23 @@ vi.mock('@/lib/log-activity', () => ({
 const ctx: any = {}
 
 function selectChain(data: any) {
-  // Supports .select().eq().maybeSingle() AND .select().eq().eq().maybeSingle()
-  // (the student_payments lookup chains two eq calls).
-  const secondEq = {
+  // Supports .select().eq().maybeSingle(), .select().eq().eq().maybeSingle()
+  // (the student_payments lookup chains two eq calls), and the soft-delete
+  // .is('deleted_at', null) filter placed right after .select().
+  const secondEq: any = {
     maybeSingle: vi.fn().mockResolvedValue({ data }),
   }
   const firstEq: any = {
     eq: vi.fn(() => secondEq),
+    is: vi.fn(() => firstEq),
+    in: vi.fn(() => firstEq),
     maybeSingle: vi.fn().mockResolvedValue({ data }),
   }
+  secondEq.is = vi.fn(() => secondEq)
   return {
     eq: vi.fn(() => firstEq),
+    is: vi.fn(() => firstEq),
+    in: vi.fn(() => firstEq),
   }
 }
 

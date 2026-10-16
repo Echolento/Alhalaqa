@@ -7,6 +7,7 @@ export {
   updateStudent,
   updateStudentNextDue,
   deleteStudent,
+  restoreStudent,
 } from './student-actions'
 
 export {

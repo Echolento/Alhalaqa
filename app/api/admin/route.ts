@@ -142,8 +142,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true, result: 'deleted' })
       }
 
-      case 'stats': {
-        const [users, teachers, students, payments] = await Promise.all([
+      case 'stats': {        const [users, teachers, students, payments] = await Promise.all([
           service.auth.admin.listUsers({ perPage: 1 }),
           service.from('teachers').select('*', { count: 'exact', head: true }),
           service.from('students').select('*', { count: 'exact', head: true }),
@@ -160,6 +159,51 @@ export async function POST(request: Request) {
             payments: payments.count ?? 0,
           },
         })
+      }
+
+      case 'list_deleted_students': {
+        // Recovery queue for the soft-delete posture: every trashed row with
+        // its teacher, newest first. Empty array (not an error) when clean.
+        const { data, error } = await service
+          .from('students')
+          .select('id, name, phone, teacher_id, deleted_at')
+          .not('deleted_at', 'is', null)
+          .order('deleted_at', { ascending: false })
+          .limit(100)
+        if (error) throw error
+        return NextResponse.json({ ok: true, result: data ?? [] })
+      }
+
+      case 'restore_student': {
+        const sid = String(params.studentId || '')
+        if (!sid) {
+          return NextResponse.json({ ok: false, error: 'studentId required' }, { status: 400 })
+        }
+        const { data: row, error: readError } = await service
+          .from('students')
+          .select('id, name, deleted_at')
+          .eq('id', sid)
+          .maybeSingle()
+        if (readError) throw readError
+        if (!row) {
+          return NextResponse.json({ ok: false, error: 'student not found' }, { status: 404 })
+        }
+        if (!(row as { deleted_at: string | null }).deleted_at) {
+          return NextResponse.json({ ok: true, result: 'already_live' })
+        }
+        const { error: restoreError } = await service
+          .from('students')
+          .update({ deleted_at: null })
+          .eq('id', sid)
+        if (restoreError) throw restoreError
+        await service.from('activity_log').insert({
+          user_id: userId,
+          action_type: 'student_restore',
+          entity_type: 'student',
+          entity_id: sid,
+          details: { student_name: (row as { name: string | null }).name, via: 'admin_bridge' },
+        })
+        return NextResponse.json({ ok: true, result: 'restored' })
       }
 
       default:

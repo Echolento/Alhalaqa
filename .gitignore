@@ -38,6 +38,7 @@ next-env.d.ts
 
 # Temporary and debug files
 /tmp/
+/backups/
 /scratch/
 dev.log
 test-update.js

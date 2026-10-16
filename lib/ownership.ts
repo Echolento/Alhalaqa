@@ -25,6 +25,7 @@ export async function getStudentTeacherId(
   const { data } = await service
     .from('students')
     .select('teacher_id')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
   return (data as { teacher_id: string } | null)?.teacher_id ?? null

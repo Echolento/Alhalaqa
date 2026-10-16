@@ -4,6 +4,7 @@ function createBuilder() {
   const builder: Record<string, any> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    is: vi.fn(() => builder),
     in: vi.fn(() => builder),
     order: vi.fn(() => builder),
     maybeSingle: vi.fn(() => builder),
@@ -426,30 +427,76 @@ describe('cross-teacher protection', () => {
 })
 
 describe('deleteStudent', () => {
-  it('deletes student and their payments', async () => {
-    mockSupabase.from.mockImplementation(() => {
-      const b = createBuilder()
-      b.single = vi.fn().mockResolvedValue({ data: { name: 'Test' } })
-      b.eq = vi.fn().mockReturnValue(b)
-      b.in = vi.fn().mockReturnValue({
-        ...b,
-        in: vi.fn().mockResolvedValue({ error: null }),
+  it('soft-deletes: stamps deleted_at, keeps every row', async () => {
+    const seen: { updates: any[]; deletes: string[] } = { updates: [], deletes: [] }
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      const origUpdate = b.update
+      b.update = vi.fn((payload: any) => {
+        if (table === 'students') seen.updates.push(payload)
+        return (origUpdate as any)(payload)
       })
-      b.delete = vi.fn().mockReturnValue({
-        ...b,
-        eq: vi.fn().mockResolvedValue({ error: null }),
+      const origDelete = b.delete
+      b.delete = vi.fn((...args: any[]) => {
+        seen.deletes.push(table)
+        return (origDelete as any)(...args)
       })
       return b
     })
 
     const { deleteStudent } = await import('@/lib/data-actions')
     expect((await deleteStudent(studentId)).success).toBe(true)
+    expect(seen.updates).toHaveLength(1)
+    expect(typeof seen.updates[0].deleted_at).toBe('string')
+    // No hard deletes anywhere: students, payments, and proofs survive.
+    expect(seen.deletes).toEqual([])
   })
 
   it('returns error when not authenticated', async () => {
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
     const { deleteStudent } = await import('@/lib/data-actions')
     expect((await deleteStudent(studentId)).error).toBe('Unauthorized')
+  })
+})
+
+describe('restoreStudent', () => {
+  it('clears deleted_at for an owned row', async () => {
+    const seen: { updates: any[] } = { updates: [] }
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      const origUpdate = b.update
+      b.update = vi.fn((payload: any) => {
+        if (table === 'students') seen.updates.push(payload)
+        return (origUpdate as any)(payload)
+      })
+      return b
+    })
+
+    const { restoreStudent } = await import('@/lib/data-actions')
+    expect((await restoreStudent(studentId)).success).toBe(true)
+    expect(seen.updates).toEqual([{ deleted_at: null }])
+  })
+
+  it('denies a student owned by another teacher', async () => {
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      if (table === 'students') {
+        b.eq = vi.fn().mockReturnValue({
+          ...b,
+          maybeSingle: vi.fn().mockResolvedValue({ data: { teacher_id: 'other-teacher' } }),
+          single: vi.fn().mockResolvedValue({ data: { teacher_id: 'other-teacher' } }),
+        })
+      }
+      return b
+    })
+    const { restoreStudent } = await import('@/lib/data-actions')
+    expect((await restoreStudent(studentId)).error).toBe('الطالب غير موجود')
+  })
+
+  it('returns error when not authenticated', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+    const { restoreStudent } = await import('@/lib/data-actions')
+    expect((await restoreStudent(studentId)).error).toBe('Unauthorized')
   })
 })
 

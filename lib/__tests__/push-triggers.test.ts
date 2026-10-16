@@ -4,6 +4,7 @@ function createBuilder() {
   const builder: Record<string, any> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    is: vi.fn(() => builder),
     maybeSingle: vi.fn(() => builder),
   }
   return builder
