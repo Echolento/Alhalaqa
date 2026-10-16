@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getOverdueStudents } from '@/lib/overdue'
-import { outstandingCycleKey } from '@/lib/billing-next'
+import { billingState } from '@/lib/billing-state'
 import { sendOverdueEmail } from '@/lib/email-actions'
 import {
   buildAutoDuePayload,
@@ -123,9 +123,11 @@ export async function GET(request: Request) {
     if (!students || students.length === 0) continue
 
     const today = new Date()
-    // Outstanding cycle key per student — from next_due_date, never the
-    // wall clock. Legacy rows without a date bill the 1st of next month.
-    const cycleKeyFor = (row: any): string => outstandingCycleKey(row, today)
+    // Outstanding cycle key per student — the ONE billing-state derivation
+    // (from next_due_date), never the wall clock. Legacy rows without a date
+    // bill the 1st of next month.
+    const cycleKeyFor = (row: any): string =>
+      billingState({ student: row, payments: [], today }).cycleKey
     const months = [...new Set(students.map((s) => cycleKeyFor(s)))]
 
     const [{ data: payments }, { data: pendingProofs }] = await Promise.all([

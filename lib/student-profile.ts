@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from './ownership'
-import { outstandingCycleKey, outstandingDueISO, previousCycleKey, toISODate } from '@/lib/billing-next'
+import { billingState } from '@/lib/billing-state'
 
 export interface StudentPaymentRecord {
   student_id: string
@@ -51,30 +51,23 @@ export async function getStudentProfile(studentId: string) {
 
   const payments = await getStudentPaymentHistory(studentId)
 
-  const { data: pendingProof } = await service
+  const { data: proofs } = await service
     .from('payment_proofs')
-    .select('id, period_key')
+    .select('period_key, status')
     .eq('student_id', studentId)
-    .eq('status', 'pending')
-    .limit(1)
-    .maybeSingle()
 
-  // Pending only counts for the student's OUTSTANDING cycle (same rule as the
-  // payments list + pay screen); a stale proof for an advanced cycle is ignored.
-  const outstandingKey = outstandingCycleKey(student)
-  const hasPendingProof =
-    !!pendingProof && (pendingProof as { period_key?: string }).period_key === outstandingKey
-
-  // "Previous period paid": the outstanding cycle is unpaid but the one right
-  // before it was settled (so a just-paid student flipping to a new unpaid cycle
-  // doesn't read as a failed registration). A cycle that isn't DUE YET counts as
-  // settled too — a student due on the 18th is not "لم يدفع" on the 14th.
-  const dueISO = outstandingDueISO(student)
-  const prevKey = previousCycleKey(dueISO, (student as any).frequency)
-  const outstandingPaid = payments.some((p) => p.month === outstandingKey && p.paid)
-  const prevPaid = payments.some((p) => p.month === prevKey && p.paid)
-  const settled = outstandingPaid || dueISO > toISODate(new Date())
-  const paidLastPeriod = !settled && prevPaid
+  // Every status field comes from ONE billing-state call (the same rule the
+  // list and pay screen use): pending (for the outstanding cycle), settled, and
+  // the "previous period paid" reassurance.
+  const state = billingState({
+    student,
+    payments: payments.map((p) => ({ month: p.month, paid: !!p.paid })),
+    proofs: ((proofs ?? []) as { period_key: string; status: string }[]).map((p) => ({
+      period_key: String(p.period_key),
+      status: String(p.status),
+    })),
+    today: new Date(),
+  })
 
   return {
     student: {
@@ -87,9 +80,9 @@ export async function getStudentProfile(studentId: string) {
       frequency: (student as any).frequency === 'weekly' || (student as any).frequency === 'biweekly' ? (student as any).frequency : 'monthly',
       next_due_date: ((student as any).next_due_date ?? null) as string | null,
       claimed_by: (student as any).claimed_by ?? null,
-      hasPendingProof,
-      settled,
-      paidLastPeriod,
+      hasPendingProof: state.isPending,
+      settled: state.isSettled,
+      paidLastPeriod: state.paidLastPeriod,
     },
     payments,
     currency: teacher?.currency || 'SAR',

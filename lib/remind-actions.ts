@@ -11,12 +11,12 @@ import { triggerManualRemind } from '@/lib/push-triggers'
 import { logActivity } from '@/lib/log-activity'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { createServiceClient } from '@/lib/supabase/service'
-import { outstandingCycleKey } from '@/lib/billing-next'
+import { billingState } from '@/lib/billing-state'
 
 /**
- * Outstanding cycle key for a manual nudge: the student's next-due date,
- * never whatever month grid the teacher happens to be viewing. Legacy rows
- * without a date bill the 1st of next month.
+ * Outstanding cycle key for a manual nudge: the student's next-due cycle, via
+ * the ONE billing-state derivation — never whatever month grid the teacher
+ * happens to be viewing. Legacy rows without a date bill the 1st of next month.
  */
 async function fetchOutstandingCycleKey(studentId: string): Promise<string> {
   try {
@@ -27,9 +27,9 @@ async function fetchOutstandingCycleKey(studentId: string): Promise<string> {
       .eq('id', studentId)
       .maybeSingle()
     const row = (data ?? null) as { frequency?: unknown; next_due_date?: string | null } | null
-    return outstandingCycleKey(row ?? {})
+    return billingState({ student: row ?? {}, payments: [] }).cycleKey
   } catch {
-    return outstandingCycleKey({})
+    return billingState({ student: {}, payments: [] }).cycleKey
   }
 }
 

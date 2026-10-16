@@ -1,5 +1,5 @@
-import { normalizeFrequency, type BillingFrequency } from '@/lib/billing-period'
-import { dueOverdueInfo, duePeriodKey, firstOfNextMonth } from '@/lib/billing-next'
+import type { BillingFrequency } from '@/lib/billing-period'
+import { billingState } from '@/lib/billing-state'
 
 export interface OverdueStudent {
   id: string
@@ -15,9 +15,9 @@ export interface DueDatedStudent {
 }
 
 /**
- * Next-due engine: a student is overdue when TODAY is past their
- * outstanding due date + grace AND no paid row exists for that cycle's key.
- * Null dates bill the 1st of next month (legacy fallback).
+ * Next-due engine: a student is overdue when their outstanding cycle is not
+ * settled and today is past its due date + grace. Delegates the cycle/status
+ * rule to billingState so it can never drift from the pay screen or the list.
  */
 export function getOverdueStudents(
   students: DueDatedStudent[],
@@ -25,20 +25,23 @@ export function getOverdueStudents(
   today: Date = new Date(),
   graceDays: number = 3,
 ): OverdueStudent[] {
-  const result: OverdueStudent[] = []
-
-  for (const student of students) {
-    const frequency = normalizeFrequency(student.frequency ?? 'monthly')
-    const dueISO = student.next_due_date ?? firstOfNextMonth(today)
-    const key = duePeriodKey(dueISO, frequency)
-    const payment = payments.find((p) => p.student_id === student.id && p.month === key)
-    if (payment?.paid) continue
-
-    const info = dueOverdueInfo(dueISO, today, graceDays)
-    if (info.overdue) {
-      result.push({ id: student.id, name: student.name, daysOverdue: info.daysOverdue })
-    }
+  const rowsByStudent = new Map<string, Array<{ month: string; paid: boolean }>>()
+  for (const p of payments) {
+    const list = rowsByStudent.get(p.student_id) ?? []
+    list.push({ month: p.month, paid: p.paid })
+    rowsByStudent.set(p.student_id, list)
   }
 
+  const result: OverdueStudent[] = []
+  for (const student of students) {
+    const state = billingState({
+      student: { frequency: student.frequency, next_due_date: student.next_due_date },
+      payments: rowsByStudent.get(student.id) ?? [],
+      today,
+    })
+    if (state.isSettled) continue
+    if (state.daysOverdue < graceDays) continue
+    result.push({ id: student.id, name: student.name, daysOverdue: state.daysOverdue })
+  }
   return result
 }
