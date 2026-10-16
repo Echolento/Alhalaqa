@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://mekubphfwjgojqulbmjg.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1la3VicGhmd2pnb2pxdWxibWpnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg3MDE4MiwiZXhwIjoyMDg1NDQ2MTgyfQ.bq8eFufT7itliI5h2WIQ28El8pkCKcbVVj_2nuR5Dds'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase env vars (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)')
+  process.exit(1)
+}
 
 const sql = `
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
