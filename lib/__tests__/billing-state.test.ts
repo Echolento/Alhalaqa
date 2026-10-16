@@ -106,4 +106,16 @@ describe('billingState', () => {
 
     expect(state.cycleKey).toBe('2026-11-01')
   })
+
+  it('treats a reopened future cycle as owed, not settled', () => {
+    const state = billingState({
+      student: { frequency: 'monthly', next_due_date: '2026-11-01' },
+      payments: [{ month: '2026-11-01', paid: false }],
+      proofs: [{ period_key: '2026-11-01', status: 'undone' }],
+      today: new Date(2026, 9, 20),
+    })
+
+    expect(state.isReopened).toBe(true)
+    expect(state.isSettled).toBe(false)
+  })
 })

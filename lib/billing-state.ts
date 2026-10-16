@@ -35,7 +35,9 @@ export interface BillingState {
   isPaidForPeriod: boolean
   /** A pending receipt exists for cycleKey. */
   isPending: boolean
-  /** Paid for the cycle OR the cycle is not due yet → nothing owed. */
+  /** The outstanding cycle was explicitly reopened (unpaid row or revoked receipt). */
+  isReopened: boolean
+  /** Paid for the cycle OR the cycle is not due yet (and not reopened) → nothing owed. */
   isSettled: boolean
   /** Due today/past, not settled, no pending receipt. */
   isOverdue: boolean
@@ -60,7 +62,14 @@ export function billingState(input: {
   const isPending = (input.proofs ?? []).some(
     (p) => p.period_key === cycleKey && p.status === 'pending',
   )
-  const isSettled = isPaidForPeriod || dueISO > toISODate(today)
+  // A cycle that was settled/reviewed and then reopened (teacher undo, or a
+  // rejected receipt) is owed again — even if its due date is still ahead.
+  const isReopened =
+    input.payments.some((p) => p.month === cycleKey && !p.paid) ||
+    (input.proofs ?? []).some(
+      (p) => p.period_key === cycleKey && (p.status === 'rejected' || p.status === 'undone'),
+    )
+  const isSettled = isPaidForPeriod || (dueISO > toISODate(today) && !isReopened)
   const isOverdue = !isSettled && !isPending
   const { daysOverdue } = dueOverdueInfo(dueISO, today, 0)
   const prevKey = previousCycleKey(dueISO, freq)
@@ -73,6 +82,7 @@ export function billingState(input: {
     periodLabel: describePeriod(cycleKey, freq, today).payerLabel,
     isPaidForPeriod,
     isPending,
+    isReopened,
     isSettled,
     isOverdue,
     paidLastPeriod,

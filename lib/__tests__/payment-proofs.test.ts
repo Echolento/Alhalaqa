@@ -86,6 +86,9 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
     }),
     maybeSingle: vi.fn(),
     single: vi.fn(),
+    // Real supabase query builders are thenable; the bulk reads await them.
+    then: (onFulfilled: any, onRejected?: any) =>
+      Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected),
   }
 
   builder.maybeSingle.mockImplementation(() => {
@@ -370,6 +373,12 @@ describe('getPayScreenInfo', () => {
   function filterAwareService(rows: Record<string, any[]>) {
     const builder = (table: string) => {
       const filters: Array<[string, string, any]> = []
+      const matched = () =>
+        (rows[table] ?? []).filter((row) =>
+          filters.every(([c, op, v]) =>
+            op === 'in' ? v.includes(row[c]) : op === 'lte' ? row[c] <= v : row[c] === v,
+          ),
+        )
       const b: any = {}
       b.select = () => b
       b.eq = (c: string, v: any) => { filters.push([c, 'eq', v]); return b }
@@ -377,14 +386,9 @@ describe('getPayScreenInfo', () => {
       b.lte = (c: string, v: any) => { filters.push([c, 'lte', v]); return b }
       b.limit = () => b
       b.order = () => b
-      b.maybeSingle = async () => {
-        const match = (rows[table] ?? []).find((row) =>
-          filters.every(([c, op, v]) =>
-            op === 'in' ? v.includes(row[c]) : op === 'lte' ? row[c] <= v : row[c] === v,
-          ),
-        )
-        return { data: match ?? null }
-      }
+      b.maybeSingle = async () => ({ data: matched()[0] ?? null })
+      b.then = (onFulfilled: any, onRejected?: any) =>
+        Promise.resolve({ data: matched(), error: null }).then(onFulfilled, onRejected)
       return b
     }
     return { from: (table: string) => builder(table) }

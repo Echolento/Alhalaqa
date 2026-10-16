@@ -13,15 +13,11 @@ import { describePeriod } from '@/lib/period-label'
 import * as Sentry from '@sentry/nextjs'
 import { requireUser } from '@/lib/action-context'
 import { assertOwnsStudent } from '@/lib/ownership'
-import { normalizeFrequency } from '@/lib/billing-period'
 import {
-  duePeriodKey,
   outstandingCycleKey,
-  outstandingDueISO,
   parseISODate,
-  previousCycleKey,
-  toISODate,
 } from '@/lib/billing-next'
+import { billingState } from '@/lib/billing-state'
 import { getInstaPayContract } from '@/lib/instapay'
 import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
 import { getPushSubscription, sendPushNotification } from '@/lib/push'
@@ -310,100 +306,52 @@ export async function getPayScreenInfo(studentId: string) {
   if (!t) return { error: 'الطالب غير موجود' }
 
   const effectivePrice = Number(s.monthly_price) || Number(t.default_monthly_price) || 0
-  const freq = normalizeFrequency(s.frequency)
-  const dueISO = outstandingDueISO(s)
-  const periodKey = duePeriodKey(dueISO, freq)
   const contract = getInstaPayContract({
     instapay_link: t.instapay_link,
     instapay_handle: t.instapay_handle,
   })
 
   const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
-  const pendingQuery = service
+
+  // All payer-facing status comes from ONE billing-state call: the outstanding
+  // cycle, whether it is paid / pending / overdue / reopened, and the
+  // "previous period paid" reassurance. Proofs are scoped to the caller first
+  // (wrong-payer isolation) so the state only sees what the caller may see.
+  const proofQuery = service
     .from('payment_proofs')
-    .select('id')
+    .select('period_key, status')
     .eq('student_id', studentId)
-    .eq('period_key', periodKey)
-    .eq('status', 'pending')
-
-  const { data: pending } = ownerTeacherId
-    ? await pendingQuery.maybeSingle()
-    : await pendingQuery.eq('payer_profile_id', user.id).maybeSingle()
-
-  const { data: paidRow } = await service
-    .from('student_payments')
-    .select('id')
-    .eq('student_id', studentId)
-    .eq('month', periodKey)
-    .eq('paid', true)
-    .maybeSingle()
-
-  // Previous period settled? Shown to the payer so "this period unpaid" doesn't
-  // read as if their earlier payment was lost.
-  const prevKey = previousCycleKey(dueISO, freq)
-  const { data: prevPaidRow } = await service
-    .from('student_payments')
-    .select('id')
-    .eq('student_id', studentId)
-    .eq('month', prevKey)
-    .eq('paid', true)
-    .maybeSingle()
-  const paidLastPeriod = !paidRow && !!prevPaidRow
-
-  // The family is NOT paid up when any cycle at or before the outstanding one
-  // is explicitly unpaid (the outstanding cycle reopened by an undo, or an
-  // earlier cycle the ratchet/next-due editor left behind), or the outstanding
-  // cycle's receipt was revoked (undone/rejected). Both are authoritative "not
-  // settled" signals — the "any historical paid row" check must never mask them.
-  const [{ data: reopenedRow }, { data: revokedProof }] = await Promise.all([
-    service
-      .from('student_payments')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('paid', false)
-      .lte('month', periodKey)
-      .limit(1)
-      .maybeSingle(),
-    service
-      .from('payment_proofs')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('period_key', periodKey)
-      .in('status', ['rejected', 'undone'])
-      .limit(1)
-      .maybeSingle(),
+  const [{ data: rows }, { data: proofs }] = await Promise.all([
+    service.from('student_payments').select('month, paid').eq('student_id', studentId),
+    ownerTeacherId ? proofQuery : proofQuery.eq('payer_profile_id', user.id),
   ])
-  const reopened = !!reopenedRow || !!revokedProof
 
-  // Paid up: the family settled a cycle and the next one has NOT come due yet.
-  // Without this, the prepay ratchet immediately presents the next cycle as due
-  // right after a payment, which reads as "paying again".
-  const todayISO = toISODate(new Date())
-  let isPaidUp = false
-  if (dueISO > todayISO && !paidRow && !pending && !reopened) {
-    const { data: anyPaid } = await service
-      .from('student_payments')
-      .select('id')
-      .eq('student_id', studentId)
-      .eq('paid', true)
-      .limit(1)
-      .maybeSingle()
-    isPaidUp = !!anyPaid
-  }
+  const state = billingState({
+    student: s,
+    payments: ((rows ?? []) as { month: string; paid: boolean }[]).map((r) => ({
+      month: String(r.month),
+      paid: !!r.paid,
+    })),
+    proofs: ((proofs ?? []) as { period_key: string; status: string }[]).map((p) => ({
+      period_key: String(p.period_key),
+      status: String(p.status),
+    })),
+    today: new Date(),
+  })
 
   return {
     studentId: s.id,
     studentName: s.name || 'طالب',
-    periodKey,
-    periodLabel: describePeriod(periodKey, s.frequency as 'weekly' | 'biweekly' | 'monthly' | null).payerLabel,
+    periodKey: state.cycleKey,
+    periodLabel: state.periodLabel,
     amount: effectivePrice,
-    dueDate: parseISODate(dueISO).toISOString(),
+    dueDate: parseISODate(state.dueISO).toISOString(),
     currency: t.currency || 'EGP',
     instapayLink: contract.instapayLink,
     instapayHandle: contract.instapayHandle,
-    hasPending: !!pending,
-    isPaidForPeriod: !!paidRow,
-    isPaidUp,
-    paidLastPeriod,
+    hasPending: state.isPending,
+    isPaidForPeriod: state.isPaidForPeriod,
+    isPaidUp: state.isSettled && !state.isPaidForPeriod,
+    paidLastPeriod: state.paidLastPeriod,
   }
 }
