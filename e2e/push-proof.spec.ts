@@ -148,7 +148,7 @@ test('push dispatch proof: claim → upload → verify → verdict', async () =>
       await teacher.getByRole('button', { name: 'إنهاء الإعداد' }).click()
       await teacher.waitForURL(/\/dashboard/, { timeout: 15000 })
     }
-    await expect(teacher.getByText('المبالغ المستلمة')).toBeVisible({ timeout: 15000 })
+    await expect(teacher.getByPlaceholder('البحث عن طالب...')).toBeVisible({ timeout: 15000 })
     step('teacher on dashboard')
 
     // ---- teacher: add student ----

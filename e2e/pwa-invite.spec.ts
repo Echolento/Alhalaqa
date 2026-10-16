@@ -59,7 +59,7 @@ async function onboardTeacher(page: Page) {
     await page.getByRole('button', { name: 'إنهاء الإعداد' }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 30000 })
   }
-  await expect(page.getByText('المبالغ المستلمة')).toBeVisible({ timeout: 30000 })
+  await expect(page.getByPlaceholder('البحث عن طالب...')).toBeVisible({ timeout: 30000 })
 }
 
 async function addStudent(page: Page, name: string, phone: string) {
@@ -165,7 +165,7 @@ test.describe('PWA invite UX + old-flow regression', () => {
     expect(manifestRes.ok()).toBeTruthy()
     const manifest = await manifestRes.json()
     expect(manifest.display).toBe('standalone')
-    expect(manifest.start_url).toBe('/')
+    expect(manifest.start_url).toBe('/start')
     const sizes = (manifest.icons as Array<{ sizes: string }>).map((i) => i.sizes)
     expect(sizes).toContain('192x192')
     expect(sizes).toContain('512x512')
