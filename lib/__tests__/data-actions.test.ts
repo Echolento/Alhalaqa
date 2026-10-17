@@ -1005,6 +1005,12 @@ describe('updateStudentMonthlyPrice', () => {
     const { updateStudentMonthlyPrice } = await import('@/lib/data-actions')
     expect((await updateStudentMonthlyPrice(studentId, 250)).success).toBe(true)
   })
+
+  it.each([NaN, -1, Infinity, 1e8])('rejects non-finite/out-of-range price %s without touching the service', async (price) => {
+    const { updateStudentMonthlyPrice } = await import('@/lib/data-actions')
+    expect((await updateStudentMonthlyPrice(studentId, price)).error).toBeTruthy()
+    expect(mockService.from).not.toHaveBeenCalled()
+  })
 })
 
 describe('updateStudentPaymentDay', () => {
@@ -1020,6 +1026,12 @@ describe('updateStudentPaymentDay', () => {
 
     const { updateStudentPaymentDay } = await import('@/lib/data-actions')
     expect((await updateStudentPaymentDay(studentId, 10)).success).toBe(true)
+  })
+
+  it.each([0, 29, 1.5, NaN])('rejects out-of-range payment day %s without touching the service', async (day) => {
+    const { updateStudentPaymentDay } = await import('@/lib/data-actions')
+    expect((await updateStudentPaymentDay(studentId, day)).error).toBeTruthy()
+    expect(mockService.from).not.toHaveBeenCalled()
   })
 })
 

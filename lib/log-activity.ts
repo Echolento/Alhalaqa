@@ -23,15 +23,24 @@ export async function logActivity(opts: LogActivityOptions, knownUserId?: string
 
   try {
     // Service write keyed by the session user (#25: no anon-key writes).
-    await createServiceClient().from('activity_log').insert({
+    const { error } = await createServiceClient().from('activity_log').insert({
       user_id: userId,
       action_type: opts.actionType,
       entity_type: opts.entityType || null,
       entity_id: opts.entityId || null,
       details: opts.details || null,
     })
+    // Audit loss must be visible: actions treat logging as advisory, but a
+    // silently missing trail defeats the append-only posture.
+    if (error) {
+      const { captureException } = await import('@sentry/nextjs')
+      captureException(new Error(`activity_log insert failed: ${error.message}`), {
+        tags: { area: 'audit-log' },
+        extra: { actionType: opts.actionType, entityId: opts.entityId },
+      })
+    }
   } catch {
-    // DB insert is best-effort — never block the action or the Discord webhook
+    // DB insert is best-effort — never block the action or the Discord webhook.
   }
 
   // Display name + webhook float outside the action's critical path.

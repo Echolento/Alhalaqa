@@ -149,6 +149,8 @@ export async function uploadPaymentProof(params: {
         tags: { area: 'receipt-upload', reason: 'insert' },
         extra: { studentId: s.id, periodKey, storagePath },
       })
+      // No orphan objects: the bytes just uploaded belong to no row.
+      await service.storage.from(PAYMENT_PROOFS_BUCKET).remove([storagePath])
       return { error: 'فشل حفظ الإيصال — حاول مرة أخرى' }
     }
 

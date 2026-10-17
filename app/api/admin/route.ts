@@ -181,7 +181,7 @@ export async function POST(request: Request) {
         }
         const { data: row, error: readError } = await service
           .from('students')
-          .select('id, name, deleted_at, next_due_date')
+          .select('id, name, deleted_at, next_due_date, claimed_by')
           .eq('id', sid)
           .maybeSingle()
         if (readError) throw readError
@@ -225,6 +225,7 @@ export async function POST(request: Request) {
             ((row as { next_due_date: string }).next_due_date < todayISO),
           pendingProofs: pendingProofs ?? 0,
           liveTokens: liveTokens ?? 0,
+          hasClaim: !!((row as { claimed_by?: string | null }).claimed_by),
         }
         await service.from('activity_log').insert({
           user_id: userId,

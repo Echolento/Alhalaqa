@@ -203,12 +203,25 @@ export async function issueClaimLink(studentId: string) {
   const rawToken = generateClaimToken()
   const expiresAt = claimExpiryFromNow()
 
-  const { error: insertError } = await service.from('claim_tokens').insert({
-    student_id: studentId,
-    teacher_id: ownerTeacherId,
-    token_hash: hashClaimToken(rawToken),
-    expires_at: expiresAt,
-  })
+  const mint = () =>
+    service.from('claim_tokens').insert({
+      student_id: studentId,
+      teacher_id: ownerTeacherId,
+      token_hash: hashClaimToken(rawToken),
+      expires_at: expiresAt,
+    })
+  let { error: insertError } = await mint()
+  // Concurrent regenerate vs the one-live-token index: re-revoke and retry
+  // once instead of failing a legitimate double-tap.
+  if (insertError && String((insertError as { code?: string }).code) === '23505') {
+    await service
+      .from('claim_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('student_id', studentId)
+      .is('used_at', null)
+      .is('revoked_at', null)
+    ;({ error: insertError } = await mint())
+  }
   if (insertError) return { error: 'تعذر إنشاء رابط الدعوة — حاول مرة أخرى' }
 
   // Atomicity close: a delete landing between the liveness read above and
@@ -605,9 +618,17 @@ export async function claimByPhone(rawPhone: string) {
 
   const nowMs = Date.now()
   const attemptKey = await deriveAttemptKey(user.id)
-  if (await isRateLimited(service, attemptKey, nowMs)) {
+  const globalKey = buildAttemptKey(`claim-global|${user.id}`)
+  if (
+    (await isRateLimited(service, attemptKey, nowMs)) ||
+    (await isRateLimited(service, globalKey, nowMs))
+  ) {
     return { error: CLAIM_COPY.claimRateLimitedDescription }
   }
+  // Every call costs attempts in both buckets (checked above): the throttle
+  // actually increments instead of only gating on other flows' traffic.
+  await recordAttempt(service, attemptKey, nowMs)
+  await recordAttempt(service, globalKey, nowMs)
 
   const { data, error } = (await service
     .from('students')
@@ -641,6 +662,7 @@ export async function claimByPhone(rawPhone: string) {
   }
 
   await clearAttempts(service, attemptKey)
+  await clearAttempts(service, globalKey)
   return { success: true as const, claimed }
 }
 

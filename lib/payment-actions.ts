@@ -119,6 +119,12 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
   if ('error' in ctx) return ctx
   const { user, service } = ctx
 
+  // Garbage never writes: non-finite or out-of-range prices corrupt totals
+  // and the ledger downstream. Legitimate prices pass through untouched.
+  if (!Number.isFinite(price) || price < 0 || price > 1e7) {
+    return { error: 'سعر غير صالح' }
+  }
+
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }
   }
@@ -305,6 +311,10 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
   const ctx = await requireUser()
   if ('error' in ctx) return ctx
   const { user, service } = ctx
+
+  if (!Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 28) {
+    return { error: 'يوم دفع غير صالح — اختر بين 1 و 28' }
+  }
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {
     return { error: 'الطالب غير موجود' }

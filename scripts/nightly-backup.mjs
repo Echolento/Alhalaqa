@@ -86,6 +86,19 @@ async function snapshot() {
     unlinkSync(join(BACKUP_DIR, f))
     console.log(`pruned ${f}`)
   }
+
+  // Rotate the run log alongside snapshots so monitoring degrades gracefully.
+  try {
+    const logPath = join(BACKUP_DIR, 'backup.log')
+    if (existsSync(logPath)) {
+      const lines = readFileSync(logPath, 'utf8').split('\n')
+      if (lines.length > 500) {
+        writeFileSync(logPath, lines.slice(-500).join('\n'))
+      }
+    }
+  } catch {
+    // Rotation must never fail the backup itself.
+  }
 }
 
 function install() {
@@ -107,16 +120,29 @@ function appendLog(line) {
   }
 }
 
+function sanitizePing(message) {
+  // Webhook + log safe: single line, bounded, no mass-mentions, no key shapes.
+  return String(message)
+    .replace(/[\r\n]+/g, ' ')
+    .slice(0, 300)
+    .replace(/@/g, '@\u200b')
+    .replace(/eyJ[A-Za-z0-9_-]+/g, '[redacted]')
+    .replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, '[redacted]')
+}
+
 async function pingFailure(message) {
-  appendLog(`FAIL ${message}`)
+  const safe = sanitizePing(message)
+  appendLog(`FAIL ${safe}`)
   try {
     const env = loadEnv()
     if (!env.DISCORD_WEBHOOK_URL) return
-    await fetch(env.DISCORD_WEBHOOK_URL, {
+    const res = await fetch(env.DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: `🚨 nightly backup FAILED: ${message}` }),
+      body: JSON.stringify({ content: `🚨 nightly backup FAILED: ${safe}` }),
+      signal: AbortSignal.timeout(10000),
     })
+    if (!res.ok) appendLog(`PING_FAIL status=${res.status}`)
   } catch {
     // Best-effort only.
   }

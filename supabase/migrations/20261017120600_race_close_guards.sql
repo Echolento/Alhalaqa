@@ -21,7 +21,9 @@ begin
   if p_cycle_key !~ '^\d{4}-\d{2}-\d{2}$' then
     raise exception 'settle_cycle: bad cycle key';
   end if;
-  if p_amount is null or p_amount < 0 then
+  if p_amount is null or p_amount != p_amount or p_amount < 0
+     or p_amount::float8 <= '-Infinity'::float8
+     or p_amount::float8 >= 'Infinity'::float8 then
     raise exception 'settle_cycle: bad amount';
   end if;
   select 1 into v_dummy from students

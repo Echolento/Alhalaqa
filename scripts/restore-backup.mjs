@@ -122,9 +122,14 @@ for (const [table, rows] of Object.entries(snap.tables)) {
 // newer rows. Deliberate stale restores pass --allow-stale explicitly.
 const STALE_MS = 48 * 3600 * 1000
 const snapshotAge = Date.now() - Date.parse(snap.exported_at)
-if (!dryRun && Number.isFinite(snapshotAge) && snapshotAge > STALE_MS && !flags.has('--allow-stale')) {
+const ageKnown = Number.isFinite(snapshotAge) && snapshotAge >= 0
+// Fail closed: missing, corrupt, or future-dated timestamps gate exactly
+// like a stale snapshot — only --allow-stale proceeds.
+if (!dryRun && (!ageKnown || snapshotAge > STALE_MS) && !flags.has('--allow-stale')) {
   console.error(
-    `refusing: snapshot is ${Math.round(snapshotAge / 3600000)}h old (limit 48h) — re-run with --allow-stale after review`,
+    ageKnown
+      ? `refusing: snapshot is ${Math.round(snapshotAge / 3600000)}h old (limit 48h) — re-run with --allow-stale after review`
+      : 'refusing: snapshot exported_at is missing or invalid — re-run with --allow-stale after review',
   )
   process.exit(1)
 }
@@ -145,7 +150,9 @@ if (!dryRun && (!prod || prodTarget)) {
   }
 }
 if (dryRun) {
-  if (Number.isFinite(snapshotAge) && snapshotAge > STALE_MS) {
+  if (!ageKnown) {
+    console.log('note: snapshot exported_at is missing or invalid — a real restore would need --allow-stale')
+  } else if (snapshotAge > STALE_MS) {
     console.log(`note: snapshot is ${Math.round(snapshotAge / 3600000)}h old — a real restore would need --allow-stale`)
   }
   console.log('dry run — nothing written')
@@ -154,9 +161,9 @@ if (dryRun) {
 
 const svc = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 
-// Merge-preserve columns: a stale snapshot must not silently resurrect
-// soft-deletes or un-revoke invitation links. Fresh backups carry nulls and
-// pass through untouched; only live tombstones/revokes are preserved.
+// Merge-preserve columns: a stale snapshot must neither silently resurrect
+// soft-deletes / un-revoke links NOR silently re-delete resurrected rows.
+// Live-wins both directions; every conflict is logged for review.
 const MERGE_PRESERVE = { students: ['deleted_at'], claim_tokens: ['revoked_at'] }
 const preserved = new Map()
 for (const [table, cols] of Object.entries(MERGE_PRESERVE)) {
@@ -172,6 +179,7 @@ for (const [table, cols] of Object.entries(MERGE_PRESERVE)) {
     for (const r of data ?? []) preserved.set(`${table}:${r.id}`, r)
   }
 }
+let conflicts = 0
 function mergePreserved(table, rows) {
   const cols = MERGE_PRESERVE[table]
   if (!cols) return rows
@@ -182,13 +190,20 @@ function mergePreserved(table, rows) {
     const c = { ...r }
     for (const col of cols) {
       if (e[col] != null && c[col] == null) {
+        // Live tombstone/revoke beats stale null: never resurrect.
         c[col] = e[col]
         kept++
+      } else if (e[col] == null && c[col] != null) {
+        // Live null beats stale tombstone: never re-delete. Logged below.
+        c[col] = e[col]
+        kept++
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} ${col}: snapshot set, live null — kept live`)
       }
     }
     return c
   })
-  if (kept > 0) console.log(`  ${table}: preserved ${kept} live tombstone/revoke values`)
+  if (kept > 0) console.log(`  ${table}: preserved ${kept} live values`)
   return out
 }
 
