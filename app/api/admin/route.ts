@@ -191,20 +191,7 @@ export async function POST(request: Request) {
         if (!(row as { deleted_at: string | null }).deleted_at) {
           return NextResponse.json({ ok: true, result: 'already_live' })
         }
-        // App-path order: revoke live links BEFORE un-deleting, so no window
-        // exists where a harvested link is usable on a live row.
-        const { error: revokeError } = await service
-          .from('claim_tokens')
-          .update({ revoked_at: new Date().toISOString() })
-          .eq('student_id', sid)
-          .is('used_at', null)
-          .is('revoked_at', null)
-        if (revokeError) throw revokeError
-        const { error: restoreError } = await service
-          .from('students')
-          .update({ deleted_at: null })
-          .eq('id', sid)
-        if (restoreError) throw restoreError
+        // Counts BEFORE revoking so warnings report the pre-restore truth.
         const todayISO = new Date().toISOString().slice(0, 10)
         const [{ count: pendingProofs }, { count: liveTokens }] = await Promise.all([
           service
@@ -220,6 +207,20 @@ export async function POST(request: Request) {
             .is('revoked_at', null)
             .gt('expires_at', new Date().toISOString()),
         ])
+        // App-path order: revoke live links BEFORE un-deleting, so no window
+        // exists where a harvested link is usable on a live row.
+        const { error: revokeError } = await service
+          .from('claim_tokens')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('student_id', sid)
+          .is('used_at', null)
+          .is('revoked_at', null)
+        if (revokeError) throw revokeError
+        const { error: restoreError } = await service
+          .from('students')
+          .update({ deleted_at: null })
+          .eq('id', sid)
+        if (restoreError) throw restoreError
         const warnings = {
           staleDue: !!((row as { next_due_date: string | null }).next_due_date) &&
             ((row as { next_due_date: string }).next_due_date < todayISO),

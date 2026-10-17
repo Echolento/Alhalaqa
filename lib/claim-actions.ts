@@ -478,6 +478,7 @@ export async function redeemClaim(rawToken: string, _opts?: { attemptKey?: strin
   // Defense-in-depth: the RPC guarantees ownership, but a future RPC change
   // must never silently report success to a non-owner.
   if (s.claimed_by && s.claimed_by !== user.id) {
+    await record()
     return { error: CLAIM_COPY.claimAlreadyClaimedDescription, reason: 'already_claimed' as const }
   }
 

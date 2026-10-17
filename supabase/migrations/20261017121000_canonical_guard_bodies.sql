@@ -1,4 +1,6 @@
--- Canonical guard bodies (supersedes all prior settle/reject definitions):
+-- Canonical guard bodies (reject_proof here is current; the settle_cycle
+-- half is SUPERSEDED by 20261017121200_settle_strict_inputs.sql — strict
+-- calendar keys + numeric-domain amount bound):
 -- settle_cycle: FOR UPDATE entry lock, proof scoping + pending-only with
 -- FOUND check, numeric-safe non-finite guard via text compare (isnan() takes
 -- float8 only, and numeric NaN satisfies NaN=NaN).

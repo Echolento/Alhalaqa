@@ -197,11 +197,17 @@ function mergePreserved(table, rows) {
         c[col] = e[col]
         kept++
       } else if (e[col] == null && c[col] != null) {
-        // Live null beats stale tombstone: never re-delete. Logged below.
+        // Live null beats stale tombstone: never re-delete.
         c[col] = e[col]
         kept++
         conflicts++
         console.log(`  conflict ${table}:${r.id} ${col}: snapshot set, live null — kept live`)
+      } else if (e[col] != null && c[col] != null && e[col] !== c[col]) {
+        // Both set but divergent: live wins, always logged.
+        c[col] = e[col]
+        kept++
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} ${col}: snapshot differs, live kept`)
       }
     }
     return c

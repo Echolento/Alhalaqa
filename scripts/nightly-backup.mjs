@@ -10,7 +10,7 @@
 // project (see scripts/restore-drill.md). Untested backups are decoration.
 
 import { createClient } from '@supabase/supabase-js'
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, appendFileSync } from 'fs'
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, appendFileSync, renameSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { fileURLToPath } from 'url'
 import { execSync } from 'child_process'
@@ -71,9 +71,19 @@ async function snapshot() {
     data.tables[table] = rows
     console.log(`${table}: ${rows.length} rows`)
   }
-  const file = join(BACKUP_DIR, `alhalaqa-${stamp}.json`)
-  writeFileSync(file, JSON.stringify(data))
+  // Atomic snapshot write: a crash mid-write must not leave a truncated
+  // newest file after older good files were pruned.
   const total = Object.values(data.tables).reduce((n, rows) => n + rows.length, 0)
+  const file = join(BACKUP_DIR, `alhalaqa-${stamp}.json`)
+  const tmpFile = `${file}.tmp`
+  writeFileSync(tmpFile, JSON.stringify(data))
+  const parsed = JSON.parse(readFileSync(tmpFile, 'utf8'))
+  const parsedTotal = Object.values(parsed.tables).reduce(
+    (n, rows) => n + rows.length,
+    0,
+  )
+  if (parsedTotal !== total) throw new Error('snapshot read-back mismatch')
+  renameSync(tmpFile, file)
   appendLog(`OK ${stamp} tables=${Object.keys(data.tables).length} rows=${total} file=${basename(file)}`)
   console.log(`wrote ${file}`)
 
@@ -86,19 +96,7 @@ async function snapshot() {
     unlinkSync(join(BACKUP_DIR, f))
     console.log(`pruned ${f}`)
   }
-
-  // Rotate the run log alongside snapshots so monitoring degrades gracefully.
-  try {
-    const logPath = join(BACKUP_DIR, 'backup.log')
-    if (existsSync(logPath)) {
-      const lines = readFileSync(logPath, 'utf8').split('\n')
-      if (lines.length > 500) {
-        writeFileSync(logPath, lines.slice(-500).join('\n'))
-      }
-    }
-  } catch {
-    // Rotation must never fail the backup itself.
-  }
+  // Log rotation lives in appendLog (covers failure paths too).
 }
 
 function install() {
@@ -115,6 +113,13 @@ function appendLog(line) {
   try {
     mkdirSync(BACKUP_DIR, { recursive: true })
     appendFileSync(join(BACKUP_DIR, 'backup.log'), `${new Date().toISOString()} ${line}\n`)
+    // Rotation lives with the logging primitive so failure loops (which never
+    // reach the success path) stay bounded too.
+    const logPath = join(BACKUP_DIR, 'backup.log')
+    const lines = readFileSync(logPath, 'utf8').split('\n')
+    if (lines.length > 500) {
+      writeFileSync(logPath, lines.slice(-500).join('\n'))
+    }
   } catch {
     // Logging must never fail the backup itself.
   }

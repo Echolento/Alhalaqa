@@ -176,7 +176,18 @@ export async function uploadPaymentProof(params: {
       .maybeSingle()
     if (!live) {
       await service.from('payment_proofs').delete().eq('id', (proof as { id: string }).id)
-      await service.storage.from(PAYMENT_PROOFS_BUCKET).remove([storagePath])
+      const { error: removeError } = await service.storage
+        .from(PAYMENT_PROOFS_BUCKET)
+        .remove([storagePath])
+      if (removeError) {
+        Sentry.captureException(
+          new Error(`receipt orphan cleanup failed: ${removeError.message}`),
+          {
+            tags: { area: 'receipt-upload', reason: 'orphan-liveness' },
+            extra: { studentId: s.id, storagePath },
+          },
+        )
+      }
       return { error: 'الطالب غير موجود' }
     }
 
