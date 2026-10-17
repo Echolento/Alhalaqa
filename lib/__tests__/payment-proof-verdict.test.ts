@@ -256,6 +256,30 @@ describe('rejectProof leaves the period unpaid', () => {
     expect(ctx.lastProofUpdate).toBeNull()
     expect(mockSendPush).not.toHaveBeenCalled()
   })
+
+  it('refuses to verify a rejected proof (no flip, no settle, no push)', async () => {
+    ctx.proof = { ...ctx.proof, status: 'rejected' }
+    const { verifyProof } = await import('@/lib/payment-proof-verdict')
+
+    const result = await verifyProof('proof-1')
+
+    expect((result as { error?: string }).error).toBeTruthy()
+    expect((result as { success?: boolean }).success).toBeUndefined()
+    expect(ctx.rpcCalls.length).toBe(0)
+    expect(mockSendPush).not.toHaveBeenCalled()
+    expect(mockLog).not.toHaveBeenCalled()
+  })
+
+  it('refuses to reject a verified proof (ledger stands, use undo instead)', async () => {
+    ctx.proof = { ...ctx.proof, status: 'verified' }
+    const { rejectProof } = await import('@/lib/payment-proof-verdict')
+
+    const result = await rejectProof('proof-1', 'غير واضح')
+
+    expect((result as { error?: string }).error).toMatch(/مدفوع|التراجع/)
+    expect(ctx.lastProofUpdate).toBeNull()
+    expect(mockSendPush).not.toHaveBeenCalled()
+  })
 })
 
 describe('wrong-teacher isolation', () => {

@@ -152,6 +152,21 @@ export async function uploadPaymentProof(params: {
       return { error: 'فشل حفظ الإيصال — حاول مرة أخرى' }
     }
 
+    // Liveness re-check after the insert: a delete racing the upload must not
+    // leave a pending receipt (plus teacher push) on a trashed row. The
+    // orphaned storage object is removed best-effort.
+    const { data: live } = await service
+      .from('students')
+      .select('id')
+      .is('deleted_at', null)
+      .eq('id', s.id)
+      .maybeSingle()
+    if (!live) {
+      await service.from('payment_proofs').delete().eq('id', (proof as { id: string }).id)
+      await service.storage.from(PAYMENT_PROOFS_BUCKET).remove([storagePath])
+      return { error: 'الطالب غير موجود' }
+    }
+
     const proofId = (proof as { id: string }).id
 
     // Best-effort teacher push: proof is kept even when push is unavailable.

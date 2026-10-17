@@ -118,6 +118,11 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
   if (proof.status === 'verified') {
     return { success: true as const, idempotent: true as const, proofId: proof.id }
   }
+  // Only a pending receipt may flip to verified. A rejected or undone one
+  // stays as the teacher left it — the payer re-uploads for a fresh review.
+  if (proof.status !== 'pending') {
+    return { error: 'الإيصال غير قابل للتحقق بهذه الحالة — اطلب إيصالًا جديدًا' }
+  }
 
   const [{ data: student }, { data: teacher }] = await Promise.all([
     service
@@ -163,6 +168,15 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
     // missing, with no log and no push on this path.
     if (String(settleError.message).includes('student_deleted')) {
       return { error: 'الطالب غير موجود' }
+    }
+    // A concurrent verify won first: the proof is verified now — report the
+    // idempotent outcome instead of an error.
+    if (String(settleError.message).includes('proof_not_pending')) {
+      const again = await fetchProof(service, proof.id)
+      if (again?.status === 'verified') {
+        return { success: true as const, idempotent: true as const, proofId: proof.id }
+      }
+      return { error: 'الإيصال غير قابل للتحقق بهذه الحالة — اطلب إيصالًا جديدًا' }
     }
     return { error: settleError.message }
   }
@@ -225,8 +239,29 @@ export async function rejectProof(proofId: string, teacherNote: string) {
   if (proof.status === 'rejected') {
     return { success: true as const, idempotent: true as const, proofId: proof.id }
   }
+  // Only a pending receipt may be rejected. A verified one is settled ledger
+  // — undo the payment instead of flipping the proof under it. An undone one
+  // is already out of the queue.
+  if (proof.status !== 'pending') {
+    return {
+      error:
+        proof.status === 'verified'
+          ? 'الإيصال تم التحقق منه وقيده مدفوع — استخدم التراجع عن الدفع بدل الرفض'
+          : 'الإيصال غير قابل للرفض بهذه الحالة',
+    }
+  }
 
   const nowIso = new Date().toISOString()
+
+  // Liveness re-check immediately before the write: a delete racing the tap
+  // must not flip the proof, log, or push for a trashed row.
+  const { data: live } = await service
+    .from('students')
+    .select('id')
+    .is('deleted_at', null)
+    .eq('id', proof.student_id)
+    .maybeSingle()
+  if (!live) return { error: 'الطالب غير موجود' }
 
   const { error: proofError } = (await service
     .from('payment_proofs')

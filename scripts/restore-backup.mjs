@@ -17,7 +17,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, existsSync } from 'fs'
-import { join, dirname, resolve, basename } from 'path'
+import { join, dirname, resolve, basename, sep, relative, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
 import { createInterface } from 'readline'
 
@@ -69,10 +69,21 @@ async function confirm(question) {
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const flags = new Set(process.argv.slice(2).filter((a) => a.startsWith('--')))
+const KNOWN_FLAGS = new Set(['--dry-run', '--allow-prod', '--allow-stale'])
+for (const f of flags) {
+  // A mistyped --dryrun must never become a real write.
+  if (!KNOWN_FLAGS.has(f)) {
+    console.error(`refusing: unknown flag ${f} (known: ${[...KNOWN_FLAGS].join(', ')})`)
+    process.exit(1)
+  }
+}
 const fileArg = args[0] ?? ''
 const file = resolve(ROOT, fileArg)
-if (!fileArg || !file.startsWith(BACKUP_DIR) || basename(fileArg).length === 0) {
-  console.error('usage: node scripts/restore-backup.mjs backups/<alhalaqa-*.json> [--dry-run] [--allow-prod]')
+// Directory confinement via relative path, not string prefix
+// (backups-evil/ passes a prefix test).
+const rel = relative(BACKUP_DIR, file)
+if (!fileArg || isAbsolute(rel) || rel.startsWith('..') || basename(fileArg).length === 0) {
+  console.error('usage: node scripts/restore-backup.mjs backups/<alhalaqa-*.json> [--dry-run] [--allow-prod] [--allow-stale]')
   process.exit(1)
 }
 if (!/^alhalaqa-\d{8}-\d{4}\.json$/.test(basename(file)) || !existsSync(file)) {
@@ -106,9 +117,25 @@ console.log(`target: ${targetRef} | snapshot: ${snap.exported_at} | tables: ${Ob
 for (const [table, rows] of Object.entries(snap.tables)) {
   console.log(`  ${table}: ${rows.length} rows`)
 }
-if (prod && targetRef === prod && !dryRun) {
+// Freshness gate: a stale snapshot silently resurrects deletes and reverts
+// newer rows. Deliberate stale restores pass --allow-stale explicitly.
+const STALE_MS = 48 * 3600 * 1000
+const snapshotAge = Date.now() - Date.parse(snap.exported_at)
+if (!dryRun && Number.isFinite(snapshotAge) && snapshotAge > STALE_MS && !flags.has('--allow-stale')) {
+  console.error(
+    `refusing: snapshot is ${Math.round(snapshotAge / 3600000)}h old (limit 48h) — re-run with --allow-stale after review`,
+  )
+  process.exit(1)
+}
+const prodTarget = !!prod && targetRef === prod
+if (!dryRun && (!prod || prodTarget)) {
+  // Fail closed: unknown prod ref is treated like a prod target.
   if (!flags.has('--allow-prod')) {
-    console.error('refusing: target IS production — re-run with --allow-prod after a second-person read-back')
+    console.error(
+      prod
+        ? 'refusing: target IS production — re-run with --allow-prod after a second-person read-back'
+        : 'refusing: production reference unknown (no .env file) — re-run with --allow-prod after verifying the target',
+    )
     process.exit(1)
   }
   if (!(await confirm('type yes to overwrite PRODUCTION with this snapshot: '))) {
@@ -117,6 +144,9 @@ if (prod && targetRef === prod && !dryRun) {
   }
 }
 if (dryRun) {
+  if (Number.isFinite(snapshotAge) && snapshotAge > STALE_MS) {
+    console.log(`note: snapshot is ${Math.round(snapshotAge / 3600000)}h old — a real restore would need --allow-stale`)
+  }
   console.log('dry run — nothing written')
   process.exit(0)
 }

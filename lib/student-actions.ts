@@ -296,12 +296,17 @@ export async function deleteStudent(studentId: string) {
 
   // Links die with the row: revoke every live invitation so a harvested
   // pre-delete link is worthless after a restore (only a fresh issue works).
-  await service
+  const { error: revokeError } = await service
     .from('claim_tokens')
     .update({ revoked_at: new Date().toISOString() })
     .is('used_at', null)
     .is('revoked_at', null)
     .eq('student_id', studentId)
+  if (revokeError) {
+    // Roll back the stamp: deleted-with-live-links violates the invariant.
+    await service.from('students').update({ deleted_at: null }).eq('id', studentId)
+    return { error: revokeError.message }
+  }
 
   await logActivity({
     actionType: 'student_delete',
@@ -375,6 +380,17 @@ export async function restoreStudent(studentId: string) {
     hasClaim: !!row.claimed_by,
     pendingProofs: pendingProofs ?? 0,
     liveTokens: liveTokens ?? 0,
+  }
+
+  // Defensive: unexpected live links (race-minted around the delete, or
+  // predating the revoke posture) die here — restore never reactivates them.
+  if ((liveTokens ?? 0) > 0) {
+    await service
+      .from('claim_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('student_id', studentId)
+      .is('used_at', null)
+      .is('revoked_at', null)
   }
 
   const { error } = await service

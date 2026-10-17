@@ -1,8 +1,9 @@
 -- Atomic claim consume: token mark + payer link in one transaction against
 -- a live student. Replaces the evaluate-then-mark sequence that could burn
 -- a token while reporting phantom success on a concurrently deleted row.
--- Applied via migration consume_claim_rpc. Verified live: bad hash raises
--- claim_invalid, steal raises claim_taken, deleted student raises invalid.
+-- Applied via migration consume_claim_rpc. Superseded by
+-- 20261017120200_consume_claim_hardened.sql (single-statement burn +
+-- owner verify). Verified live: bad hash raises claim_invalid.
 create or replace function public.consume_claim(
   p_token_hash text,
   p_profile_id uuid

@@ -1,6 +1,6 @@
 -- Harden the settlement RPCs: no write may touch a soft-deleted student,
 -- proofs stay scoped to their student, amounts and cycle keys are validated.
--- Applied via migration settle_cycle_guards. Verified live: deleted student
+-- Applied via migrations settle_cycle_guards + settle_pending_only. Verified live: deleted student
 -- raises student_deleted, mismatched proof stays pending, bad key rejected.
 create or replace function public.settle_cycle(
   p_student_id uuid,
@@ -29,7 +29,10 @@ begin
   if p_proof_id is not null then
     update payment_proofs
       set status = 'verified', teacher_note = p_teacher_note, updated_at = now()
-      where id = p_proof_id and student_id = p_student_id;
+      where id = p_proof_id and student_id = p_student_id and status = 'pending';
+    if not found then
+      raise exception 'proof_not_pending';
+    end if;
   end if;
 
   perform 1 from student_payments

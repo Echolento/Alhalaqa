@@ -211,6 +211,23 @@ export async function issueClaimLink(studentId: string) {
   })
   if (insertError) return { error: 'تعذر إنشاء رابط الدعوة — حاول مرة أخرى' }
 
+  // Atomicity close: a delete landing between the liveness read above and
+  // this insert would mint a live link on a trashed row. Re-validate and
+  // self-revoke the just-issued token when the row is gone.
+  const { data: stillLive } = await service
+    .from('students')
+    .select('id')
+    .is('deleted_at', null)
+    .eq('id', studentId)
+    .maybeSingle()
+  if (!stillLive) {
+    await service
+      .from('claim_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('token_hash', hashClaimToken(rawToken))
+    return { error: 'الطالب غير موجود' }
+  }
+
   await logActivity(
     {
       actionType: 'claim_link_issued',

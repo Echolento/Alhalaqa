@@ -141,6 +141,16 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
   if (studentError) return { error: studentError.message }
 
   if (month) {
+    // Liveness re-check before touching the ledger: a delete racing the edit
+    // must not rewrite a trashed row's payment history.
+    const { data: live } = await service
+      .from('students')
+      .select('id')
+      .is('deleted_at', null)
+      .eq('id', studentId)
+      .maybeSingle()
+    if (!live) return { error: 'الطالب غير موجود' }
+
     const { data: existing } = await service
       .from('student_payments')
       .select('id, paid')

@@ -54,8 +54,9 @@ const mockService = {
   rpc: vi.fn(),
 }
 
-// Faithful consume_claim fake: enforces live-token + live-student +
-// no-steal exactly like the migration, mutates ctx like the RPC would.
+// Faithful consume_claim fake mirroring the hardened migration: burn carries
+// the full predicates, student locked + re-verified, link owner-verified —
+// a race loser gets claim_taken with nothing burned and nothing linked.
 const rpcCalls: Array<[string, any]> = []
 function installRpcFake() {
   rpcCalls.length = 0
@@ -64,21 +65,23 @@ function installRpcFake() {
     if (name !== 'consume_claim') return Promise.resolve({ data: null, error: null })
     const tok = ctx.rows['claim_tokens'] as any
     const stu = ctx.rows['students'] as any
-    const live =
+    const burnOk =
       tok &&
       args.p_token_hash === tok.token_hash &&
       !tok.used_at &&
       !tok.revoked_at &&
       Date.parse(tok.expires_at) > Date.now()
-    if (!live || !stu || stu.deleted_at) {
-      return Promise.resolve({ data: null, error: { message: 'claim_invalid' } })
-    }
+    if (!burnOk) return Promise.resolve({ data: null, error: { message: 'claim_invalid' } })
+    if (!stu || stu.deleted_at) return Promise.resolve({ data: null, error: { message: 'claim_invalid' } })
     if (stu.claimed_by && stu.claimed_by !== args.p_profile_id) {
       return Promise.resolve({ data: null, error: { message: 'claim_taken' } })
     }
     tok.used_at = new Date().toISOString()
     tok.used_by_profile_id = args.p_profile_id
     if (!stu.claimed_by) stu.claimed_by = args.p_profile_id
+    if (stu.claimed_by !== args.p_profile_id) {
+      return Promise.resolve({ data: null, error: { message: 'claim_taken' } })
+    }
     return Promise.resolve({ data: stu.id, error: null })
   })
 }
@@ -352,6 +355,28 @@ describe('redeemClaim happy path', () => {
     expect(rpcCalls).toHaveLength(1)
     expect(ctx.updates['claim_tokens']).toBeUndefined()
     expect(ctx.updates['students']).toBeUndefined()
+  })
+
+  it('reports taken (not success) to the loser of a two-token race, burning nothing for them', async () => {
+    const { generateClaimToken, hashClaimToken } = await import('@/lib/claim-tokens')
+    const { redeemClaim } = await import('@/lib/claim-actions')
+    // Winner links first.
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: PAYER_USER } } })
+    const rawA = generateClaimToken()
+    ctx.rows['claim_tokens'] = { ...liveTokenRow(), token_hash: hashClaimToken(rawA) }
+    const won = await redeemClaim(rawA, { attemptKey: 'race-a' })
+    expect((won as { success?: boolean }).success).toBe(true)
+    // Loser holds a second live token for the same now-claimed row.
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'payer-user-2' } } })
+    const rawB = generateClaimToken()
+    ctx.rows['claim_tokens'] = { ...liveTokenRow(), id: 'tok-2', token_hash: hashClaimToken(rawB) }
+    const lost = await redeemClaim(rawB, { attemptKey: 'race-b' })
+
+    expect((lost as { reason?: string }).reason).toBe('already_claimed')
+    expect((lost as { success?: boolean }).success).toBeUndefined()
+    // Loser's token untouched (no burn), row still owned by the winner.
+    expect((ctx.rows['claim_tokens'] as { used_at: null }).used_at).toBeNull()
+    expect((ctx.rows.students as { claimed_by: string }).claimed_by).toBe(PAYER_USER)
   })
 
   it('fails closed when the student was soft-deleted (token stays live, nothing links)', async () => {
