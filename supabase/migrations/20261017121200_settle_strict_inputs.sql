@@ -20,6 +20,9 @@ as $$
 declare v_dummy int;
 declare v_cycle date;
 begin
+  if p_cycle_key is null or p_cycle_key = '' then
+    raise exception 'settle_cycle: bad cycle key';
+  end if;
   begin
     v_cycle := to_date(p_cycle_key, 'YYYY-MM-DD');
     if to_char(v_cycle, 'YYYY-MM-DD') != p_cycle_key then
