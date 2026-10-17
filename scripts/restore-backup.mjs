@@ -196,6 +196,8 @@ function mergePreserved(table, rows) {
         // Live tombstone/revoke beats stale null: never resurrect.
         c[col] = e[col]
         kept++
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} ${col}: snapshot null, live set — kept live`)
       } else if (e[col] == null && c[col] != null) {
         // Live null beats stale tombstone: never re-delete.
         c[col] = e[col]
@@ -214,6 +216,58 @@ function mergePreserved(table, rows) {
   })
   if (kept > 0) console.log(`  ${table}: preserved ${kept} live values`)
   return out
+}
+
+// Ledger guards: a stale snapshot must never regress settled state —
+// verified/rejected proofs stay settled, paid stays paid, amounts never
+// lower. Live-wins with per-row logging, like tombstones above.
+const LEDGER_COLS = {
+  student_payments: ['paid', 'amount_paid'],
+  payment_proofs: ['status', 'teacher_note'],
+}
+const liveLedger = new Map()
+for (const [table, cols] of Object.entries(LEDGER_COLS)) {
+  const rows = snap.tables[table] ?? []
+  if (!rows.length) continue
+  const ids = rows.map((r) => r.id)
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await svc
+      .from(table)
+      .select(['id', ...cols].join(','))
+      .in('id', ids.slice(i, i + 500))
+    if (error) throw new Error(`${table}: ${error.message}`)
+    for (const r of data ?? []) liveLedger.set(`${table}:${r.id}`, r)
+  }
+}
+function mergeLedger(table, rows) {
+  const cols = LEDGER_COLS[table]
+  if (!cols) return rows
+  return rows.map((r) => {
+    const e = liveLedger.get(`${table}:${r.id}`)
+    if (!e) return r
+    const c = { ...r }
+    if (table === 'student_payments') {
+      if (e.paid && !c.paid) {
+        c.paid = true
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} paid: snapshot unpaid, live paid — kept live`)
+      }
+      if (typeof e.amount_paid === 'number' && (typeof c.amount_paid !== 'number' || c.amount_paid < e.amount_paid)) {
+        c.amount_paid = e.amount_paid
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} amount_paid: snapshot lower, live kept`)
+      }
+    }
+    if (table === 'payment_proofs') {
+      if ((e.status === 'verified' || e.status === 'rejected') && c.status === 'pending') {
+        c.status = e.status
+        c.teacher_note = e.teacher_note
+        conflicts++
+        console.log(`  conflict ${table}:${r.id} status: snapshot pending, live ${e.status} — kept live`)
+      }
+    }
+    return c
+  })
 }
 
 for (const table of ALLOWED_TABLES) {
@@ -241,9 +295,11 @@ for (const table of ALLOWED_TABLES) {
     continue
   }
   for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await svc.from(table).upsert(mergePreserved(table, rows.slice(i, i + 500), preserved), { onConflict: 'id' })
+    const chunk = mergeLedger(table, mergePreserved(table, rows.slice(i, i + 500)))
+    const { error } = await svc.from(table).upsert(chunk, { onConflict: 'id' })
     if (error) throw new Error(`${table}: ${error.message}`)
   }
   console.log(`${table}: upserted ${rows.length} rows`)
 }
-console.log('restore complete — verify counts in the dashboard before announcing recovery')
+if (conflicts > 0) console.log(`restore complete with ${conflicts} live-wins conflicts (see above) — verify counts in the dashboard before announcing recovery`)
+else console.log('restore complete — verify counts in the dashboard before announcing recovery')

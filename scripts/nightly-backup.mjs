@@ -111,7 +111,18 @@ function install() {
 
 function appendLog(line) {
   try {
-    mkdirSync(BACKUP_DIR, { recursive: true })
+  mkdirSync(BACKUP_DIR, { recursive: true })
+  // Crash orphans from a prior run (*.tmp) never match the snapshot prune —
+  // clear them at startup so they cannot accumulate or confuse a drill.
+  for (const f of readdirSync(BACKUP_DIR)) {
+    if (f.endsWith('.tmp')) {
+      try {
+        unlinkSync(join(BACKUP_DIR, f))
+      } catch {
+        // Best-effort only.
+      }
+    }
+  }
     appendFileSync(join(BACKUP_DIR, 'backup.log'), `${new Date().toISOString()} ${line}\n`)
     // Rotation lives with the logging primitive so failure loops (which never
     // reach the success path) stay bounded too.

@@ -85,6 +85,9 @@ function createBuilder(table: string, ctx: any): Record<string, any> {
       if (table === 'payment_proofs') ctx.lastInsert = row
       return builder
     }),
+    delete: vi.fn(() => ({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    })),
     maybeSingle: vi.fn(),
     single: vi.fn(),
     // Real supabase query builders are thenable; the bulk reads await them.
@@ -259,6 +262,33 @@ describe('uploadPaymentProof', () => {
     expect((result as { error?: string }).error).toBeTruthy()
     expect(mockRemove).toHaveBeenCalledOnce()
     expect(mockRemove.mock.calls[0][0][0]).toContain('stu-1')
+  })
+
+  it('cleans up proof row and object when the student is deleted mid-upload', async () => {
+    mockRemove.mockResolvedValue({ data: null, error: null })
+    let studentReads = 0
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder(table, ctx)
+      if (table === 'students') {
+        // Gate + ownership reads see the row; the post-insert re-check does not.
+        b.maybeSingle = vi.fn(() =>
+          Promise.resolve({ data: studentReads++ < 2 ? ctx.student : null }),
+        )
+      }
+      return b
+    })
+    const { uploadPaymentProof } = await import('@/lib/payment-proofs')
+
+    const result = await uploadPaymentProof({
+      studentId: 'stu-1',
+      fileName: 'receipt.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 100_000,
+      fileBytes: new Uint8Array([1]),
+    })
+
+    expect((result as { error?: string }).error).toBe('الطالب غير موجود')
+    expect(mockRemove).toHaveBeenCalledOnce()
   })
 
   it('rejects upload from a stranger (not owner, not claimant) with Forbidden', async () => {

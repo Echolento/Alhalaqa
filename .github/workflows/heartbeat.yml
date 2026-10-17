@@ -7,11 +7,14 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Ping Supabase
         id: ping
         run: |
-          curl -f -s -o /dev/null \
+          curl -f -s -o /dev/null --max-time 30 --retry 3 \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             "${{ secrets.SUPABASE_URL }}/rest/v1/teachers?select=count"
@@ -20,7 +23,7 @@ jobs:
       - name: Notify Discord (failure)
         if: steps.ping.outcome == 'failure'
         run: |
-          curl -s -H "Content-Type: application/json" \
+          curl -f -s -H "Content-Type: application/json" \
             -X POST \
             -d '{"embeds":[{"title":"Supabase Heartbeat","description":"Database ping failed — check the project.","color":15158332}]}' \
-            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+            "${{ secrets.DISCORD_WEBHOOK_URL }}" || echo 'heartbeat notify failed'

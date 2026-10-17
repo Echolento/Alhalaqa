@@ -175,13 +175,18 @@ export async function uploadPaymentProof(params: {
       .eq('id', s.id)
       .maybeSingle()
     if (!live) {
-      await service.from('payment_proofs').delete().eq('id', (proof as { id: string }).id)
+      const { error: deleteError } = await service
+        .from('payment_proofs')
+        .delete()
+        .eq('id', (proof as { id: string }).id)
       const { error: removeError } = await service.storage
         .from(PAYMENT_PROOFS_BUCKET)
         .remove([storagePath])
-      if (removeError) {
+      if (deleteError || removeError) {
         Sentry.captureException(
-          new Error(`receipt orphan cleanup failed: ${removeError.message}`),
+          new Error(
+            `receipt liveness cleanup failed: ${deleteError?.message ?? ''} ${removeError?.message ?? ''}`,
+          ),
           {
             tags: { area: 'receipt-upload', reason: 'orphan-liveness' },
             extra: { studentId: s.id, storagePath },
