@@ -211,9 +211,20 @@ export async function issueClaimLink(studentId: string) {
       expires_at: expiresAt,
     })
   let { error: insertError } = await mint()
-  // Concurrent regenerate vs the one-live-token index: re-revoke and retry
-  // once instead of failing a legitimate double-tap.
+  // Concurrent regenerate vs the one-live-token index: on unique-violation,
+  // check whose token is live before touching anything. Revoking blindly
+  // would kill the concurrent winner's just-minted link.
   if (insertError && String((insertError as { code?: string }).code) === '23505') {
+    const { data: live } = await service
+      .from('claim_tokens')
+      .select('token_hash')
+      .eq('student_id', studentId)
+      .is('used_at', null)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if ((live as { token_hash?: string } | null)?.token_hash !== hashClaimToken(rawToken)) {
+      return { error: 'تم إنشاء رابط آخر للتو — أعد إصدار الرابط' }
+    }
     await service
       .from('claim_tokens')
       .update({ revoked_at: new Date().toISOString() })
@@ -661,8 +672,12 @@ export async function claimByPhone(rawPhone: string) {
     )
   }
 
-  await clearAttempts(service, attemptKey)
-  await clearAttempts(service, globalKey)
+  // Throttle accounting: misses accumulate (a sweep of numbers must hit the
+  // wall); only an actual link resets the buckets.
+  if (claimed.length > 0) {
+    await clearAttempts(service, attemptKey)
+    await clearAttempts(service, globalKey)
+  }
   return { success: true as const, claimed }
 }
 

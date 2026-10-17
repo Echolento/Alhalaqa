@@ -1,7 +1,7 @@
--- Race-close guards, all behavior-preserving on sequential paths:
--- 1. settle_cycle locks the student row at entry (serializes vs delete stamp).
--- 2. New reject_proof RPC: atomic pending-only reject with liveness check.
--- 3. One live invitation per student (partial unique index kills double-mint).
+-- Race-close guards (historical — see note at end before reusing).
+-- SUPERSEDED by 20261017121000_canonical_guard_bodies.sql for settle_cycle
+-- and reject_proof bodies. This file is kept for history fidelity; the unique
+-- index below is still live and correct.
 -- Applied via migration race_close_guards. Verified live: reject flips
 -- pending to rejected, second call raises proof_not_pending.
 create or replace function public.settle_cycle(

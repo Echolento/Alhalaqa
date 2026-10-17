@@ -1028,7 +1028,7 @@ describe('updateStudentPaymentDay', () => {
     expect((await updateStudentPaymentDay(studentId, 10)).success).toBe(true)
   })
 
-  it.each([0, 29, 1.5, NaN])('rejects out-of-range payment day %s without touching the service', async (day) => {
+  it.each([0, 32, 1.5, NaN])('rejects out-of-range payment day %s without touching the service', async (day) => {
     const { updateStudentPaymentDay } = await import('@/lib/data-actions')
     expect((await updateStudentPaymentDay(studentId, day)).error).toBeTruthy()
     expect(mockService.from).not.toHaveBeenCalled()

@@ -150,7 +150,18 @@ export async function uploadPaymentProof(params: {
         extra: { studentId: s.id, periodKey, storagePath },
       })
       // No orphan objects: the bytes just uploaded belong to no row.
-      await service.storage.from(PAYMENT_PROOFS_BUCKET).remove([storagePath])
+      const { error: removeError } = await service.storage
+        .from(PAYMENT_PROOFS_BUCKET)
+        .remove([storagePath])
+      if (removeError) {
+        Sentry.captureException(
+          new Error(`receipt orphan cleanup failed: ${removeError.message}`),
+          {
+            tags: { area: 'receipt-upload', reason: 'orphan' },
+            extra: { studentId: s.id, storagePath },
+          },
+        )
+      }
       return { error: 'فشل حفظ الإيصال — حاول مرة أخرى' }
     }
 

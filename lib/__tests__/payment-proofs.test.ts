@@ -119,10 +119,11 @@ const mockSupabase = {
 
 const mockUpload = vi.fn()
 const mockSignedUrl = vi.fn()
+const mockRemove = vi.fn()
 const mockService: any = {
   from: vi.fn(),
   storage: {
-    from: vi.fn(() => ({ upload: mockUpload, createSignedUrl: mockSignedUrl })),
+    from: vi.fn(() => ({ upload: mockUpload, createSignedUrl: mockSignedUrl, remove: mockRemove })),
   },
 }
 
@@ -234,6 +235,30 @@ describe('uploadPaymentProof', () => {
     expect(result.error).toBe('Unauthorized')
     expect(mockUpload).not.toHaveBeenCalled()
     expect(mockSendPush).not.toHaveBeenCalled()
+  })
+
+  it('removes the orphaned object when the proof row insert fails', async () => {
+    mockRemove.mockResolvedValue({ data: null, error: null })
+    mockService.from.mockImplementation((table: string) => {
+      const b = createBuilder(table, ctx)
+      if (table === 'payment_proofs') {
+        b.single = vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' } })
+      }
+      return b
+    })
+    const { uploadPaymentProof } = await import('@/lib/payment-proofs')
+
+    const result = await uploadPaymentProof({
+      studentId: 'stu-1',
+      fileName: 'receipt.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 100_000,
+      fileBytes: new Uint8Array([1]),
+    })
+
+    expect((result as { error?: string }).error).toBeTruthy()
+    expect(mockRemove).toHaveBeenCalledOnce()
+    expect(mockRemove.mock.calls[0][0][0]).toContain('stu-1')
   })
 
   it('rejects upload from a stranger (not owner, not claimant) with Forbidden', async () => {

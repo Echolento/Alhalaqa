@@ -122,12 +122,15 @@ function appendLog(line) {
 
 function sanitizePing(message) {
   // Webhook + log safe: single line, bounded, no mass-mentions, no key shapes.
+  // Redact FIRST (a secret straddling the truncation point must not survive),
+  // then truncate.
   return String(message)
     .replace(/[\r\n]+/g, ' ')
-    .slice(0, 300)
-    .replace(/@/g, '@\u200b')
+    .replace(/eyJ[A-Za-z0-9_\-=]+\.[A-Za-z0-9_\-=\.+]+\.[A-Za-z0-9_\-=\.+]+/g, '[redacted]')
     .replace(/eyJ[A-Za-z0-9_-]+/g, '[redacted]')
     .replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, '[redacted]')
+    .replace(/@/g, '@\u200b')
+    .slice(0, 300)
 }
 
 async function pingFailure(message) {

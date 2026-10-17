@@ -164,7 +164,10 @@ const svc = createClient(url, key, { auth: { autoRefreshToken: false, persistSes
 // Merge-preserve columns: a stale snapshot must neither silently resurrect
 // soft-deletes / un-revoke links NOR silently re-delete resurrected rows.
 // Live-wins both directions; every conflict is logged for review.
-const MERGE_PRESERVE = { students: ['deleted_at'], claim_tokens: ['revoked_at'] }
+const MERGE_PRESERVE = {
+  students: ['deleted_at', 'claimed_by'],
+  claim_tokens: ['revoked_at', 'used_at', 'used_by_profile_id'],
+}
 const preserved = new Map()
 for (const [table, cols] of Object.entries(MERGE_PRESERVE)) {
   const rows = snap.tables[table] ?? []

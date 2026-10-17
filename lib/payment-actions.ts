@@ -312,8 +312,10 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
   if ('error' in ctx) return ctx
   const { user, service } = ctx
 
-  if (!Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 28) {
-    return { error: 'يوم دفع غير صالح — اختر بين 1 و 28' }
+  // DB CHECK and the billing domain accept 1..31 (month-end clamping is
+  // handled downstream); only non-integers and out-of-range garbage reject.
+  if (!Number.isInteger(paymentDay) || paymentDay < 1 || paymentDay > 31) {
+    return { error: 'يوم دفع غير صالح — اختر بين 1 و 31' }
   }
 
   if (!(await assertOwnsStudent(service, user.id, studentId))) {

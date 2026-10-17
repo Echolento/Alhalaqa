@@ -1,6 +1,5 @@
--- Clean non-finite amount guard (NaN self-inequality + Infinity bounds).
--- NaN comparisons bypass a plain <0 check, so NaN/Infinity are rejected
--- explicitly. Applied via migration settle_finite_amount. The full function
--- body (with this predicate) lives in
--- 20261017120600_race_close_guards.sql (kept current).
+-- SUPERSEDED by 20261017121000_canonical_guard_bodies.sql (real bodies).
+-- This file is intentionally a no-op: the guard was first edited into the
+-- already-applied 20261017120600 file, which never re-runs. Never edit an
+-- applied migration — the canonical file is the pattern to follow.
 select 1;

@@ -191,6 +191,15 @@ export async function POST(request: Request) {
         if (!(row as { deleted_at: string | null }).deleted_at) {
           return NextResponse.json({ ok: true, result: 'already_live' })
         }
+        // App-path order: revoke live links BEFORE un-deleting, so no window
+        // exists where a harvested link is usable on a live row.
+        const { error: revokeError } = await service
+          .from('claim_tokens')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('student_id', sid)
+          .is('used_at', null)
+          .is('revoked_at', null)
+        if (revokeError) throw revokeError
         const { error: restoreError } = await service
           .from('students')
           .update({ deleted_at: null })
@@ -208,18 +217,9 @@ export async function POST(request: Request) {
             .select('id', { count: 'exact', head: true })
             .eq('student_id', sid)
             .is('used_at', null)
-            .is('revoked_at', null),
-        ])
-        // Parity with the app restore path: unexpected live links die here —
-        // an admin restore must never reactivate a harvested link.
-        if ((liveTokens ?? 0) > 0) {
-          await service
-            .from('claim_tokens')
-            .update({ revoked_at: new Date().toISOString() })
-            .eq('student_id', sid)
-            .is('used_at', null)
             .is('revoked_at', null)
-        }
+            .gt('expires_at', new Date().toISOString()),
+        ])
         const warnings = {
           staleDue: !!((row as { next_due_date: string | null }).next_due_date) &&
             ((row as { next_due_date: string }).next_due_date < todayISO),
