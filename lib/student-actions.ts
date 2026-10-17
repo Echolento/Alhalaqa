@@ -157,6 +157,7 @@ export async function updateStudentNextDue(studentId: string, nextDueDate: strin
   const { error } = await service
     .from('students')
     .update({ next_due_date: nextDueDate })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (error) return { error: error.message }
@@ -185,12 +186,14 @@ export async function updateStudent(studentId: string, name: string, phone?: str
   const { data: old } = await service
     .from('students')
     .select('name')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .single()
 
   const { error } = await service
     .from('students')
     .update({ name, phone: phone || null })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (error) return { error: error.message }
@@ -291,6 +294,15 @@ export async function deleteStudent(studentId: string) {
 
   if (error) return { error: error.message }
 
+  // Links die with the row: revoke every live invitation so a harvested
+  // pre-delete link is worthless after a restore (only a fresh issue works).
+  await service
+    .from('claim_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .is('used_at', null)
+    .is('revoked_at', null)
+    .eq('student_id', studentId)
+
   await logActivity({
     actionType: 'student_delete',
     entityType: 'student',
@@ -320,12 +332,49 @@ export async function restoreStudent(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, name, teacher_id')
+    .select('id, name, teacher_id, deleted_at, next_due_date, frequency, claimed_by')
     .eq('id', studentId)
     .maybeSingle()
-  const row = student as { id: string; name: string | null; teacher_id: string } | null
+  const row = student as {
+    id: string
+    name: string | null
+    teacher_id: string
+    deleted_at: string | null
+    next_due_date: string | null
+    frequency?: unknown
+    claimed_by: string | null
+  } | null
   if (!row || row.teacher_id !== teacherId) {
     return { error: 'الطالب غير موجود' }
+  }
+  if (!row.deleted_at) {
+    // Idempotent second tap: no state change, no second log row.
+    return { success: true as const, already_live: true as const }
+  }
+
+  // Coherence preview: restoring resurrects the frozen billing moment.
+  // Surface it so the teacher is never surprised by a nag storm, a queue
+  // flood, or a stale claim — old links stay dead (revoked at delete).
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const [{ count: pendingProofs }, { count: liveTokens }] = await Promise.all([
+    service
+      .from('payment_proofs')
+      .select('id', { count: 'exact', head: true })
+      .eq('student_id', studentId)
+      .eq('status', 'pending'),
+    service
+      .from('claim_tokens')
+      .select('id', { count: 'exact', head: true })
+      .eq('student_id', studentId)
+      .is('used_at', null)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString()),
+  ])
+  const warnings = {
+    staleDue: !!row.next_due_date && row.next_due_date < todayISO,
+    hasClaim: !!row.claimed_by,
+    pendingProofs: pendingProofs ?? 0,
+    liveTokens: liveTokens ?? 0,
   }
 
   const { error } = await service
@@ -339,10 +388,10 @@ export async function restoreStudent(studentId: string) {
     actionType: 'student_restore',
     entityType: 'student',
     entityId: studentId,
-    details: { student_name: row.name },
+    details: { student_name: row.name, ...warnings },
   }, user.id)
 
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
-  return { success: true }
+  return { success: true as const, warnings }
 }

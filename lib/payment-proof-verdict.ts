@@ -135,16 +135,19 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
 
   const s = (student ?? null) as StudentPriceRow | null
   const t = (teacher ?? null) as TeacherPriceRow | null
-  const studentName = s?.name || 'طالب'
-  const effectiveAmount = Number(s?.monthly_price) || Number(t?.default_monthly_price) || 0
+  // A receipt for a missing or soft-deleted student settles nothing: no
+  // fallback defaults, no ledger write, no push — fail loudly instead.
+  if (!s) return { error: 'الطالب غير موجود' }
+  const studentName = s.name || 'طالب'
+  const effectiveAmount = Number(s.monthly_price) || Number(t?.default_monthly_price) || 0
   // Atomic settlement: proof -> verified, payment row -> paid, next_due
   // advanced (or left alone) in ONE transaction via the settle_cycle RPC. The
   // ratchet decision stays pure (nextDueAfterSettle); push + activity are
   // advisory and follow.
   const nextDue = nextDueAfterSettle(
     proof.period_key,
-    (s as { frequency?: unknown } | null)?.frequency,
-    (s as { next_due_date?: string | null } | null)?.next_due_date,
+    s.frequency,
+    s.next_due_date,
   )
 
   const { error: settleError } = await service.rpc('settle_cycle', {
@@ -155,7 +158,14 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
     p_proof_id: proof.id,
     p_teacher_note: teacherNote?.trim() ? teacherNote.trim() : null,
   })
-  if (settleError) return { error: settleError.message }
+  if (settleError) {
+    // A delete racing the tap: the RPC refused a trashed row — report it as
+    // missing, with no log and no push on this path.
+    if (String(settleError.message).includes('student_deleted')) {
+      return { error: 'الطالب غير موجود' }
+    }
+    return { error: settleError.message }
+  }
 
   await logActivity(
     {

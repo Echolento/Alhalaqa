@@ -315,6 +315,12 @@ export async function resolveClaimPreview(rawToken: string) {
   const s = (student ?? null) as { name?: string | null } | null
   const t = (teacher ?? null) as { profile_id?: string } | null
 
+  // A live link for a soft-deleted student reports revoked, never valid:
+  // the row is gone, so is the invitation. Never leak the student id here.
+  if (!s) {
+    return { error: CLAIM_COPY.claimRevokedDescription, state: 'revoked' as ClaimPreviewState }
+  }
+
   let teacherName = 'المعلم'
   if (t?.profile_id) {
     const { data: profile } = await service
@@ -356,12 +362,15 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
   }
 
   const tokenHash = hashClaimToken(rawToken)
+
+  // Best-effort read for truthful error messages only (failures are
+  // monotonic: expired/used/revoked never un-happen). The RPC below is
+  // authoritative — a row deleted after this read still fails closed.
   const { data: token } = await service
     .from('claim_tokens')
     .select('id, student_id, teacher_id, expires_at, used_at, revoked_at')
     .eq('token_hash', tokenHash)
     .maybeSingle()
-
   const row = (token ?? null) as ClaimTokenRow | null
   const verdict = evaluateClaimForRedeem(
     row
@@ -369,7 +378,6 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
       : null,
     nowMs,
   )
-
   if (!verdict.ok) {
     await recordAttempt(service, attemptKey, nowMs)
     switch (verdict.reason) {
@@ -383,8 +391,20 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
         return { error: CLAIM_COPY.claimInvalidDescription, reason: 'invalid' as const }
     }
   }
-  if (!row) {
+
+  // One atomic transaction (consume_claim RPC): token mark + payer link
+  // against a live student. No evaluate-then-mark gap for a concurrent
+  // delete to burn the token while reporting phantom success.
+  const { data: studentId, error: consumeError } = await service.rpc('consume_claim', {
+    p_token_hash: tokenHash,
+    p_profile_id: user.id,
+  })
+  if (consumeError) {
     await recordAttempt(service, attemptKey, nowMs)
+    const msg = String((consumeError as { message?: string }).message ?? '')
+    if (msg.includes('claim_taken')) {
+      return { error: CLAIM_COPY.claimAlreadyClaimedDescription, reason: 'already_claimed' as const }
+    }
     return { error: CLAIM_COPY.claimInvalidDescription, reason: 'invalid' as const }
   }
 
@@ -392,7 +412,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     .from('students')
     .select('id, teacher_id, name, claimed_by, phone')
     .is('deleted_at', null)
-    .eq('id', row.student_id)
+    .eq('id', studentId as string)
     .maybeSingle()
   const s = (student ?? null) as StudentClaimRow | null
   if (!s) {
@@ -400,25 +420,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     return { error: CLAIM_COPY.claimInvalidDescription, reason: 'invalid' as const }
   }
 
-  // No steal: a row claimed by another profile stays claimed (R7).
-  if (s.claimed_by && s.claimed_by !== user.id) {
-    return { error: CLAIM_COPY.claimAlreadyClaimedDescription, reason: 'already_claimed' as const }
-  }
-
-  const nowIso = new Date(nowMs).toISOString()
   const studentName = s.name || 'طالب'
-
-  // Mark the token consumed (single-use, R8) + link the caller's profile.
-  // Idempotent when the caller already owns the row: consume the token,
-  // keep claimed_by, report idempotent success.
-  await service
-    .from('claim_tokens')
-    .update({ used_at: nowIso, used_by_profile_id: user.id })
-    .eq('id', row.id)
-
-  if (!s.claimed_by) {
-    await service.from('students').update({ claimed_by: user.id }).is('deleted_at', null).eq('id', s.id)
-  }
 
   await clearAttempts(service, attemptKey)
 

@@ -126,6 +126,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
   const { data: student } = await service
     .from('students')
     .select('name, monthly_price')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 
@@ -134,6 +135,7 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
   const { error: studentError } = await service
     .from('students')
     .update({ monthly_price: price })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (studentError) return { error: studentError.message }
@@ -189,6 +191,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   const { data: cycleRow } = await service
     .from('students')
     .select('frequency, name, next_due_date, payment_day')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 
@@ -208,6 +211,7 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     service
       .from('students')
       .select('name, monthly_price, teacher:teachers(default_monthly_price)')
+      .is('deleted_at', null)
       .eq('id', studentId)
       .maybeSingle(),
   ])
@@ -232,7 +236,12 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       p_proof_id: null,
       p_teacher_note: null,
     })
-    if (error) return { error: error.message }
+    if (error) {
+      if (String(error.message).includes('student_deleted')) {
+        return { error: 'الطالب غير موجود' }
+      }
+      return { error: error.message }
+    }
   } else {
     // Undo reverses the advance too: retreat the outstanding cycle to the
     // now-unpaid period's DUE date (period keys are month-firsts — restoring
@@ -244,7 +253,12 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
       p_cycle_key: monthKey,
       p_next_due: nextDue,
     })
-    if (error) return { error: error.message }
+    if (error) {
+      if (String(error.message).includes('student_deleted')) {
+        return { error: 'الطالب غير موجود' }
+      }
+      return { error: error.message }
+    }
   }
 
   await logActivity({
@@ -278,6 +292,7 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
   const { data: student } = await service
     .from('students')
     .select('name, payment_day')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 
@@ -286,6 +301,7 @@ export async function updateStudentPaymentDay(studentId: string, paymentDay: num
   const { error } = await service
     .from('students')
     .update({ payment_day: paymentDay })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (error) return { error: error.message }
@@ -321,6 +337,7 @@ export async function updateStudentFrequency(studentId: string, frequency: Billi
   const { data: student } = await service
     .from('students')
     .select('name, frequency')
+    .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 
@@ -329,6 +346,7 @@ export async function updateStudentFrequency(studentId: string, frequency: Billi
   const { error } = await service
     .from('students')
     .update({ frequency: next })
+    .is('deleted_at', null)
     .eq('id', studentId)
 
   if (error) return { error: error.message }

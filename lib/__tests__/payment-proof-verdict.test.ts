@@ -182,6 +182,30 @@ describe('verifyProof happy path', () => {
     expect(payload.url).toBe('/pay?student=stu-1&period=2026-09-01')
     expect(payload.body).toContain('أحمد')
   })
+
+  it('refuses to settle a soft-deleted student: no RPC, no push, no log', async () => {
+    // Ownership still resolves (teacher match), but the settlement read finds
+    // no live row — fail loudly instead of settling with fallback defaults.
+    const base = mockService.from.getMockImplementation()!
+    mockService.from.mockImplementation((table: string) => {
+      if (table === 'students') {
+        return {
+          select: vi.fn((cols: string) =>
+            cols === 'teacher_id' ? selectChain(ctx.student) : selectChain(null),
+          ),
+        }
+      }
+      return (base as any)(table)
+    })
+    const { verifyProof } = await import('@/lib/payment-proof-verdict')
+
+    const result = await verifyProof('proof-1')
+
+    expect((result as { error?: string }).error).toBe('الطالب غير موجود')
+    expect(ctx.rpcCalls).toHaveLength(0)
+    expect(mockLog).not.toHaveBeenCalled()
+    expect(mockSendPush).not.toHaveBeenCalled()
+  })
 })
 
 describe('verifyProof idempotency', () => {

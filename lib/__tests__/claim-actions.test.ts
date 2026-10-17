@@ -51,6 +51,36 @@ function chainFor(table: string): Record<string, unknown> {
 
 const mockService = {
   from: vi.fn((table: string) => chainFor(table)),
+  rpc: vi.fn(),
+}
+
+// Faithful consume_claim fake: enforces live-token + live-student +
+// no-steal exactly like the migration, mutates ctx like the RPC would.
+const rpcCalls: Array<[string, any]> = []
+function installRpcFake() {
+  rpcCalls.length = 0
+  mockService.rpc.mockImplementation((name: string, args: any) => {
+    rpcCalls.push([name, args])
+    if (name !== 'consume_claim') return Promise.resolve({ data: null, error: null })
+    const tok = ctx.rows['claim_tokens'] as any
+    const stu = ctx.rows['students'] as any
+    const live =
+      tok &&
+      args.p_token_hash === tok.token_hash &&
+      !tok.used_at &&
+      !tok.revoked_at &&
+      Date.parse(tok.expires_at) > Date.now()
+    if (!live || !stu || stu.deleted_at) {
+      return Promise.resolve({ data: null, error: { message: 'claim_invalid' } })
+    }
+    if (stu.claimed_by && stu.claimed_by !== args.p_profile_id) {
+      return Promise.resolve({ data: null, error: { message: 'claim_taken' } })
+    }
+    tok.used_at = new Date().toISOString()
+    tok.used_by_profile_id = args.p_profile_id
+    if (!stu.claimed_by) stu.claimed_by = args.p_profile_id
+    return Promise.resolve({ data: stu.id, error: null })
+  })
 }
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -104,6 +134,8 @@ beforeEach(() => {
     claimed_by: null,
   }
   ctx.rows.teachers = { id: TEACHER_ID, profile_id: TEACHER_USER }
+  installRpcFake()
+  mockService.from.mockImplementation((table: string) => chainFor(table))
   mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: TEACHER_USER } } })
   mockLog.mockResolvedValue(undefined)
 })
@@ -256,6 +288,27 @@ describe('resolveClaimPreview', () => {
     expect((unknown as { state?: string }).state).toBe('invalid')
     expect((unknown as { error?: string }).error).toBeTruthy()
   })
+
+  it('reports revoked (never valid, never the student id) for a live link on a soft-deleted student', async () => {
+    const { generateClaimToken, hashClaimToken } = await import('@/lib/claim-tokens')
+    const { resolveClaimPreview } = await import('@/lib/claim-actions')
+    const raw = generateClaimToken()
+    ctx.rows['claim_tokens'] = { ...liveTokenRow(), token_hash: hashClaimToken(raw) }
+    // The deleted_at filter excludes the row at the database level; the mock
+    // ignores WHERE clauses, so emulate the exclusion directly.
+    mockService.from.mockImplementation((table: string) => {
+      const b = chainFor(table)
+      if (table === 'students') {
+        b.maybeSingle = vi.fn(() => Promise.resolve({ data: null }))
+      }
+      return b
+    })
+
+    const result = await resolveClaimPreview(raw)
+
+    expect((result as { state?: string }).state).toBe('revoked')
+    expect((result as { studentId?: string }).studentId).toBeUndefined()
+  })
 })
 
 // --------------------------------------------------------------------------
@@ -263,7 +316,7 @@ describe('resolveClaimPreview', () => {
 // --------------------------------------------------------------------------
 
 describe('redeemClaim happy path', () => {
-  it('links the caller profile, consumes the token, clears attempts, logs', async () => {
+  it('links the caller profile via one atomic consume, clears attempts, logs', async () => {
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: PAYER_USER } } })
     const { generateClaimToken, hashClaimToken } = await import('@/lib/claim-tokens')
     const raw = generateClaimToken()
@@ -273,15 +326,14 @@ describe('redeemClaim happy path', () => {
     const result = await redeemClaim(raw, { attemptKey: 'test-key-1' })
 
     expect(result).toMatchObject({ success: true, studentId: STUDENT_ID, studentName: 'أحمد' })
-    // Token consumed (single-use mark with the redeemer's profile).
-    expect(ctx.updates['claim_tokens']).toHaveLength(1)
-    expect(ctx.updates['claim_tokens'][0]).toMatchObject({ used_by_profile_id: PAYER_USER })
-    expect(
-      (ctx.updates['claim_tokens'][0] as { used_at?: string }).used_at,
-    ).toBeTruthy()
+    // Single atomic RPC — no separate token/student writes.
+    expect(rpcCalls).toHaveLength(1)
+    expect(rpcCalls[0][0]).toBe('consume_claim')
+    expect(rpcCalls[0][1]).toMatchObject({ p_token_hash: hashClaimToken(raw), p_profile_id: PAYER_USER })
     // Row linked to the CALLER — never a client-supplied id.
-    expect(ctx.updates['students']).toHaveLength(1)
-    expect(ctx.updates['students'][0]).toMatchObject({ claimed_by: PAYER_USER })
+    expect((ctx.rows.students as { claimed_by: string }).claimed_by).toBe(PAYER_USER)
+    expect(ctx.updates['claim_tokens']).toBeUndefined()
+    expect(ctx.updates['students']).toBeUndefined()
     expect(ctx.deletes).toContain('claim_redeem_attempts')
     expect(mockLog).toHaveBeenCalledOnce()
   })
@@ -297,8 +349,29 @@ describe('redeemClaim happy path', () => {
     const result = await redeemClaim(raw, { attemptKey: 'test-key-2' })
 
     expect(result).toMatchObject({ success: true, idempotent: true })
-    expect(ctx.updates['claim_tokens']).toHaveLength(1)
+    expect(rpcCalls).toHaveLength(1)
+    expect(ctx.updates['claim_tokens']).toBeUndefined()
     expect(ctx.updates['students']).toBeUndefined()
+  })
+
+  it('fails closed when the student was soft-deleted (token stays live, nothing links)', async () => {
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: PAYER_USER } } })
+    const { generateClaimToken, hashClaimToken } = await import('@/lib/claim-tokens')
+    const raw = generateClaimToken()
+    ctx.rows['claim_tokens'] = { ...liveTokenRow(), token_hash: hashClaimToken(raw) }
+    ctx.rows.students = {
+      id: STUDENT_ID,
+      teacher_id: TEACHER_ID,
+      name: 'أحمد',
+      claimed_by: null,
+      deleted_at: new Date().toISOString(),
+    }
+    const { redeemClaim } = await import('@/lib/claim-actions')
+
+    const result = await redeemClaim(raw, { attemptKey: 'test-key-6' })
+
+    expect((result as { reason?: string }).reason).toBe('invalid')
+    expect((ctx.rows.students as { claimed_by: string | null }).claimed_by).toBeNull()
   })
 })
 

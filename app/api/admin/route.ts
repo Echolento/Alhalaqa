@@ -181,7 +181,7 @@ export async function POST(request: Request) {
         }
         const { data: row, error: readError } = await service
           .from('students')
-          .select('id, name, deleted_at')
+          .select('id, name, deleted_at, next_due_date')
           .eq('id', sid)
           .maybeSingle()
         if (readError) throw readError
@@ -196,14 +196,25 @@ export async function POST(request: Request) {
           .update({ deleted_at: null })
           .eq('id', sid)
         if (restoreError) throw restoreError
+        const todayISO = new Date().toISOString().slice(0, 10)
+        const { count: pendingProofs } = await service
+          .from('payment_proofs')
+          .select('id', { count: 'exact', head: true })
+          .eq('student_id', sid)
+          .eq('status', 'pending')
+        const warnings = {
+          staleDue: !!((row as { next_due_date: string | null }).next_due_date) &&
+            ((row as { next_due_date: string }).next_due_date < todayISO),
+          pendingProofs: pendingProofs ?? 0,
+        }
         await service.from('activity_log').insert({
           user_id: userId,
           action_type: 'student_restore',
           entity_type: 'student',
           entity_id: sid,
-          details: { student_name: (row as { name: string | null }).name, via: 'admin_bridge' },
+          details: { student_name: (row as { name: string | null }).name, via: 'admin_bridge', ...warnings },
         })
-        return NextResponse.json({ ok: true, result: 'restored' })
+        return NextResponse.json({ ok: true, result: 'restored', warnings })
       }
 
       default:

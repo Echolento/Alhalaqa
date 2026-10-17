@@ -5,6 +5,10 @@ function createBuilder() {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     is: vi.fn(() => builder),
+    gt: vi.fn(() => builder),
+    gte: vi.fn(() => builder),
+    lt: vi.fn(() => builder),
+    lte: vi.fn(() => builder),
     in: vi.fn(() => builder),
     order: vi.fn(() => builder),
     maybeSingle: vi.fn(() => builder),
@@ -427,13 +431,13 @@ describe('cross-teacher protection', () => {
 })
 
 describe('deleteStudent', () => {
-  it('soft-deletes: stamps deleted_at, keeps every row', async () => {
-    const seen: { updates: any[]; deletes: string[] } = { updates: [], deletes: [] }
+  it('soft-deletes: stamps deleted_at, revokes live links, keeps every row', async () => {
+    const seen: { updates: Record<string, any[]>; deletes: string[] } = { updates: {}, deletes: [] }
     mockService.from.mockImplementation((table: string) => {
       const b = serviceRouter(table)
       const origUpdate = b.update
       b.update = vi.fn((payload: any) => {
-        if (table === 'students') seen.updates.push(payload)
+        seen.updates[table] = [...(seen.updates[table] ?? []), payload]
         return (origUpdate as any)(payload)
       })
       const origDelete = b.delete
@@ -446,8 +450,11 @@ describe('deleteStudent', () => {
 
     const { deleteStudent } = await import('@/lib/data-actions')
     expect((await deleteStudent(studentId)).success).toBe(true)
-    expect(seen.updates).toHaveLength(1)
-    expect(typeof seen.updates[0].deleted_at).toBe('string')
+    expect(seen.updates['students']).toHaveLength(1)
+    expect(typeof seen.updates['students'][0].deleted_at).toBe('string')
+    // Live invitation links die with the row (regenerate-style revoke).
+    expect(seen.updates['claim_tokens']).toHaveLength(1)
+    expect(seen.updates['claim_tokens'][0]).toMatchObject({ revoked_at: expect.any(String) })
     // No hard deletes anywhere: students, payments, and proofs survive.
     expect(seen.deletes).toEqual([])
   })
@@ -460,7 +467,50 @@ describe('deleteStudent', () => {
 })
 
 describe('restoreStudent', () => {
-  it('clears deleted_at for an owned row', async () => {
+  function deletedStudentService() {
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      if (table === 'students') {
+        const deleted = {
+          id: studentId,
+          teacher_id: teacherId,
+          name: 'S',
+          deleted_at: new Date().toISOString(),
+          next_due_date: '2026-09-01',
+          claimed_by: null,
+        }
+        b.eq = vi.fn().mockReturnValue({
+          ...b,
+          maybeSingle: vi.fn().mockResolvedValue({ data: deleted }),
+          single: vi.fn().mockResolvedValue({ data: deleted }),
+        })
+      }
+      return b
+    })
+  }
+
+  it('clears deleted_at for an owned trashed row and reports warnings', async () => {
+    const seen: { updates: any[] } = { updates: [] }
+    deletedStudentService()
+    const withSpy = mockService.from.getMockImplementation()!
+    mockService.from.mockImplementation((table: string) => {
+      const b = (withSpy as any)(table)
+      const origUpdate = b.update
+      b.update = vi.fn((payload: any) => {
+        if (table === 'students') seen.updates.push(payload)
+        return (origUpdate as any)(payload)
+      })
+      return b
+    })
+
+    const { restoreStudent } = await import('@/lib/data-actions')
+    const result = await restoreStudent(studentId)
+    expect((result as { success?: boolean }).success).toBe(true)
+    expect(seen.updates).toEqual([{ deleted_at: null }])
+    expect((result as { warnings?: unknown }).warnings).toBeTruthy()
+  })
+
+  it('is idempotent on a live row: no write, no second log', async () => {
     const seen: { updates: any[] } = { updates: [] }
     mockService.from.mockImplementation((table: string) => {
       const b = serviceRouter(table)
@@ -473,8 +523,9 @@ describe('restoreStudent', () => {
     })
 
     const { restoreStudent } = await import('@/lib/data-actions')
-    expect((await restoreStudent(studentId)).success).toBe(true)
-    expect(seen.updates).toEqual([{ deleted_at: null }])
+    const result = await restoreStudent(studentId)
+    expect(result).toMatchObject({ success: true, already_live: true })
+    expect(seen.updates).toEqual([])
   })
 
   it('denies a student owned by another teacher', async () => {
