@@ -10,8 +10,8 @@
 // project (see scripts/restore-drill.md). Untested backups are decoration.
 
 import { createClient } from '@supabase/supabase-js'
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs'
-import { join, dirname } from 'path'
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, appendFileSync } from 'fs'
+import { join, dirname, basename } from 'path'
 import { fileURLToPath } from 'url'
 import { execSync } from 'child_process'
 
@@ -73,6 +73,8 @@ async function snapshot() {
   }
   const file = join(BACKUP_DIR, `alhalaqa-${stamp}.json`)
   writeFileSync(file, JSON.stringify(data))
+  const total = Object.values(data.tables).reduce((n, rows) => n + rows.length, 0)
+  appendLog(`OK ${stamp} tables=${Object.keys(data.tables).length} rows=${total} file=${basename(file)}`)
   console.log(`wrote ${file}`)
 
   // Prune older than retention (timestamp is in the filename).
@@ -96,5 +98,34 @@ function install() {
   console.log(`scheduled task ${task} registered (daily 03:00)`)
 }
 
+function appendLog(line) {
+  try {
+    mkdirSync(BACKUP_DIR, { recursive: true })
+    appendFileSync(join(BACKUP_DIR, 'backup.log'), `${new Date().toISOString()} ${line}\n`)
+  } catch {
+    // Logging must never fail the backup itself.
+  }
+}
+
+async function pingFailure(message) {
+  appendLog(`FAIL ${message}`)
+  try {
+    const env = loadEnv()
+    if (!env.DISCORD_WEBHOOK_URL) return
+    await fetch(env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: `🚨 nightly backup FAILED: ${message}` }),
+    })
+  } catch {
+    // Best-effort only.
+  }
+}
+
 if (process.argv.includes('--install')) install()
-else await snapshot().catch((e) => { console.error(`backup FAILED: ${e.message}`); process.exit(1) })
+else
+  await snapshot().catch(async (e) => {
+    console.error(`backup FAILED: ${e.message}`)
+    await pingFailure(e.message)
+    process.exit(1)
+  })

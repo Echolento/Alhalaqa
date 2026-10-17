@@ -197,15 +197,34 @@ export async function POST(request: Request) {
           .eq('id', sid)
         if (restoreError) throw restoreError
         const todayISO = new Date().toISOString().slice(0, 10)
-        const { count: pendingProofs } = await service
-          .from('payment_proofs')
-          .select('id', { count: 'exact', head: true })
-          .eq('student_id', sid)
-          .eq('status', 'pending')
+        const [{ count: pendingProofs }, { count: liveTokens }] = await Promise.all([
+          service
+            .from('payment_proofs')
+            .select('id', { count: 'exact', head: true })
+            .eq('student_id', sid)
+            .eq('status', 'pending'),
+          service
+            .from('claim_tokens')
+            .select('id', { count: 'exact', head: true })
+            .eq('student_id', sid)
+            .is('used_at', null)
+            .is('revoked_at', null),
+        ])
+        // Parity with the app restore path: unexpected live links die here —
+        // an admin restore must never reactivate a harvested link.
+        if ((liveTokens ?? 0) > 0) {
+          await service
+            .from('claim_tokens')
+            .update({ revoked_at: new Date().toISOString() })
+            .eq('student_id', sid)
+            .is('used_at', null)
+            .is('revoked_at', null)
+        }
         const warnings = {
           staleDue: !!((row as { next_due_date: string | null }).next_due_date) &&
             ((row as { next_due_date: string }).next_due_date < todayISO),
           pendingProofs: pendingProofs ?? 0,
+          liveTokens: liveTokens ?? 0,
         }
         await service.from('activity_log').insert({
           user_id: userId,

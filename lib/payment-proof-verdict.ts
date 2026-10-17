@@ -170,10 +170,13 @@ export async function verifyProof(proofId: string, teacherNote?: string) {
       return { error: 'الطالب غير موجود' }
     }
     // A concurrent verify won first: the proof is verified now — report the
-    // idempotent outcome instead of an error.
+    // idempotent outcome instead of an error. Re-validate ownership so a
+    // future transfer model cannot launder a foreign verify into success.
     if (String(settleError.message).includes('proof_not_pending')) {
       const again = await fetchProof(service, proof.id)
-      if (again?.status === 'verified') {
+      const stillOwner =
+        again && (await assertOwnsStudent(service, user.id, again.student_id)) === proof.teacher_id
+      if (again?.status === 'verified' && stillOwner) {
         return { success: true as const, idempotent: true as const, proofId: proof.id }
       }
       return { error: 'الإيصال غير قابل للتحقق بهذه الحالة — اطلب إيصالًا جديدًا' }
@@ -251,23 +254,30 @@ export async function rejectProof(proofId: string, teacherNote: string) {
     }
   }
 
-  const nowIso = new Date().toISOString()
-
-  // Liveness re-check immediately before the write: a delete racing the tap
-  // must not flip the proof, log, or push for a trashed row.
-  const { data: live } = await service
-    .from('students')
-    .select('id')
-    .is('deleted_at', null)
-    .eq('id', proof.student_id)
-    .maybeSingle()
-  if (!live) return { error: 'الطالب غير موجود' }
-
-  const { error: proofError } = (await service
-    .from('payment_proofs')
-    .update({ status: 'rejected', teacher_note: note, updated_at: nowIso })
-    .eq('id', proof.id)) as unknown as { error: { message: string } | null }
-  if (proofError) return { error: proofError.message }
+  // Atomic reject: liveness + pending-only enforced inside the RPC, so a
+  // delete or verify racing the tap cannot flip, log, or push for a row
+  // that is no longer pending on a live student.
+  const { error: rejectError } = await service.rpc('reject_proof', {
+    p_proof_id: proof.id,
+    p_teacher_note: note,
+  })
+  if (rejectError) {
+    const msg = String(rejectError.message)
+    if (msg.includes('student_deleted')) return { error: 'الطالب غير موجود' }
+    if (msg.includes('proof_not_pending')) {
+      const again = await fetchProof(service, proof.id)
+      if (again?.status === 'rejected') {
+        return { success: true as const, idempotent: true as const, proofId: proof.id }
+      }
+      return {
+        error:
+          again?.status === 'verified'
+            ? 'الإيصال تم التحقق منه وقيده مدفوع — استخدم التراجع عن الدفع بدل الرفض'
+            : 'الإيصال غير قابل للرفض بهذه الحالة',
+      }
+    }
+    return { error: rejectError.message }
+  }
 
   // Intentionally NO student_payments write: the period stays unpaid.
 

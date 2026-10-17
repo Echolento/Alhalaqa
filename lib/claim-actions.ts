@@ -361,20 +361,35 @@ export async function resolveClaimPreview(rawToken: string) {
  * (R6). Requires a session (magic-link OTP first — see claim-screen.tsx).
  * Rate-limited per profile+IP (R4); single-use + expiry via the pure gate.
  */
-export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string }) {
+export async function redeemClaim(rawToken: string, _opts?: { attemptKey?: string }) {
   const ctx = await requireUser()
   if ('error' in ctx) return ctx
   const { user, service } = ctx
   const nowMs = Date.now()
-  const attemptKey = opts?.attemptKey ?? (await deriveAttemptKey(user.id))
+  // Server-derived keys only: a client-supplied attemptKey would let callers
+  // rotate buckets per guess. The per-user global bucket binds even when the
+  // IP is spoofed via forwarded headers.
+  const attemptKey = await deriveAttemptKey(user.id)
+  const globalKey = buildAttemptKey(`redeem-global|${user.id}`)
+  const isLimited = async () =>
+    (await isRateLimited(service, attemptKey, nowMs)) ||
+    (await isRateLimited(service, globalKey, nowMs))
+  const record = async () => {
+    await recordAttempt(service, attemptKey, nowMs)
+    await recordAttempt(service, globalKey, nowMs)
+  }
+  const clear = async () => {
+    await clearAttempts(service, attemptKey)
+    await clearAttempts(service, globalKey)
+  }
 
-  if (await isRateLimited(service, attemptKey, nowMs)) {
+  if (await isLimited()) {
     return { error: CLAIM_COPY.claimRateLimitedDescription, reason: 'rate_limited' as const }
   }
 
   // Format-invalid guesses still cost an attempt (R4).
   if (!isValidClaimTokenFormat(rawToken)) {
-    await recordAttempt(service, attemptKey, nowMs)
+    await record()
     return { error: CLAIM_COPY.claimInvalidDescription, reason: 'invalid' as const }
   }
 
@@ -396,7 +411,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     nowMs,
   )
   if (!verdict.ok) {
-    await recordAttempt(service, attemptKey, nowMs)
+    await record()
     switch (verdict.reason) {
       case 'expired':
         return { error: CLAIM_COPY.claimExpiredDescription, reason: 'expired' as const }
@@ -417,7 +432,7 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     p_profile_id: user.id,
   })
   if (consumeError) {
-    await recordAttempt(service, attemptKey, nowMs)
+    await record()
     const msg = String((consumeError as { message?: string }).message ?? '')
     if (msg.includes('claim_taken')) {
       return { error: CLAIM_COPY.claimAlreadyClaimedDescription, reason: 'already_claimed' as const }
@@ -433,13 +448,18 @@ export async function redeemClaim(rawToken: string, opts?: { attemptKey?: string
     .maybeSingle()
   const s = (student ?? null) as StudentClaimRow | null
   if (!s) {
-    await recordAttempt(service, attemptKey, nowMs)
+    await record()
     return { error: CLAIM_COPY.claimInvalidDescription, reason: 'invalid' as const }
+  }
+  // Defense-in-depth: the RPC guarantees ownership, but a future RPC change
+  // must never silently report success to a non-owner.
+  if (s.claimed_by && s.claimed_by !== user.id) {
+    return { error: CLAIM_COPY.claimAlreadyClaimedDescription, reason: 'already_claimed' as const }
   }
 
   const studentName = s.name || 'طالب'
 
-  await clearAttempts(service, attemptKey)
+  await clear()
 
   await logActivity(
     {
@@ -545,10 +565,17 @@ export async function lookupStudentsByPhone(rawPhone: string) {
   const nowMs = Date.now()
   const ip = await readClientIp()
   const key = buildAttemptKey(`phone-lookup|${ip}|${phone}`)
-  if (await isRateLimited(service, key, nowMs)) {
+  // Global per-IP bucket alongside the per-phone one: sweeping many distinct
+  // numbers must hit a wall even though each number gets a fresh bucket.
+  const globalKey = buildAttemptKey(`phone-lookup-global|${ip}`)
+  if (
+    (await isRateLimited(service, key, nowMs)) ||
+    (await isRateLimited(service, globalKey, nowMs))
+  ) {
     return { error: CLAIM_COPY.claimRateLimitedDescription }
   }
   await recordAttempt(service, key, nowMs)
+  await recordAttempt(service, globalKey, nowMs)
 
   const { data, error } = (await service
     .from('students')

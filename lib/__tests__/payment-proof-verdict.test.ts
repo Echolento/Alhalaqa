@@ -231,10 +231,10 @@ describe('rejectProof leaves the period unpaid', () => {
     const result = await rejectProof('proof-1', 'الصورة غير واضحة')
 
     expect(result).toMatchObject({ success: true, proofId: 'proof-1' })
-    expect(ctx.lastProofUpdate).toMatchObject({
-      status: 'rejected',
-      teacher_note: 'الصورة غير واضحة',
-    })
+    // Atomic reject via one RPC: pending-only flip, no ledger touch.
+    expect(ctx.rpcCalls).toHaveLength(1)
+    expect(ctx.rpcCalls[0][0]).toBe('reject_proof')
+    expect(ctx.rpcCalls[0][1]).toMatchObject({ p_proof_id: 'proof-1', p_teacher_note: 'الصورة غير واضحة' })
     // The period stays unpaid: zero writes to student_payments.
     expect(ctx.paymentWriteCount).toBe(0)
     expect(ctx.lastPaymentInsert).toBeNull()

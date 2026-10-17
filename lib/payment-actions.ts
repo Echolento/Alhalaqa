@@ -167,6 +167,17 @@ export async function updateStudentMonthlyPrice(studentId: string, price: number
         })
         .eq('id', existing.id)
     }
+
+    // Final gate before the audit row: if the row was trashed between the
+    // check and the write, report missing with no log (the write above is
+    // keyed by payment id and cannot itself touch student state).
+    const { data: stillLive } = await service
+      .from('students')
+      .select('id')
+      .is('deleted_at', null)
+      .eq('id', studentId)
+      .maybeSingle()
+    if (!stillLive) return { error: 'الطالب غير موجود' }
   }
 
   await logActivity({

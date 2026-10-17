@@ -17,7 +17,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, existsSync } from 'fs'
-import { join, dirname, resolve, basename, sep, relative, isAbsolute } from 'path'
+import { join, dirname, resolve, basename, relative, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
 import { createInterface } from 'readline'
 
@@ -56,7 +56,8 @@ function prodRef() {
 
 function refOf(url) {
   const m = String(url).match(/https:\/\/([^.]+)\.supabase\.co/)
-  return m ? m[1] : String(url)
+  // Never echo raw input: non-standard URLs print a fixed placeholder.
+  return m ? m[1] : '[non-supabase-url]'
 }
 
 async function confirm(question) {
@@ -152,6 +153,45 @@ if (dryRun) {
 }
 
 const svc = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+
+// Merge-preserve columns: a stale snapshot must not silently resurrect
+// soft-deletes or un-revoke invitation links. Fresh backups carry nulls and
+// pass through untouched; only live tombstones/revokes are preserved.
+const MERGE_PRESERVE = { students: ['deleted_at'], claim_tokens: ['revoked_at'] }
+const preserved = new Map()
+for (const [table, cols] of Object.entries(MERGE_PRESERVE)) {
+  const rows = snap.tables[table] ?? []
+  if (!rows.length) continue
+  const ids = rows.map((r) => r.id)
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await svc
+      .from(table)
+      .select(['id', ...cols].join(','))
+      .in('id', ids.slice(i, i + 500))
+    if (error) throw new Error(`${table}: ${error.message}`)
+    for (const r of data ?? []) preserved.set(`${table}:${r.id}`, r)
+  }
+}
+function mergePreserved(table, rows) {
+  const cols = MERGE_PRESERVE[table]
+  if (!cols) return rows
+  let kept = 0
+  const out = rows.map((r) => {
+    const e = preserved.get(`${table}:${r.id}`)
+    if (!e) return r
+    const c = { ...r }
+    for (const col of cols) {
+      if (e[col] != null && c[col] == null) {
+        c[col] = e[col]
+        kept++
+      }
+    }
+    return c
+  })
+  if (kept > 0) console.log(`  ${table}: preserved ${kept} live tombstone/revoke values`)
+  return out
+}
+
 for (const table of ALLOWED_TABLES) {
   const rows = snap.tables[table] ?? []
   if (!rows.length) {
@@ -177,7 +217,7 @@ for (const table of ALLOWED_TABLES) {
     continue
   }
   for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await svc.from(table).upsert(rows.slice(i, i + 500), { onConflict: 'id' })
+    const { error } = await svc.from(table).upsert(mergePreserved(table, rows.slice(i, i + 500), preserved), { onConflict: 'id' })
     if (error) throw new Error(`${table}: ${error.message}`)
   }
   console.log(`${table}: upserted ${rows.length} rows`)

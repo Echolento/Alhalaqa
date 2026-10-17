@@ -272,7 +272,8 @@ export async function deleteStudent(studentId: string) {
   if ('error' in ctx) return ctx
   const { user, service } = ctx
 
-  if (!(await assertOwnsStudent(service, user.id, studentId))) {
+  const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
+  if (!ownerTeacherId) {
     return { error: 'الطالب غير موجود' }
   }
 
@@ -291,6 +292,7 @@ export async function deleteStudent(studentId: string) {
     .update({ deleted_at: new Date().toISOString() })
     .is('deleted_at', null)
     .eq('id', studentId)
+    .eq('teacher_id', ownerTeacherId)
 
   if (error) return { error: error.message }
 
@@ -304,7 +306,23 @@ export async function deleteStudent(studentId: string) {
     .eq('student_id', studentId)
   if (revokeError) {
     // Roll back the stamp: deleted-with-live-links violates the invariant.
-    await service.from('students').update({ deleted_at: null }).eq('id', studentId)
+    // Scoped to the caller's own teacher row like every other service write.
+    const { error: rollbackError } = await service
+      .from('students')
+      .update({ deleted_at: null })
+      .eq('id', studentId)
+      .eq('teacher_id', ownerTeacherId)
+    if (rollbackError) {
+      await logActivity(
+        {
+          actionType: 'student_delete',
+          entityType: 'student',
+          entityId: studentId,
+          details: { student_name: student?.name, rollback_failed: true },
+        },
+        user.id,
+      )
+    }
     return { error: revokeError.message }
   }
 
@@ -397,6 +415,7 @@ export async function restoreStudent(studentId: string) {
     .from('students')
     .update({ deleted_at: null })
     .eq('id', studentId)
+    .eq('teacher_id', teacherId)
 
   if (error) return { error: error.message }
 

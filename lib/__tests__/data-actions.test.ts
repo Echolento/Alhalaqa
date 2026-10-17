@@ -63,7 +63,14 @@ function serviceRouter(table: string) {
         }),
       }),
     }))
-    b.update = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
+    b.update = vi.fn().mockReturnValue(
+      (() => {
+        // Chainable terminal: update → eq → eq → resolved (owner-scoped
+        // writes chain two eq calls; single-eq chains resolve the same).
+        const t2: any = { ...b, eq: vi.fn().mockResolvedValue({ error: null }) }
+        return { ...b, eq: vi.fn(() => t2) }
+      })(),
+    )
     b.delete = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
   } else {
     b.update = vi.fn().mockReturnValue({ ...b, eq: vi.fn().mockResolvedValue({ error: null }) })
@@ -457,6 +464,40 @@ describe('deleteStudent', () => {
     expect(seen.updates['claim_tokens'][0]).toMatchObject({ revoked_at: expect.any(String) })
     // No hard deletes anywhere: students, payments, and proofs survive.
     expect(seen.deletes).toEqual([])
+  })
+
+  it('rolls the stamp back when link revocation fails', async () => {
+    const seen: { updates: Record<string, any[]> } = { updates: {} }
+    mockService.from.mockImplementation((table: string) => {
+      const b = serviceRouter(table)
+      if (table === 'claim_tokens') {
+        b.update = vi.fn().mockReturnValue({
+          ...b,
+          is: vi.fn().mockReturnValue({
+            ...b,
+            is: vi.fn().mockReturnValue({
+              ...b,
+              eq: vi.fn().mockResolvedValue({ error: { message: 'revoke blew up' } }),
+            }),
+          }),
+        })
+      }
+      const origUpdate = b.update
+      b.update = vi.fn((payload: any) => {
+        seen.updates[table] = [...(seen.updates[table] ?? []), payload]
+        return (origUpdate as any)(payload)
+      })
+      return b
+    })
+
+    const { deleteStudent } = await import('@/lib/data-actions')
+    const result = await deleteStudent(studentId)
+    expect((result as { error?: string }).error).toBe('revoke blew up')
+    // Stamp rolled back on the owner's own row.
+    expect(seen.updates['students']).toEqual([
+      expect.objectContaining({ deleted_at: expect.any(String) }),
+      { deleted_at: null },
+    ])
   })
 
   it('returns error when not authenticated', async () => {

@@ -170,7 +170,17 @@ export async function uploadPaymentProof(params: {
     const proofId = (proof as { id: string }).id
 
     // Best-effort teacher push: proof is kept even when push is unavailable.
+    // Final liveness gate: a delete racing the upload suppresses the push
+    // (the receipt row itself was already verified live above).
     try {
+      const { data: liveAgain } = await service
+        .from('students')
+        .select('id')
+        .is('deleted_at', null)
+        .eq('id', s.id)
+        .maybeSingle()
+      if (!liveAgain) return { success: true, proofId, periodKey, storagePath }
+
       const { data: teacher } = await service
         .from('teachers')
         .select('profile_id')
