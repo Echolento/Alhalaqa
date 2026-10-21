@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { StudentProfile } from '@/components/dashboard/student-profile'
 import { REMIND_COPY } from '@/lib/remind-copy'
+import type { DashboardStudent } from '@/lib/types'
 
 vi.mock('@/lib/student-actions', () => ({
   updateStudent: vi.fn(() => ({ success: true })),
@@ -17,7 +18,7 @@ vi.mock('@/lib/student-actions', () => ({
   updateStudentNextDue: vi.fn(() => ({ success: true })),
 }))
 
-const student = { id: 's1', full_name: 'أحمد علي', name: 'أحمد علي', phone: '+201234567890', monthly_price: 100, next_due_date: '2026-10-01' }
+const student: DashboardStudent = { id: 's1', full_name: 'أحمد علي', name: 'أحمد علي', phone: '+201234567890', monthly_price: 100, next_due_date: '2026-10-01', paymentState: 'paid' }
 const payments = [
   { student_id: 's1', month: '2025-06-01', paid: true, amount_paid: 100, paid_at: '2025-06-03T00:00:00Z' },
   { student_id: 's1', month: '2025-05-01', paid: true, amount_paid: 100, paid_at: '2025-05-02T00:00:00Z' },
@@ -63,7 +64,7 @@ describe('StudentProfile', () => {
   it('a not-yet-due cycle reads "مش مستحق", not paid', () => {
     render(
       <StudentProfile
-        student={{ ...student, settled: true, next_due_date: '2026-11-01' }}
+        student={{ ...student, paymentState: 'not_due', next_due_date: '2026-11-01' }}
         payments={[]}
         month="2026-10-01"
         currency="SAR"

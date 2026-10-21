@@ -42,21 +42,17 @@ export async function regenerateMyJoinCode() {
     return { error: 'تعذر تغيير الكود — حاول مرة أخرى' }
   }
 
-  // The code is already rotated at this point. Logging is best-effort: a
-  // logging failure must never turn a successful rotation into an error.
-  try {
-    await logActivity(
-      {
-        actionType: 'join_code_rotated',
-        entityType: 'teacher',
-        entityId: teacherId,
-        details: { description: 'تغيير كود الانضمام' },
-      },
-      ctx.user.id,
-    )
-  } catch {
-    // Ignore — rotation already committed.
-  }
+  // The code is already rotated at this point. logActivity is best-effort and
+  // never rejects, so a logging failure cannot turn success into an error.
+  await logActivity(
+    {
+      actionType: 'join_code_rotated',
+      entityType: 'teacher',
+      entityId: teacherId,
+      details: { description: 'تغيير كود الانضمام' },
+    },
+    ctx.user.id,
+  )
 
   revalidatePath('/dashboard')
   return { code }

@@ -24,6 +24,9 @@ export interface ProofRow {
   status: string
 }
 
+/** The four states every UI surface renders. Precedence is paid → pending → not due → unpaid. */
+export type PaymentState = 'paid' | 'pending' | 'not_due' | 'unpaid'
+
 export interface BillingState {
   /** The outstanding cycle's history key (month-first for monthly, cycle-start date for weekly/biweekly). */
   cycleKey: string
@@ -41,6 +44,8 @@ export interface BillingState {
   isSettled: boolean
   /** Due today/past, not settled, no pending receipt. */
   isOverdue: boolean
+  /** The single state the dashboard renders; never re-derive this in components. */
+  paymentState: PaymentState
   /** Not settled, but the immediately-preceding cycle is settled. */
   paidLastPeriod: boolean
   /** Days past the due date (0 when not past). */
@@ -71,6 +76,13 @@ export function billingState(input: {
     )
   const isSettled = isPaidForPeriod || (dueISO > toISODate(today) && !isReopened)
   const isOverdue = !isSettled && !isPending
+  const paymentState: PaymentState = isPaidForPeriod
+    ? 'paid'
+    : isPending
+      ? 'pending'
+      : isSettled
+        ? 'not_due'
+        : 'unpaid'
   const { daysOverdue } = dueOverdueInfo(dueISO, today, 0)
   const prevKey = previousCycleKey(dueISO, freq)
   const paidLastPeriod =
@@ -85,6 +97,7 @@ export function billingState(input: {
     isReopened,
     isSettled,
     isOverdue,
+    paymentState,
     paidLastPeriod,
     daysOverdue,
   }

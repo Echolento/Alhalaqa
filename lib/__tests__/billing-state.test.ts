@@ -13,6 +13,7 @@ describe('billingState', () => {
     expect(state.isPaidForPeriod).toBe(true)
     expect(state.isSettled).toBe(true)
     expect(state.isOverdue).toBe(false)
+    expect(state.paymentState).toBe('paid')
   })
 
   it('reads a not-yet-due cycle as settled (due on the 18th is not unpaid on the 14th)', () => {
@@ -24,6 +25,7 @@ describe('billingState', () => {
 
     expect(state.isSettled).toBe(true)
     expect(state.isOverdue).toBe(false)
+    expect(state.paymentState).toBe('not_due')
   })
 
   it('reads a due-past unpaid cycle as overdue, counting the days', () => {
@@ -36,6 +38,7 @@ describe('billingState', () => {
     expect(state.isSettled).toBe(false)
     expect(state.isOverdue).toBe(true)
     expect(state.daysOverdue).toBe(4)
+    expect(state.paymentState).toBe('unpaid')
   })
 
   it('reads a pending receipt for the cycle as pending, not overdue', () => {
@@ -49,6 +52,20 @@ describe('billingState', () => {
     expect(state.isPending).toBe(true)
     expect(state.isSettled).toBe(false)
     expect(state.isOverdue).toBe(false)
+    expect(state.paymentState).toBe('pending')
+  })
+
+  it('keeps a pending receipt actionable even before the cycle is due', () => {
+    const state = billingState({
+      student: { frequency: 'monthly', next_due_date: '2026-11-01' },
+      payments: [],
+      proofs: [{ period_key: '2026-11-01', status: 'pending' }],
+      today: new Date(2026, 9, 20),
+    })
+
+    expect(state.isSettled).toBe(true)
+    expect(state.isPending).toBe(true)
+    expect(state.paymentState).toBe('pending')
   })
 
   it('flags paidLastPeriod when the previous cycle settled but the current is overdue', () => {
@@ -117,5 +134,6 @@ describe('billingState', () => {
 
     expect(state.isReopened).toBe(true)
     expect(state.isSettled).toBe(false)
+    expect(state.paymentState).toBe('unpaid')
   })
 })

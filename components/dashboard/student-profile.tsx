@@ -41,10 +41,10 @@ import { REMIND_COPY } from '@/lib/remind-copy'
 import { FREQUENCY_PRICE_WORD } from '@/lib/onboarding-copy'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { PayerInviteButton } from '@/components/dashboard/payer-invite-button'
-import type { StudentView, PaymentView } from '@/lib/types'
+import type { DashboardStudent, PaymentView } from '@/lib/types'
 
 interface StudentProfileProps {
-  student: StudentView
+  student: DashboardStudent
   payments: PaymentView[]
   month: string
   currency: string
@@ -83,16 +83,12 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   // weekly student read as a contradiction.
   const freqWord =
     FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
-  // The shown cycle is the student's outstanding cycle. A not-yet-due cycle
-  // is its own state; it must not read as paid.
+  // The shown cycle is the student's outstanding cycle. billing-state owns the
+  // four-state rule; the UI only maps it.
   const current = payments.find((p) => p.month === month)
   const rowPaid = current?.paid || false
-  const isPaid = rowPaid
-  const notDue = !rowPaid && !!student.settled
-  const status = getPaymentStatus(isPaid, {
-    pending: !isPaid && !notDue && !!student.hasPendingProof,
-    notDue,
-  })
+  const state = student.paymentState
+  const status = getPaymentStatus(state)
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)
@@ -221,7 +217,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
       <Card className={`overflow-hidden border shadow-sm md:border-none md:shadow-md ${status.cardClass}`}>
         <CardContent className="p-4 md:p-6 flex items-center gap-3">
-          {status.icon === 'check' ? <Check className="w-7 h-7 text-emerald-600 shrink-0" /> : <Clock className="w-7 h-7 text-red-600 shrink-0" />}
+          {status.icon === 'check' ? <Check className={`w-7 h-7 shrink-0 ${status.iconClass}`} /> : <Clock className={`w-7 h-7 shrink-0 ${status.iconClass}`} />}
           <div className="flex-1 min-w-0">
             <h1 className="font-black text-2xl md:text-4xl truncate">{student.full_name || student.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -353,17 +349,17 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
       {/* Actions — hidden entirely when there's nothing to act on (a paid,
           claimed student used to leave an empty card with only a note). */}
-      {!isPaid || !student.claimed_by ? (
+      {state !== 'paid' || !student.claimed_by ? (
         <Card>
           <CardContent className="p-4 space-y-3" dir="rtl">
-            {!isPaid && student.hasPendingProof ? (
+            {state === 'pending' ? (
               <Link href={`/dashboard/unpaid?student=${student.id}`}>
                 <Button className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-600 font-bold">
                   مراجعة الإيصال
                 </Button>
               </Link>
             ) : null}
-            {!isPaid && !notDue && !student.hasPendingProof && student.claimed_by ? (
+            {state === 'unpaid' && student.claimed_by ? (
               <RemindButton
                 studentId={student.id}
                 studentName={student.full_name || student.name || 'طالب'}

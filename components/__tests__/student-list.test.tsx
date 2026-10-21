@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { StudentList } from '@/components/dashboard/student-list'
+import type { DashboardStudent } from '@/lib/types'
 
 vi.mock('@/lib/payment-actions', () => ({
   toggleStudentPayment: vi.fn(() => ({ success: true })),
@@ -11,9 +12,9 @@ vi.mock('@/lib/student-actions', () => ({
   addMultipleStudents: vi.fn(() => ({ success: true })),
 }))
 
-const students = [
-  { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5 },
-  { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10 },
+const students: DashboardStudent[] = [
+  { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'paid' },
+  { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, paymentState: 'unpaid' },
 ]
 const payments = [{ student_id: 's1', paid: true, amount_paid: 100 }]
 
@@ -24,6 +25,7 @@ const props = {
   currency: 'SAR',
   initialCollected: 100,
   initialExpected: 300,
+  shareEntryDefaultOpen: true,
 }
 
 describe('StudentList (merged home)', () => {
@@ -64,9 +66,9 @@ describe('StudentList (merged home)', () => {
   })
 
   it('does not show a per-student invite CTA on unclaimed roster cards', () => {
-    const rows = [
-      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null },
-      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: 'payer-9' },
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null, paymentState: 'unpaid' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: 'payer-9', paymentState: 'paid' },
     ]
     const paidS2 = [{ student_id: 's2', paid: true, amount_paid: 200 }]
     render(<StudentList {...props} students={rows} payments={paidS2} />)
@@ -74,8 +76,8 @@ describe('StudentList (merged home)', () => {
   })
 
   it('marks a pending-verification row amber and routes it to the queue, not the profile', () => {
-    const rows = [
-      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, hasPendingProof: true },
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'pending' },
     ]
     const { container } = render(<StudentList {...props} students={rows} payments={[]} />)
     expect(screen.getAllByText('قيد المراجعة').length).toBeGreaterThanOrEqual(1)
@@ -84,10 +86,10 @@ describe('StudentList (merged home)', () => {
   })
 
   it('flags unclaimed phone-less rows with the missing-number badge', () => {
-    const rows = [
-      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null, phone: null },
-      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: null, phone: '+201012345678' },
-      { id: 's3', full_name: 'خالد', monthly_price: 50, payment_day: 1, claimed_by: 'payer-9', phone: null },
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, claimed_by: null, phone: null, paymentState: 'unpaid' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, claimed_by: null, phone: '+201012345678', paymentState: 'unpaid' },
+      { id: 's3', full_name: 'خالد', monthly_price: 50, payment_day: 1, claimed_by: 'payer-9', phone: null, paymentState: 'unpaid' },
     ]
     render(<StudentList {...props} students={rows} payments={[]} />)
     expect(screen.getByTestId('missing-phone-s1')).toBeInTheDocument()
@@ -95,12 +97,22 @@ describe('StudentList (merged home)', () => {
     expect(screen.queryByTestId('missing-phone-s3')).not.toBeInTheDocument()
   })
 
-  it('a settled (not-yet-due) student reads "مش مستحق" — not "paid" — and can still be prepaid', () => {
-    const rows = [{ id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, settled: true }]
+  it('a not-yet-due student reads "مش مستحق" — not "paid" — and can still be prepaid', () => {
+    const rows: DashboardStudent[] = [{ id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'not_due' }]
     render(<StudentList {...props} students={rows} payments={[]} />)
     expect(screen.getByText('مش مستحق')).toBeInTheDocument()
     expect(screen.queryByText('مدفوع')).not.toBeInTheDocument()
     expect(screen.getByText('تحديد كمدفوع')).toBeInTheDocument()
+    const icon = screen.getByText('مش مستحق').closest('[class*="bg-sky-50"]')?.querySelector('svg')
+    expect(icon?.getAttribute('class')).toContain('text-sky-600')
+    expect(icon?.getAttribute('class')).not.toContain('text-red-600')
+  })
+
+  it('keeps a pending receipt actionable even when the cycle is not due', () => {
+    const rows: DashboardStudent[] = [{ id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'pending' }]
+    const { container } = render(<StudentList {...props} students={rows} payments={[]} />)
+    expect(screen.getByText('قيد المراجعة')).toBeInTheDocument()
+    expect(container.querySelector('a[href="/dashboard/unpaid?student=s1"]')).toBeInTheDocument()
   })
 
   it('each row links to profile', () => {
@@ -110,9 +122,9 @@ describe('StudentList (merged home)', () => {
   })
 
   it('overlays only the overdue students when showOverdue (?overdue=1 email CTA)', () => {
-    const rows = [
-      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01' },
-      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01' },
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01', paymentState: 'unpaid' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01', paymentState: 'unpaid' },
     ]
     render(<StudentList {...props} students={rows} payments={[]} overdueIds={['s2']} showOverdue />)
     expect(screen.getByTestId('overdue-overlay')).toBeInTheDocument()
@@ -121,9 +133,9 @@ describe('StudentList (merged home)', () => {
   })
 
   it('row shows price + next-due readouts and shared green/red status', () => {
-    const rows = [
-      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01' },
-      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01' },
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, next_due_date: '2026-10-01', paymentState: 'paid' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01', paymentState: 'unpaid' },
     ]
     const { container } = render(<StudentList {...props} students={rows} />)
     expect(screen.getAllByText('100 ر.س').length).toBeGreaterThanOrEqual(1)

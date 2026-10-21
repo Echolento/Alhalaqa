@@ -1,3 +1,5 @@
+import type { PaymentState } from '@/lib/billing-state'
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -44,9 +46,8 @@ export interface StudentView {
   frequency?: string | null
   next_due_date?: string | null
   claimed_by?: string | null
-  hasPendingProof?: boolean
-  /** Outstanding cycle is paid OR not yet due → the student is up to date. */
-  settled?: boolean
+  /** Canonical state derived once by billing-state. */
+  paymentState?: PaymentState
   /** Outstanding cycle unpaid but the previous one settled → reassure the teacher. */
   paidLastPeriod?: boolean
   /** The student's outstanding cycle key (from next_due_date). */
@@ -61,4 +62,9 @@ export interface PaymentView {
   paid?: boolean
   paid_at?: string | null
   amount_paid?: number | null
+}
+
+/** A roster row that is guaranteed to carry the canonical payment state. */
+export interface DashboardStudent extends StudentView {
+  paymentState: PaymentState
 }

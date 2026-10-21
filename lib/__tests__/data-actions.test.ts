@@ -913,7 +913,7 @@ describe('getTeacherPayments', () => {
     expect(result.payments.find((p: any) => p.student_id === studentId)).toBeUndefined()
   })
 
-  it('reads a future-due student as settled — due on the 18th is not unpaid on the 14th', async () => {
+  it('reads a future-due student as not due — due on the 18th is not unpaid on the 14th', async () => {
     mockSupabase.from.mockImplementation(() => {
       const b = createBuilder()
       b.maybeSingle = vi.fn().mockResolvedValue({
@@ -930,7 +930,7 @@ describe('getTeacherPayments', () => {
     const result = await getTeacherPayments('2026-10-01')
 
     const s = result.students.find((x: any) => x.id === studentId) as any
-    expect(s?.settled).toBe(true)
+    expect(s?.paymentState).toBe('not_due')
     expect(s?.paidLastPeriod).toBe(false)
   })
 

@@ -82,9 +82,8 @@ export async function getTeacherPayments(month?: string) {
       next_due_date: ((s as any).next_due_date ?? null) as string | null,
       claimed_by: (s as any).claimed_by ?? null,
       currentMonthKey: state.cycleKey,
-      settled: state.isSettled,
+      paymentState: state.paymentState,
       paidLastPeriod: state.paidLastPeriod,
-      hasPendingProof: state.isPending,
     }
   })
 

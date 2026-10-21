@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { prevMonthKey, nextMonthKey, getCurrentMonthKey } from '@/lib/billing-period'
+import { SHARE_ENTRY_SEEN_COOKIE } from '@/lib/share-entry-cookie'
 
 export default async function DashboardPage({
   searchParams,
@@ -27,6 +29,9 @@ export default async function DashboardPage({
   const { month, overdue } = await searchParams
   const currentMonth = month || getCurrentMonthKey()
   const { students, payments, currency, expected, collected } = await getTeacherPayments(currentMonth)
+  // The entry card is full the first time it renders, then collapsed forever.
+  // Read the marker server-side so returning teachers never see it flash open.
+  const shareEntrySeen = (await cookies()).get(SHARE_ENTRY_SEEN_COOKIE)?.value === '1'
   // Teacher-as-payer shortcut: visible only when the caller owns ≥1 claim.
   const showMyPayments = await callerHasClaimedStudents()
 
@@ -107,6 +112,7 @@ export default async function DashboardPage({
         overdueIds={overdueIds}
         showOverdue={!!overdue}
         joinCode={joinCode}
+        shareEntryDefaultOpen={!shareEntrySeen}
       />
     </div>
   )

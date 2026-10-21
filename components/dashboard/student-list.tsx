@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toggleStudentPayment } from '@/lib/payment-actions'
-import { getPaymentStatus } from '@/lib/payment-status'
+import { applyPaidOverride, getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
 import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
 import { ShareEntryCard } from '@/components/dashboard/share-entry-card'
@@ -35,10 +35,10 @@ import { useToast } from '@/hooks/use-toast'
 import { RemindButton } from '@/components/dashboard/remind-button'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { formatDueDateAr } from '@/lib/billing-next'
-import type { StudentView, PaymentView } from '@/lib/types'
+import type { DashboardStudent, PaymentView } from '@/lib/types'
 
 interface StudentListProps {
-  students: StudentView[]
+  students: DashboardStudent[]
   payments: PaymentView[]
   month: string
   currency: string
@@ -49,9 +49,11 @@ interface StudentListProps {
   showOverdue?: boolean
   /** Teacher join code shown beside the entry link (null when unavailable). */
   joinCode?: string | null
+  /** Full on the first-ever render, collapsed on later visits. */
+  shareEntryDefaultOpen: boolean
 }
 
-export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null }: StudentListProps) {
+export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
@@ -144,7 +146,9 @@ export function StudentList({ students, payments, month, currency, initialCollec
       </div>
       */}
 
-      {students.length > 0 ? <ShareEntryCard joinCode={joinCode} /> : null}
+      {students.length > 0 ? (
+        <ShareEntryCard joinCode={joinCode} defaultOpen={shareEntryDefaultOpen} />
+      ) : null}
 
       <div className="flex gap-3 items-center">
         <div className="relative flex-1">
@@ -177,27 +181,23 @@ export function StudentList({ students, payments, month, currency, initialCollec
           {filtered.map((student) => {
             const payment = localPayments.find((p) => p.student_id === student.id)
             const rowPaid = payment?.paid || false
-            // A not-yet-due cycle is its own state — NOT "paid". The old
-            // rowPaid||settled shortcut showed new/imported students as paid
-            // before their first due date.
-            const isPaid = rowPaid
-            const notDue = !rowPaid && !!student.settled
-            // A receipt awaiting verification: amber, and tapping goes straight
-            // to the verification queue (not the profile).
-            const hasPending = !isPaid && !notDue && !!student.hasPendingProof
-            const status = getPaymentStatus(isPaid, { pending: hasPending, notDue })
-            const cardHref = hasPending
-              ? `/dashboard/unpaid?student=${student.id}`
-              : `/dashboard/students/${student.id}`
+            // billing-state owns the four-state rule; the local paid row is an
+            // optimistic overlay so mark-paid/undo update the card immediately.
+            const state = applyPaidOverride(student.paymentState, rowPaid)
+            const status = getPaymentStatus(state)
+            const cardHref =
+              state === 'pending'
+                ? `/dashboard/unpaid?student=${student.id}`
+                : `/dashboard/students/${student.id}`
             return (
               <Card
                 key={student.id}
                 onClick={() => router.push(cardHref)}
                 className={`overflow-hidden transition-all duration-300 border shadow-sm md:border-none md:shadow-md hover:shadow-lg cursor-pointer ${status.cardClass}`}
               >
-                <CardContent className={`flex justify-between gap-3 ${isPaid ? 'items-center px-3 py-2 md:px-4 md:py-2.5' : 'p-3 md:p-5 flex-col sm:flex-row items-center'}`}>
+                <CardContent className={`flex justify-between gap-3 ${state === 'paid' ? 'items-center px-3 py-2 md:px-4 md:py-2.5' : 'p-3 md:p-5 flex-col sm:flex-row items-center'}`}>
                   <Link href={cardHref} className="flex items-center gap-3 min-w-0 flex-1">
-                      {status.icon === 'check' ? <Check className="w-6 h-6 md:w-7 md:h-7 text-emerald-600 shrink-0" /> : <Clock className="w-6 h-6 md:w-7 md:h-7 text-red-600 shrink-0" />}
+                      {status.icon === 'check' ? <Check className={`w-6 h-6 md:w-7 md:h-7 shrink-0 ${status.iconClass}`} /> : <Clock className={`w-6 h-6 md:w-7 md:h-7 shrink-0 ${status.iconClass}`} />}
                       <div className="space-y-1 flex-1 min-w-0">
                         <h3 className="font-black text-lg md:text-2xl truncate">{student.full_name || student.name}</h3>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -235,7 +235,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                       </div>
                     </Link>
                     <div
-                      className={isPaid ? 'shrink-0' : 'w-full sm:w-auto flex flex-col gap-2'}
+                      className={state === 'paid' ? 'shrink-0' : 'w-full sm:w-auto flex flex-col gap-2'}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {rowPaid ? (
@@ -277,7 +277,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      ) : !isPaid ? (
+                      ) : (
                         <div className="flex flex-col gap-2">
                           <Button
                             variant="default"
@@ -289,7 +289,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                             ) : 'تحديد كمدفوع'}
                           </Button>
-                          {!isPaid && !notDue && student.claimed_by && !student.hasPendingProof ? (
+                          {state === 'unpaid' && student.claimed_by ? (
                             <RemindButton
                               studentId={student.id}
                               studentName={student.full_name || student.name || 'طالب'}
@@ -301,7 +301,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                             />
                           ) : null}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </CardContent>
                 </Card>
