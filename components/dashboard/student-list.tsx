@@ -177,13 +177,15 @@ export function StudentList({ students, payments, month, currency, initialCollec
           {filtered.map((student) => {
             const payment = localPayments.find((p) => p.student_id === student.id)
             const rowPaid = payment?.paid || false
-            // A cycle that isn't DUE YET counts as settled: due on the 18th is
-            // not "لم يدفع" on the 14th. Only genuinely-behind students read red.
-            const isPaid = rowPaid || !!student.settled
+            // A not-yet-due cycle is its own state — NOT "paid". The old
+            // rowPaid||settled shortcut showed new/imported students as paid
+            // before their first due date.
+            const isPaid = rowPaid
+            const notDue = !rowPaid && !!student.settled
             // A receipt awaiting verification: amber, and tapping goes straight
             // to the verification queue (not the profile).
-            const hasPending = !isPaid && !!student.hasPendingProof
-            const status = getPaymentStatus(isPaid, { pending: hasPending })
+            const hasPending = !isPaid && !notDue && !!student.hasPendingProof
+            const status = getPaymentStatus(isPaid, { pending: hasPending, notDue })
             const cardHref = hasPending
               ? `/dashboard/unpaid?student=${student.id}`
               : `/dashboard/students/${student.id}`
@@ -287,7 +289,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
                             ) : 'تحديد كمدفوع'}
                           </Button>
-                          {!isPaid && student.claimed_by && !student.hasPendingProof ? (
+                          {!isPaid && !notDue && student.claimed_by && !student.hasPendingProof ? (
                             <RemindButton
                               studentId={student.id}
                               studentName={student.full_name || student.name || 'طالب'}

@@ -6,6 +6,7 @@
 // (students.claimed_by) and invite links (claim_tokens) are untouched, so
 // parents who already onboarded keep working.
 
+import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/action-context'
 import { getOwnTeacherId } from '@/lib/ownership'
 import { ensureJoinCode, rotateJoinCode } from '@/lib/join-code-store'
@@ -34,8 +35,16 @@ export async function regenerateMyJoinCode() {
   const teacherId = await getOwnTeacherId(ctx.service, ctx.user.id)
   if (!teacherId) return { error: 'Forbidden' }
 
+  let code: string
   try {
-    const code = await rotateJoinCode(ctx.service, teacherId)
+    code = await rotateJoinCode(ctx.service, teacherId)
+  } catch {
+    return { error: 'تعذر تغيير الكود — حاول مرة أخرى' }
+  }
+
+  // The code is already rotated at this point. Logging is best-effort: a
+  // logging failure must never turn a successful rotation into an error.
+  try {
     await logActivity(
       {
         actionType: 'join_code_rotated',
@@ -45,8 +54,10 @@ export async function regenerateMyJoinCode() {
       },
       ctx.user.id,
     )
-    return { code }
   } catch {
-    return { error: 'تعذر تغيير الكود — حاول مرة أخرى' }
+    // Ignore — rotation already committed.
   }
+
+  revalidatePath('/dashboard')
+  return { code }
 }

@@ -11,9 +11,10 @@
 //       enough to read over the phone. I/O/0/1 are excluded on purpose.
 //   J2. Stored raw (8 chars) in a service-role-only table; displayed to the
 //       teacher and parent as XXXX-XXXX. The dash is presentation only.
-//   J3. Normalization accepts lowercase, spaces and dashes so a parent can
-//       type what they were told; other punctuation is NOT stripped (it must
-//       fail validation rather than silently vanish).
+//   J3. Normalization accepts lowercase, whitespace, every common dash variant
+//       and dots (copy/paste noise) so a parent can type what they were told;
+//       other punctuation is NOT stripped (it must fail validation rather than
+//       silently vanish).
 
 import { randomInt } from 'crypto'
 
@@ -41,12 +42,13 @@ export function generateJoinCode(rng: JoinCodeRng = (max) => randomInt(max)): st
 }
 
 /**
- * Normalize user input for comparison/validation (J3): uppercase, strip only
- * whitespace and dashes. Anything else survives and fails validation.
+ * Normalize user input for comparison/validation (J3): uppercase, strip
+ * whitespace, all Unicode dash variants and dots. Anything else survives and
+ * fails validation.
  */
 export function normalizeJoinCode(input: unknown): string {
   if (typeof input !== 'string') return ''
-  return input.replace(/[\s-]/g, '').toUpperCase()
+  return input.replace(/[\s\u2010-\u2015\u2212_.\-]/g, '').toUpperCase()
 }
 
 /** Display form XXXX-XXXX (J2). Malformed input is returned normalized. */

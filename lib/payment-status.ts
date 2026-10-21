@@ -12,12 +12,16 @@ export interface PaymentStatus {
 
 /**
  * Single source of truth for status-vs-action hierarchy.
- * Three states: paid (green) / pending-confirmation (amber, a receipt proof
- * is waiting for teacher verification) / unpaid (red).
+ * Four states: paid (green) / pending-confirmation (amber, a receipt proof
+ * is waiting for teacher verification) / not-yet-due (blue, the cycle has not
+ * started — NOT the same as paid) / unpaid (red).
  * Actions live outside this helper: solid green primary for mark-paid,
  * low-emphasis ghost for undo. Both list + profile consume this — no drift.
  */
-export function getPaymentStatus(paid: boolean, opts?: { pending?: boolean }): PaymentStatus {
+export function getPaymentStatus(
+  paid: boolean,
+  opts?: { pending?: boolean; notDue?: boolean },
+): PaymentStatus {
   if (paid) {
     return {
       paid: true,
@@ -38,6 +42,17 @@ export function getPaymentStatus(paid: boolean, opts?: { pending?: boolean }): P
       avatarClass: 'text-amber-600',
       badgeVariant: 'secondary',
       badgeClass: 'text-[10px] px-2 py-0.5 bg-amber-100 text-amber-800 border-transparent',
+    }
+  }
+  if (opts?.notDue) {
+    return {
+      paid: false,
+      label: 'مش مستحق',
+      icon: 'clock',
+      cardClass: 'bg-sky-50/40 border-r-4 border-r-sky-500',
+      avatarClass: 'text-sky-600',
+      badgeVariant: 'secondary',
+      badgeClass: 'text-[10px] px-2 py-0.5 bg-sky-100 text-sky-700 border-transparent',
     }
   }
   return {

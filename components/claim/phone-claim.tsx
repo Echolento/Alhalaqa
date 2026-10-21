@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { claimWithTeacherCode, unlinkStudent } from '@/lib/claim-actions'
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
-import { isValidJoinCodeFormat, normalizeJoinCode } from '@/lib/join-codes'
+import { formatJoinCode, isValidJoinCodeFormat, normalizeJoinCode } from '@/lib/join-codes'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { PayerLogin } from '@/components/pay/payer-login'
@@ -247,7 +247,7 @@ export function PhoneClaim(props: {
                 maxLength={9}
                 value={code}
                 placeholder={CLAIM_COPY.joinCodePlaceholder}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => setCode(formatJoinCode(e.target.value))}
                 className="text-center font-mono text-lg tracking-widest"
               />
               <p className="text-xs text-muted-foreground">{CLAIM_COPY.joinCodeHelper}</p>

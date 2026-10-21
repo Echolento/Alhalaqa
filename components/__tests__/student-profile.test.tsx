@@ -60,6 +60,19 @@ describe('StudentProfile', () => {
     expect(screen.getByText('تأكيد الحذف')).toBeInTheDocument()
   })
 
+  it('a not-yet-due cycle reads "مش مستحق", not paid', () => {
+    render(
+      <StudentProfile
+        student={{ ...student, settled: true, next_due_date: '2026-11-01' }}
+        payments={[]}
+        month="2026-10-01"
+        currency="SAR"
+      />,
+    )
+    expect(screen.getByText('مش مستحق')).toBeInTheDocument()
+    expect(screen.queryByText('مدفوع')).not.toBeInTheDocument()
+  })
+
   it('shows the previous-period-paid badge when the previous cycle settled', () => {
     render(
       <StudentProfile

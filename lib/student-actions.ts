@@ -6,6 +6,7 @@ import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
 import { normalizeFrequency, type BillingFrequency } from './billing-period'
 import { firstBillDate, isValidDueDate } from './billing-next'
+import { formatPhoneNumber } from './phone-utils'
 
 export async function getTeacherStudents() {
   const ctx = await requireUser()
@@ -117,7 +118,7 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
     .insert({
       teacher_id: teacher.id,
       name,
-      phone: opts.phone || null,
+      phone: opts.phone ? formatPhoneNumber(opts.phone) : null,
       monthly_price: price,
       frequency,
       next_due_date: nextDueDate,
@@ -192,7 +193,7 @@ export async function updateStudent(studentId: string, name: string, phone?: str
 
   const { error } = await service
     .from('students')
-    .update({ name, phone: phone || null })
+    .update({ name, phone: phone ? formatPhoneNumber(phone) : null })
     .is('deleted_at', null)
     .eq('id', studentId)
 
@@ -247,7 +248,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   const inserts = students.map((s) => ({
     teacher_id: teacher!.id,
     name: s.name,
-    phone: s.phone || null,
+    phone: s.phone ? formatPhoneNumber(s.phone) : null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
     frequency: bulkFrequency,
     next_due_date: firstBillDate(bulkFrequency),

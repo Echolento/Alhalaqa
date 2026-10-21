@@ -71,23 +71,34 @@ describe('ShareEntryCard', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('ABCD-EFGH'))
   })
 
-  it('rotates the code and keeps the link', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+  it('confirms in a dialog, then rotates the code and keeps the link', async () => {
     const onRotate = vi.fn(async () => ({ code: 'JKMNPQRS' }))
     render(<ShareEntryCard joinCode="ABCDEFGH" onRotate={onRotate} />)
     fireEvent.click(screen.getByTestId('share-entry-rotate'))
+    expect(screen.getByText('تغيير كود الانضمام؟')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('share-entry-rotate-confirm'))
     await waitFor(() => expect(onRotate).toHaveBeenCalledOnce())
     await waitFor(() =>
       expect(screen.getByTestId('share-entry-code').textContent).toBe('JKMN-PQRS'),
     )
+    expect(screen.getByTestId('share-entry-rotate-ok')).toBeInTheDocument()
     expect(screen.getByText(PAY_ENTRY_URL)).toBeTruthy()
   })
 
+  it('does nothing when the confirm dialog is cancelled', () => {
+    const onRotate = vi.fn(async () => ({ code: 'JKMNPQRS' }))
+    render(<ShareEntryCard joinCode="ABCDEFGH" onRotate={onRotate} />)
+    fireEvent.click(screen.getByTestId('share-entry-rotate'))
+    fireEvent.click(screen.getByText('إلغاء'))
+    expect(onRotate).not.toHaveBeenCalled()
+    expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
+  })
+
   it('surfaces a rotation failure instead of faking success', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onRotate = vi.fn(async () => ({ error: 'تعذر تغيير الكود' }))
     render(<ShareEntryCard joinCode="ABCDEFGH" onRotate={onRotate} />)
     fireEvent.click(screen.getByTestId('share-entry-rotate'))
+    fireEvent.click(screen.getByTestId('share-entry-rotate-confirm'))
     await waitFor(() => expect(screen.getByTestId('share-entry-rotate-error')).toBeTruthy())
     expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
   })

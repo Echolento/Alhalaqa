@@ -82,9 +82,12 @@ export const REMIND_COPY = {
   shareEntryCodeCopy: 'نسخ الكود',
   shareEntryCodeCopied: 'اتنسخ الكود.',
   shareEntryRotate: 'كود جديد',
+  shareEntryRotateTitle: 'تغيير كود الانضمام؟',
   shareEntryRotateConfirm:
-    'هيتغير الكود، والكود القديم هيبطّل. الطلاب المسجلين بالفعل هيفضلوا زي ما هم. متأكد؟',
-  shareEntryRotated: 'الكود اتغير.',
+    'هيتغير الكود، والكود القديم هيبطّل. الطلاب المسجلين بالفعل هيفضلوا زي ما هم.',
+  shareEntryRotateAction: 'غيّر الكود',
+  shareEntryRotateCancel: 'إلغاء',
+  shareEntryRotated: 'الكود اتغير — الكود القديم بطّل.',
   shareEntryRotateFail: 'تعذر تغيير الكود — حاول مرة أخرى.',
   shareEntryText: (url: string, code?: string) =>
     `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.${

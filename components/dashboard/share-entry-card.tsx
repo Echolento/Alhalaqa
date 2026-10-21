@@ -13,6 +13,17 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Share2, Copy, Check, RefreshCw } from 'lucide-react'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { PAY_ENTRY_URL } from '@/lib/pay-host'
@@ -55,6 +66,8 @@ export function ShareEntryCard(props: {
   const [codeCopied, setCodeCopied] = useState(false)
   const [rotating, setRotating] = useState(false)
   const [rotateError, setRotateError] = useState<string | null>(null)
+  const [rotateOk, setRotateOk] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const displayCode = code ? formatJoinCode(code) : null
 
@@ -84,9 +97,9 @@ export function ShareEntryCard(props: {
   }
 
   async function handleRotate() {
-    if (!window.confirm(REMIND_COPY.shareEntryRotateConfirm)) return
     setRotating(true)
     setRotateError(null)
+    setRotateOk(false)
     try {
       const res = props.onRotate
         ? await props.onRotate()
@@ -94,10 +107,27 @@ export function ShareEntryCard(props: {
       if ((res as RotateResult).code) {
         setCode((res as RotateResult).code ?? null)
         setCodeCopied(false)
+        setRotateOk(true)
       } else {
         setRotateError((res as RotateResult).error ?? REMIND_COPY.shareEntryRotateFail)
       }
     } catch {
+      // The DB may have rotated even when the response was lost (mobile
+      // network). Reconcile: if the server now holds a different code, that
+      // IS the success — showing an error here would be a lie.
+      if (!props.onRotate) {
+        try {
+          const cur = await (await import('@/lib/join-code-actions')).getMyJoinCode()
+          if ('code' in cur && cur.code && cur.code !== code) {
+            setCode(cur.code)
+            setCodeCopied(false)
+            setRotateOk(true)
+            return
+          }
+        } catch {
+          // Fall through to the generic failure copy.
+        }
+      }
       setRotateError(REMIND_COPY.shareEntryRotateFail)
     } finally {
       setRotating(false)
@@ -170,20 +200,48 @@ export function ShareEntryCard(props: {
                 {codeCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {codeCopied ? REMIND_COPY.shareEntryCodeCopied : REMIND_COPY.shareEntryCodeCopy}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                data-testid="share-entry-rotate"
-                onClick={() => void handleRotate()}
-                disabled={rotating}
-                className="h-auto px-2 py-1 text-xs font-normal text-muted-foreground/70"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {REMIND_COPY.shareEntryRotate}
-              </Button>
+              <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="share-entry-rotate"
+                    disabled={rotating}
+                    className="h-auto px-2 py-1 text-xs font-normal text-muted-foreground/70"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {REMIND_COPY.shareEntryRotate}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{REMIND_COPY.shareEntryRotateTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>{REMIND_COPY.shareEntryRotateConfirm}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{REMIND_COPY.shareEntryRotateCancel}</AlertDialogCancel>
+                    <AlertDialogAction
+                      data-testid="share-entry-rotate-confirm"
+                      onClick={() => void handleRotate()}
+                    >
+                      {REMIND_COPY.shareEntryRotateAction}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
+        ) : null}
+
+        {rotateOk ? (
+          <p
+            data-testid="share-entry-rotate-ok"
+            className="flex items-center justify-center gap-1 text-xs text-emerald-700"
+          >
+            <Check className="h-3.5 w-3.5" />
+            {REMIND_COPY.shareEntryRotated}
+          </p>
         ) : null}
 
         {rotateError ? (

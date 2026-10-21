@@ -51,6 +51,13 @@ describe('normalizeJoinCode', () => {
     expect(normalizeJoinCode('ab-cd efg h')).toBe('ABCDEFGH')
   })
 
+  it('strips dash variants and dots picked up from copy/paste', () => {
+    expect(normalizeJoinCode('ABCD\u2013EFGH')).toBe('ABCDEFGH')
+    expect(normalizeJoinCode('ABCD\u2014EFGH')).toBe('ABCDEFGH')
+    expect(normalizeJoinCode('ABCD\u2212EFGH')).toBe('ABCDEFGH')
+    expect(normalizeJoinCode('ABCD.EFGH')).toBe('ABCDEFGH')
+  })
+
   it('returns empty for non-strings', () => {
     expect(normalizeJoinCode(null)).toBe('')
     expect(normalizeJoinCode(undefined)).toBe('')

@@ -83,12 +83,16 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   // weekly student read as a contradiction.
   const freqWord =
     FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
-  // The shown cycle is the student's outstanding cycle; a missing row means
-  // unpaid — unless the cycle isn't DUE YET (settled), which reads as paid.
+  // The shown cycle is the student's outstanding cycle. A not-yet-due cycle
+  // is its own state; it must not read as paid.
   const current = payments.find((p) => p.month === month)
   const rowPaid = current?.paid || false
-  const isPaid = rowPaid || !!student.settled
-  const status = getPaymentStatus(isPaid, { pending: !isPaid && !!student.hasPendingProof })
+  const isPaid = rowPaid
+  const notDue = !rowPaid && !!student.settled
+  const status = getPaymentStatus(isPaid, {
+    pending: !isPaid && !notDue && !!student.hasPendingProof,
+    notDue,
+  })
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)
@@ -243,23 +247,21 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
               {student.monthly_price} {currencySymbol} · الاستحقاق {formatDueDateAr(student.next_due_date)}
             </p>
           </div>
-          {isPaid && !rowPaid ? null : (
-            <Button
-              onClick={handleToggle}
-              disabled={loading}
-              className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
-              variant={rowPaid ? 'ghost' : 'default'}
-            >
-              {loading ? (
-                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-              ) : rowPaid ? (
-                <>
-                  <Undo2 className="w-4 h-4" />
-                  تراجع
-                </>
-              ) : 'تحديد كمدفوع'}
-            </Button>
-          )}
+          <Button
+            onClick={handleToggle}
+            disabled={loading}
+            className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
+            variant={rowPaid ? 'ghost' : 'default'}
+          >
+            {loading ? (
+              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+            ) : rowPaid ? (
+              <>
+                <Undo2 className="w-4 h-4" />
+                تراجع
+              </>
+            ) : 'تحديد كمدفوع'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -361,7 +363,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                 </Button>
               </Link>
             ) : null}
-            {!isPaid && !student.hasPendingProof && student.claimed_by ? (
+            {!isPaid && !notDue && !student.hasPendingProof && student.claimed_by ? (
               <RemindButton
                 studentId={student.id}
                 studentName={student.full_name || student.name || 'طالب'}
