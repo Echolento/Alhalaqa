@@ -112,6 +112,20 @@ export const CLAIM_COPY = {
   phoneClaimNotYours: 'مش بتوعك؟ فك الربط',
   phoneClaimUnlinked: 'اتفك الربط — ارجع للرقم الصح وابدأ من جديد.',
   phoneClaimUnlinkFail: 'تعذر فك الربط — حاول مرة أخرى.',
+
+  // ——— Teacher join code (phone + code; replaces phone-only claim) ———
+  joinCodeTitle: 'كود المعلم',
+  joinCodeDescription: 'اطلب من معلمك كود الانضمام واكتبه هنا لإتمام الربط.',
+  joinCodeHelper: 'مش لاقي الكود؟ اطلبه من المعلم على واتساب.',
+  joinCodeLabel: 'كود المعلم',
+  joinCodePlaceholder: 'XXXX-XXXX',
+  joinCodeContinue: 'تأكيد الكود',
+  joinCodeChecking: 'جاري التحقق…',
+  joinCodeInvalidFormat: 'اكتب الكود كما وصلك من المعلم — ٨ حروف أو أرقام.',
+  joinCodeInvalid: 'الكود غير صحيح — راجع المعلم.',
+  joinCodeNoMatch: 'مفيش طالب بالرقم ده عند المعلم — راجع الرقم أو اطلب من المعلم إضافتك.',
+  joinCodeClaimFail: 'تعذر إتمام الربط — حاول مرة أخرى.',
+  joinCodeWrongNumber: 'رقم غلط؟ عدّله',
   phoneClaimEmailTitle: 'سجّل الدخول لإتمام الربط',
   phoneClaimEmailDescription:
     'أدخل بريدك — هنبعتلك رابط دخول لمرة واحدة، وبعده الطلاب يظهروا عندك تلقائياً.',

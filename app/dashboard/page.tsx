@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { getOwnTeacherId } from '@/lib/ownership'
+import { ensureJoinCode } from '@/lib/join-code-store'
 import { getTeacherPayments } from '@/lib/payment-actions'
 import { callerHasClaimedStudents } from '@/lib/claim-actions'
 import { getOverdueStudents } from '@/lib/overdue'
@@ -26,6 +29,17 @@ export default async function DashboardPage({
   const { students, payments, currency, expected, collected } = await getTeacherPayments(currentMonth)
   // Teacher-as-payer shortcut: visible only when the caller owns ≥1 claim.
   const showMyPayments = await callerHasClaimedStudents()
+
+  // Join code for the entry card. Minted on first view; the card omits it if
+  // the service client or code table is unavailable (deploy-order safety).
+  let joinCode: string | null = null
+  try {
+    const service = createServiceClient()
+    const teacherId = await getOwnTeacherId(service, user.id)
+    if (teacherId) joinCode = await ensureJoinCode(service, teacherId)
+  } catch {
+    joinCode = null
+  }
 
   // ?overdue=1 (the "still hasn't paid" email CTA) overlays the list with just
   // the overdue students — same set the email named (grace 0).
@@ -92,6 +106,7 @@ export default async function DashboardPage({
         initialExpected={expected}
         overdueIds={overdueIds}
         showOverdue={!!overdue}
+        joinCode={joinCode}
       />
     </div>
   )

@@ -1,16 +1,22 @@
 'use client'
 
 // components/dashboard/share-entry-card.tsx
-// Dominant entry-point distribution: the ONE link every parent uses.
+// Dominant entry-point distribution: the ONE link every parent uses, plus the
+// teacher's join code (the vouch parents type after signing in with a phone).
 // System share sheet on phones (WhatsApp/Telegram/SMS in one tap),
 // clipboard + confirmation everywhere else. Renders above the roster.
+//
+// Rotation is lazy-imported so this client component (and its tests) never
+// pull the server-action graph at render time. Rotation replaces ONLY the
+// code: existing claims and invite links keep working.
 
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Share2, Copy, Check } from 'lucide-react'
+import { Share2, Copy, Check, RefreshCw } from 'lucide-react'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import { PAY_ENTRY_URL } from '@/lib/pay-host'
+import { formatJoinCode } from '@/lib/join-codes'
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -36,11 +42,24 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function ShareEntryCard() {
-  const [copied, setCopied] = useState(false)
+type RotateResult = { code?: string; error?: string }
+
+export function ShareEntryCard(props: {
+  /** Raw 8-char code; null/undefined hides the code block (old callers/tests). */
+  joinCode?: string | null
+  /** Test seam overriding the server action. */
+  onRotate?: () => Promise<RotateResult>
+}) {
+  const [code, setCode] = useState<string | null>(props.joinCode ?? null)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const [rotating, setRotating] = useState(false)
+  const [rotateError, setRotateError] = useState<string | null>(null)
+
+  const displayCode = code ? formatJoinCode(code) : null
 
   async function handleShare() {
-    const text = REMIND_COPY.shareEntryText(PAY_ENTRY_URL)
+    const text = REMIND_COPY.shareEntryText(PAY_ENTRY_URL, displayCode ?? undefined)
     const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> }
     if (typeof nav.share === 'function') {
       try {
@@ -50,12 +69,38 @@ export function ShareEntryCard() {
         // Dismissed or failed — fall through to clipboard.
       }
     }
-    if (await copyToClipboard(text)) setCopied(true)
+    if (await copyToClipboard(text)) setLinkCopied(true)
   }
 
   async function handleCopy() {
-    if (await copyToClipboard(REMIND_COPY.shareEntryText(PAY_ENTRY_URL))) {
-      setCopied(true)
+    if (await copyToClipboard(REMIND_COPY.shareEntryText(PAY_ENTRY_URL, displayCode ?? undefined))) {
+      setLinkCopied(true)
+    }
+  }
+
+  async function handleCopyCode() {
+    if (!displayCode) return
+    if (await copyToClipboard(displayCode)) setCodeCopied(true)
+  }
+
+  async function handleRotate() {
+    if (!window.confirm(REMIND_COPY.shareEntryRotateConfirm)) return
+    setRotating(true)
+    setRotateError(null)
+    try {
+      const res = props.onRotate
+        ? await props.onRotate()
+        : (await import('@/lib/join-code-actions')).regenerateMyJoinCode()
+      if ((res as RotateResult).code) {
+        setCode((res as RotateResult).code ?? null)
+        setCodeCopied(false)
+      } else {
+        setRotateError((res as RotateResult).error ?? REMIND_COPY.shareEntryRotateFail)
+      }
+    } catch {
+      setRotateError(REMIND_COPY.shareEntryRotateFail)
+    } finally {
+      setRotating(false)
     }
   }
 
@@ -72,6 +117,20 @@ export function ShareEntryCard() {
             {REMIND_COPY.shareEntryDescription}
           </p>
         </div>
+
+        {displayCode ? (
+          <div className="rounded-lg border bg-background px-3 py-2 text-center">
+            <p className="text-xs text-muted-foreground">{REMIND_COPY.shareEntryCodeLabel}</p>
+            <p
+              data-testid="share-entry-code"
+              dir="ltr"
+              className="font-mono text-xl font-bold tracking-[0.35em]"
+            >
+              {displayCode}
+            </p>
+          </div>
+        ) : null}
+
         <p
           data-testid="share-entry-url"
           dir="ltr"
@@ -94,7 +153,46 @@ export function ShareEntryCard() {
             {REMIND_COPY.shareEntryCopy}
           </Button>
         </div>
-        {copied ? (
+
+        {displayCode ? (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {REMIND_COPY.shareEntryCodeHelper}
+            </p>
+            <div className="flex shrink-0 gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleCopyCode()}
+                className="h-auto px-2 py-1 text-xs font-normal"
+              >
+                {codeCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {codeCopied ? REMIND_COPY.shareEntryCodeCopied : REMIND_COPY.shareEntryCodeCopy}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-testid="share-entry-rotate"
+                onClick={() => void handleRotate()}
+                disabled={rotating}
+                className="h-auto px-2 py-1 text-xs font-normal text-muted-foreground/70"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {REMIND_COPY.shareEntryRotate}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {rotateError ? (
+          <p data-testid="share-entry-rotate-error" className="text-xs text-destructive">
+            {rotateError}
+          </p>
+        ) : null}
+
+        {linkCopied ? (
           <p
             data-testid="share-entry-copied"
             className="flex items-center justify-center gap-1 text-xs text-emerald-700"

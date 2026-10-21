@@ -33,6 +33,11 @@ describe('StudentList (merged home)', () => {
     expect(screen.getAllByText('إضافة طالب').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('threads the teacher join code into the entry card', () => {
+    render(<StudentList {...props} joinCode="ABCDEFGH" />)
+    expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
+  })
+
   it.skip('renders local totals', () => {
     render(<StudentList {...props} />)
     expect(screen.getByText('المبالغ المستلمة')).toBeInTheDocument()

@@ -1,6 +1,7 @@
 // components/__tests__/share-entry-card.test.tsx
-// Dominant entry-point distribution: one link, system share on phones,
-// clipboard fallback everywhere else, copied confirmation.
+// Dominant entry-point distribution: one link + the teacher code, system share
+// on phones, clipboard fallback everywhere else, rotation without losing the
+// link (existing claims keep working).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -13,6 +14,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('ShareEntryCard', () => {
@@ -39,5 +41,54 @@ describe('ShareEntryCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /مشاركة/ }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining(PAY_ENTRY_URL)))
     await waitFor(() => expect(screen.getByTestId('share-entry-copied')).toBeTruthy())
+  })
+
+  it('omits the code block when no code is available', () => {
+    render(<ShareEntryCard />)
+    expect(screen.queryByTestId('share-entry-code')).toBeNull()
+  })
+
+  it('shows the code in readable groups', () => {
+    render(<ShareEntryCard joinCode="ABCDEFGH" />)
+    expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
+  })
+
+  it('includes the code in the share text', async () => {
+    const share = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { ...navigator, share })
+    render(<ShareEntryCard joinCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: /مشاركة/ }))
+    await waitFor(() => expect(share).toHaveBeenCalledOnce())
+    const calls = share.mock.calls as unknown as Array<[{ text?: string }]>
+    expect(calls[0]?.[0]?.text).toContain('ABCD-EFGH')
+  })
+
+  it('copies just the code', async () => {
+    const writeText = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+    render(<ShareEntryCard joinCode="ABCDEFGH" />)
+    fireEvent.click(screen.getByRole('button', { name: /نسخ الكود/ }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('ABCD-EFGH'))
+  })
+
+  it('rotates the code and keeps the link', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onRotate = vi.fn(async () => ({ code: 'JKMNPQRS' }))
+    render(<ShareEntryCard joinCode="ABCDEFGH" onRotate={onRotate} />)
+    fireEvent.click(screen.getByTestId('share-entry-rotate'))
+    await waitFor(() => expect(onRotate).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(screen.getByTestId('share-entry-code').textContent).toBe('JKMN-PQRS'),
+    )
+    expect(screen.getByText(PAY_ENTRY_URL)).toBeTruthy()
+  })
+
+  it('surfaces a rotation failure instead of faking success', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onRotate = vi.fn(async () => ({ error: 'تعذر تغيير الكود' }))
+    render(<ShareEntryCard joinCode="ABCDEFGH" onRotate={onRotate} />)
+    fireEvent.click(screen.getByTestId('share-entry-rotate'))
+    await waitFor(() => expect(screen.getByTestId('share-entry-rotate-error')).toBeTruthy())
+    expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
   })
 })

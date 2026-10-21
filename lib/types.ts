@@ -26,6 +26,7 @@ export type ActionType =
   | 'claim_link_issued'
   | 'claim_redeemed'
   | 'claim_unlinked'
+  | 'join_code_rotated'
   | 'proof_verified'
   | 'proof_rejected'
   | 'manual_remind'

@@ -70,14 +70,25 @@ export const REMIND_COPY = {
   whatsappInviteText: (params: { studentName: string; inviteUrl: string }) =>
     `السلام عليكم، دعوة لولي أمر ${params.studentName} لمتابعة رسوم الحلقة واستلام إشعارات الدفع: ${params.inviteUrl}`,
 
-  // ——— Entry-point distribution (one link for all parents) ———
+  // ——— Entry-point distribution (one link + one teacher code for all parents) ———
   shareEntryTitle: 'ادعُ أولياء الأمور',
-  shareEntryDescription: 'رابط واحد للكل: يفتح صفحة التسجيل برقم الموبايل.',
+  shareEntryDescription: 'رابط واحد للكل: يفتح صفحة التسجيل برقم الموبايل، ثم يكتب كود المعلم.',
   shareEntryLinkLabel: 'رابط التسجيل',
   shareEntryButton: 'مشاركة',
   shareEntryCopy: 'نسخ',
   shareEntryCopied: 'اتنسخ.',
-  shareEntryText: (url: string) =>
-    `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.`,
+  shareEntryCodeLabel: 'كود المعلم',
+  shareEntryCodeHelper: 'ابعته مع الرابط — ولي الأمر بيكتبه بعد ما يسجّل برقمه.',
+  shareEntryCodeCopy: 'نسخ الكود',
+  shareEntryCodeCopied: 'اتنسخ الكود.',
+  shareEntryRotate: 'كود جديد',
+  shareEntryRotateConfirm:
+    'هيتغير الكود، والكود القديم هيبطّل. الطلاب المسجلين بالفعل هيفضلوا زي ما هم. متأكد؟',
+  shareEntryRotated: 'الكود اتغير.',
+  shareEntryRotateFail: 'تعذر تغيير الكود — حاول مرة أخرى.',
+  shareEntryText: (url: string, code?: string) =>
+    `تابعوا رسوم الحلقة وسدّدوها من هنا: ${url} — سجّلوا برقم الموبايل.${
+      code ? `\nكود المعلم: ${code}` : ''
+    }`,
 } as const
 

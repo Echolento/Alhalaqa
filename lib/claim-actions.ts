@@ -53,6 +53,7 @@ import {
 } from '@/lib/claim-tokens'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
+import { isValidJoinCodeFormat, normalizeJoinCode } from '@/lib/join-codes'
 import { HUB_UNKNOWN_TEACHER_LABEL } from '@/lib/payer-hub'
 
 type Service = ReturnType<typeof createServiceClient>
@@ -559,68 +560,23 @@ export async function callerHasClaimedStudents(): Promise<boolean> {
   return (((listed as { students?: unknown[] }).students ?? []).length ?? 0) > 0
 }
 
-interface PhoneMatchRow {
-  id: string
-  name: string | null
-  teacher_id: string
-  claimed_by: string | null
-  teachers: { profile_id: string | null; profiles: { full_name: string | null } | null } | null
-}
-
-function toHubStudent(s: PhoneMatchRow): ClaimedHubStudent {
-  return {
-    studentId: s.id,
-    studentName: s.name || 'طالب',
-    teacherId: s.teacher_id,
-    teacherName: (s.teachers?.profiles?.full_name || '').trim() || HUB_UNKNOWN_TEACHER_LABEL,
-  }
-}
-
 /**
- * Phone-pull discovery (phone flow): exact E.164 match, unclaimed rows
- * only, no session required (pre-login, like resolveClaimPreview R5).
- * Rate-limited per IP+phone against enumeration; invalid numbers and
- * empty results share one shape (no oracle beyond the match list).
+ * Payer claim via TEACHER CODE (replaces the old phone-only claim).
+ *
+ * The teacher code is the vouch; the phone scopes it to ONE teacher's roster.
+ * The RPC performs the code lookup + atomic UPDATE in a single statement, so
+ * two parents racing on the same phone cannot both win, and a code rotation
+ * cannot interleave between "code valid?" and "link".
+ *
+ * Re-running with the same code is idempotent for rows the caller already
+ * owns (the RPC's `claimed_by IS NULL OR claimed_by = caller` predicate), so a
+ * parent who retries after a flaky response sees success instead of an error.
+ *
+ * Rate-limited on the same DB-backed buckets as the invite redeemer: per
+ * user+IP, per user, and per IP. Wrong code and no-match both cost an
+ * attempt; only a successful link clears them.
  */
-export async function lookupStudentsByPhone(rawPhone: string) {
-  const phone = formatPhoneNumber((rawPhone ?? '').trim())
-  if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.phoneClaimInvalidPhone }
-
-  const service = createServiceClient()
-  const nowMs = Date.now()
-  const ip = await readClientIp()
-  const key = buildAttemptKey(`phone-lookup|${ip}|${phone}`)
-  // Global per-IP bucket alongside the per-phone one: sweeping many distinct
-  // numbers must hit a wall even though each number gets a fresh bucket.
-  const globalKey = buildAttemptKey(`phone-lookup-global|${ip}`)
-  if (
-    (await isRateLimited(service, key, nowMs)) ||
-    (await isRateLimited(service, globalKey, nowMs))
-  ) {
-    return { error: CLAIM_COPY.claimRateLimitedDescription }
-  }
-  await recordAttempt(service, key, nowMs)
-  await recordAttempt(service, globalKey, nowMs)
-
-  const { data, error } = (await service
-    .from('students')
-    .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
-    .is('deleted_at', null)
-    .eq('phone', phone)
-    .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
-  if (error) return { error: CLAIM_COPY.phoneClaimLookupFail }
-
-  return { students: (data ?? []).filter((s) => !s.claimed_by).map(toHubStudent) }
-}
-
-/**
- * Phone-pull claim (phone flow): links EVERY unclaimed row under the
- * caller's phone to the caller's own profile. Requires a session (magic-link
- * OTP first) — the phone routes, the session proves (same posture as R6).
- * Rows claimed by someone else are excluded twice: by the DB filter and by
- * the in-code skip (no steal, like R7). Single tap, whole family.
- */
-export async function claimByPhone(rawPhone: string) {
+export async function claimWithTeacherCode(rawPhone: string, rawCode: string) {
   const ctx = await requireUser()
   if ('error' in ctx) return ctx
   const { user, service } = ctx
@@ -628,57 +584,88 @@ export async function claimByPhone(rawPhone: string) {
   const phone = formatPhoneNumber((rawPhone ?? '').trim())
   if (!isValidPhoneNumber(phone)) return { error: CLAIM_COPY.phoneClaimInvalidPhone }
 
+  const code = normalizeJoinCode(rawCode)
+  if (!isValidJoinCodeFormat(code)) return { error: CLAIM_COPY.joinCodeInvalidFormat }
+
   const nowMs = Date.now()
   const attemptKey = await deriveAttemptKey(user.id)
-  const globalKey = buildAttemptKey(`claim-global|${user.id}`)
-  if (
+  const userKey = buildAttemptKey(`join-code-global|${user.id}`)
+  const ipKey = buildAttemptKey(`join-code-ip|${await readClientIp()}`)
+  const isLimited = async () =>
     (await isRateLimited(service, attemptKey, nowMs)) ||
-    (await isRateLimited(service, globalKey, nowMs))
-  ) {
-    return { error: CLAIM_COPY.claimRateLimitedDescription }
+    (await isRateLimited(service, userKey, nowMs)) ||
+    (await isRateLimited(service, ipKey, nowMs))
+  const record = async () => {
+    await recordAttempt(service, attemptKey, nowMs)
+    await recordAttempt(service, userKey, nowMs)
+    await recordAttempt(service, ipKey, nowMs)
   }
-  // Every call costs attempts in both buckets (checked above): the throttle
-  // actually increments instead of only gating on other flows' traffic.
-  await recordAttempt(service, attemptKey, nowMs)
-  await recordAttempt(service, globalKey, nowMs)
+  const clear = async () => {
+    await clearAttempts(service, attemptKey)
+    await clearAttempts(service, userKey)
+    await clearAttempts(service, ipKey)
+  }
 
-  const { data, error } = (await service
-    .from('students')
-    .select('id, name, teacher_id, claimed_by, teachers!inner(profile_id, profiles!inner(full_name))')
-    .is('deleted_at', null)
-    .eq('phone', phone)
-    .is('claimed_by', null)) as unknown as { data: PhoneMatchRow[] | null; error: unknown }
-  if (error) return { error: CLAIM_COPY.phoneClaimFail }
+  if (await isLimited()) {
+    return { error: CLAIM_COPY.claimRateLimitedDescription, reason: 'rate_limited' as const }
+  }
 
-  const nowIso = new Date(nowMs).toISOString()
-  const claimed: ClaimedHubStudent[] = []
-  for (const s of data ?? []) {
-    if (!s || s.claimed_by) continue
-    const { error: linkError } = (await service
-      .from('students')
-      .update({ claimed_by: user.id })
-      .is('deleted_at', null)
-      .eq('id', s.id)
-      .is('claimed_by', null)) as unknown as { error: unknown }
-    if (linkError) continue
-    claimed.push(toHubStudent({ ...s, claimed_by: user.id }))
+  const { data, error } = await service.rpc('claim_by_join_code', {
+    p_code: code,
+    p_phone: phone,
+    p_profile_id: user.id,
+  })
+
+  if (error) {
+    await record()
+    const message = String((error as { message?: string }).message ?? '')
+    if (message.includes('join_code_invalid')) {
+      return { error: CLAIM_COPY.joinCodeInvalid, reason: 'invalid_code' as const }
+    }
+    return { error: CLAIM_COPY.joinCodeClaimFail, reason: 'failed' as const }
+  }
+
+  const rows = (data ?? []) as Array<{ id: string; name: string | null; teacher_id: string }>
+  if (rows.length === 0) {
+    await record()
+    return { error: CLAIM_COPY.joinCodeNoMatch, reason: 'no_match' as const }
+  }
+
+  await clear()
+
+  // One teacher per code, so a single name lookup covers every claimed row.
+  const teacherId = rows[0].teacher_id
+  const { data: teacher } = await service
+    .from('teachers')
+    .select('id, profiles!inner(full_name)')
+    .eq('id', teacherId)
+    .maybeSingle()
+  const teacherName =
+    ((teacher as { profiles?: { full_name?: string | null } | null } | null)?.profiles?.full_name || '').trim() ||
+    HUB_UNKNOWN_TEACHER_LABEL
+
+  const claimed: ClaimedHubStudent[] = rows.map((row) => ({
+    studentId: row.id,
+    studentName: row.name || 'طالب',
+    teacherId,
+    teacherName,
+  }))
+
+  for (const student of claimed) {
     await logActivity(
       {
         actionType: 'claim_redeemed',
         entityType: 'student',
-        entityId: s.id,
-        details: { student_name: s.name || 'طالب', description: `ربط برقم الهاتف — ${s.name || 'طالب'}` },
+        entityId: student.studentId,
+        details: {
+          student_name: student.studentName,
+          description: `ربط بكود المعلم — ${student.studentName}`,
+        },
       },
       user.id,
     )
   }
 
-  // Throttle accounting: misses accumulate (a sweep of numbers must hit the
-  // wall); only an actual link resets the buckets.
-  if (claimed.length > 0) {
-    await clearAttempts(service, attemptKey)
-    await clearAttempts(service, globalKey)
-  }
   return { success: true as const, claimed }
 }
 

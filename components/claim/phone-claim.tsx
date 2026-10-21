@@ -1,22 +1,21 @@
 'use client'
 
 // components/claim/phone-claim.tsx
-// Phone-pull claim (no token): type phone → see matches → login → linked.
-// Zero claim taps by construction:
-//   - with a session, matches auto-link the moment they load;
-//   - without one, the email leg runs first and ?phone= auto-links on return.
-// Typo protection lives in VIEWING the list (wrong names → "wrong number"
-// escape) and in per-row UNLINK after (typo-linked rows cut in one tap).
-// Seams: session/onLookup/onClaim/onUnlink/createClient for tests.
+// Teacher-code claim (no token): phone → email magic-link → teacher code → linked.
+// The code is the teacher's vouch; the phone scopes it to that teacher's roster.
+// Names are never shown before the code is accepted, so a stranger can't
+// enumerate a roster by typing phone numbers.
+// Seams: session/onClaim/onUnlink/createClient for tests.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { lookupStudentsByPhone, claimByPhone, unlinkStudent } from '@/lib/claim-actions'
+import { claimWithTeacherCode, unlinkStudent } from '@/lib/claim-actions'
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/phone-utils'
+import { isValidJoinCodeFormat, normalizeJoinCode } from '@/lib/join-codes'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { CLAIM_COPY } from '@/lib/claim-copy'
 import { PayerLogin } from '@/components/pay/payer-login'
@@ -25,17 +24,15 @@ import type { HubStudent } from '@/lib/payer-hub'
 
 export type PhoneClaimSession = { email: string | null } | null
 
-type LookupResult = { students?: HubStudent[]; error?: string }
 type ClaimResult = { success?: boolean; claimed?: HubStudent[]; error?: string }
 
 export function PhoneClaim(props: {
-  /** OTP return leg: auto-runs lookup on mount. */
+  /** OTP return leg: lands straight on the code step when a session exists. */
   initialPhone?: string
   /** Test/SSR seam. Production omits it and the live session is used. */
   session?: PhoneClaimSession
-  /** Test seams overriding the server actions. */
-  onLookup?: (phone: string) => Promise<LookupResult>
-  onClaim?: (phone: string) => Promise<ClaimResult>
+  /** Test seam overriding the server action. */
+  onClaim?: (phone: string, code: string) => Promise<ClaimResult>
   onUnlink?: (studentId: string) => Promise<{ success?: boolean; error?: string }>
   createClient?: () => never
 }) {
@@ -47,14 +44,12 @@ export function PhoneClaim(props: {
     props.initialPhone ? formatPhoneNumber(props.initialPhone).replace(/^\+20/, '') : '',
   )
   const [submittedPhone, setSubmittedPhone] = useState<string | null>(null)
-  const [matches, setMatches] = useState<HubStudent[] | null>(null)
-  const [looking, setLooking] = useState(false)
-  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [claimed, setClaimed] = useState<HubStudent[] | null>(null)
   const [claiming, setClaiming] = useState(false)
   const [claimError, setClaimError] = useState<string | null>(null)
   const [unlinked, setUnlinked] = useState<string[]>([])
-  const autoFired = useRef<string | null>(null)
 
   const session = props.session !== undefined ? props.session : liveSession
 
@@ -76,77 +71,54 @@ export function PhoneClaim(props: {
     }
   }, [props.session])
 
-  async function runLookup(raw: string) {
+  // OTP return leg: `?phone=` + a session lands on the code step. The phone
+  // is only used after the code check, so showing the field costs nothing.
+  useEffect(() => {
+    if (!sessionChecked || !session || submittedPhone) return
+    if (!props.initialPhone) return
+    const normalized = formatPhoneNumber(props.initialPhone)
+    if (isValidPhoneNumber(normalized)) {
+      setSubmittedPhone(normalized.replace(/^\+20/, ''))
+      setPhoneError(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionChecked, session])
+
+  function startCodeStep(raw: string) {
     const trimmed = raw.trim()
     if (!trimmed) return
-    // Same Egyptian-format rule as the server: malformed numbers never
-    // leave the device (no lookup call, instant feedback).
     if (!isValidPhoneNumber(formatPhoneNumber(trimmed))) {
-      setMatches(null)
-      setLookupError(CLAIM_COPY.phoneClaimInvalidPhone)
+      setPhoneError(CLAIM_COPY.phoneClaimInvalidPhone)
       return
     }
-    setLooking(true)
-    setLookupError(null)
-    try {
-      const res = props.onLookup
-        ? await props.onLookup(trimmed)
-        : await lookupStudentsByPhone(trimmed)
-      if ((res as { error?: string }).error) {
-        setMatches(null)
-        setLookupError((res as { error: string }).error)
-      } else {
-        setSubmittedPhone(trimmed)
-        setMatches((res as { students?: HubStudent[] }).students ?? [])
-      }
-    } catch {
-      setMatches(null)
-      setLookupError(CLAIM_COPY.phoneClaimLookupFail)
-    } finally {
-      setLooking(false)
-    }
+    setPhoneError(null)
+    setSubmittedPhone(trimmed)
   }
 
-  // OTP return leg: lookup fires on mount when the phone rides along.
-  // Uses the normalized state (not the raw param) so E.164 seeds work.
-  const mountFired = useRef(false)
-  useEffect(() => {
-    if (props.initialPhone && sessionChecked && !mountFired.current) {
-      mountFired.current = true
-      void runLookup(phone)
+  async function handleClaim() {
+    if (!submittedPhone) return
+    const normalizedCode = normalizeJoinCode(code)
+    if (!isValidJoinCodeFormat(normalizedCode)) {
+      setClaimError(CLAIM_COPY.joinCodeInvalidFormat)
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionChecked])
-
-  // Zero-tap claim: the moment matches load WITH a session, they link.
-  // Viewing the list first is the typo guard (wrong names → escape hatch).
-  useEffect(() => {
-    if (!session || !matches || matches.length === 0) return
-    if (!submittedPhone || autoFired.current === submittedPhone) return
-    autoFired.current = submittedPhone
-    let cancelled = false
     setClaiming(true)
     setClaimError(null)
-    ;(props.onClaim ? props.onClaim(submittedPhone) : claimByPhone(submittedPhone))
-      .then((res) => {
-        if (cancelled) return
-        if ((res as { success?: boolean }).success) {
-          setClaimed((res as { claimed?: HubStudent[] }).claimed ?? [])
-        } else {
-          setClaimError((res as { error?: string }).error ?? CLAIM_COPY.phoneClaimFail)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setClaimError(CLAIM_COPY.phoneClaimFail)
-      })
-      .finally(() => {
-        if (!cancelled) setClaiming(false)
-      })
-    return () => {
-      cancelled = true
+    try {
+      const res = props.onClaim
+        ? await props.onClaim(submittedPhone, normalizedCode)
+        : await claimWithTeacherCode(submittedPhone, normalizedCode)
+      if ((res as { success?: boolean }).success) {
+        setClaimed((res as { claimed?: HubStudent[] }).claimed ?? [])
+      } else {
+        setClaimError((res as { error?: string }).error ?? CLAIM_COPY.joinCodeClaimFail)
+      }
+    } catch {
+      setClaimError(CLAIM_COPY.joinCodeClaimFail)
+    } finally {
+      setClaiming(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, matches, submittedPhone])
+  }
 
   async function handleUnlink(studentId: string) {
     try {
@@ -162,12 +134,11 @@ export function PhoneClaim(props: {
   }
 
   function resetToEntry() {
-    autoFired.current = null
-    setMatches(null)
     setSubmittedPhone(null)
+    setCode('')
     setClaimed(null)
     setClaimError(null)
-    setLookupError(null)
+    setPhoneError(null)
     setUnlinked([])
   }
 
@@ -225,69 +196,76 @@ export function PhoneClaim(props: {
     )
   }
 
-  // Matches without a session: show them, then the email leg takes over.
-  if (matches) {
-    if (matches.length === 0) {
+  // Phone captured: code step requires a session; otherwise the email leg runs.
+  if (submittedPhone) {
+    if (!session) {
       return (
         <Card dir="rtl">
           <CardHeader>
-            <CardTitle className="text-base">{CLAIM_COPY.phoneClaimEmptyTitle}</CardTitle>
+            <CardTitle className="text-base">{CLAIM_COPY.phoneClaimEmailTitle}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3" data-testid="phone-claim-empty">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {CLAIM_COPY.phoneClaimEmptyDescription}
+          <CardContent className="space-y-2" data-testid="phone-claim-email">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {CLAIM_COPY.phoneClaimEmailDescription}
             </p>
-            <p className="text-xs text-muted-foreground">{CLAIM_COPY.phoneClaimInviteFallback}</p>
-            <Button type="button" variant="outline" className="w-full" onClick={resetToEntry}>
+            <PayerLogin
+              createClient={props.createClient as never}
+              next={`/claim?phone=${encodeURIComponent(submittedPhone)}`}
+            />
+            <Button type="button" variant="ghost" size="sm" onClick={resetToEntry} className="w-full">
               {CLAIM_COPY.phoneClaimWrongNumber}
             </Button>
           </CardContent>
         </Card>
       )
     }
+
     return (
-      <div className="space-y-4" dir="rtl">
-        <Card data-testid="phone-claim-matches">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {CLAIM_COPY.phoneClaimFoundTitle(matches.length)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {matches.map((m) => (
-              <div
-                key={m.studentId}
-                className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
-              >
-                <span>{m.studentName}</span>
-                <span className="text-muted-foreground">{m.teacherName}</span>
-              </div>
-            ))}
-            <Button type="button" variant="ghost" size="sm" onClick={resetToEntry} className="h-auto px-2 py-1 text-xs font-normal text-muted-foreground/60">
-              {CLAIM_COPY.phoneClaimWrongNumber}
+      <Card dir="rtl">
+        <CardHeader>
+          <CardTitle className="text-base">{CLAIM_COPY.joinCodeTitle}</CardTitle>
+          <p className="text-sm text-muted-foreground">{CLAIM_COPY.joinCodeDescription}</p>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleClaim()
+            }}
+            className="space-y-3"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="phone-claim-code">{CLAIM_COPY.joinCodeLabel}</Label>
+              <Input
+                id="phone-claim-code"
+                data-testid="phone-claim-code"
+                dir="ltr"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                inputMode="text"
+                maxLength={9}
+                value={code}
+                placeholder={CLAIM_COPY.joinCodePlaceholder}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="text-center font-mono text-lg tracking-widest"
+              />
+              <p className="text-xs text-muted-foreground">{CLAIM_COPY.joinCodeHelper}</p>
+            </div>
+            {claimError ? (
+              <p data-testid="phone-claim-error" className="text-xs text-destructive">
+                {claimError}
+              </p>
+            ) : null}
+            <Button type="submit" className="w-full" disabled={claiming}>
+              {claiming ? CLAIM_COPY.joinCodeChecking : CLAIM_COPY.joinCodeContinue}
             </Button>
-          </CardContent>
-        </Card>
-        {session ? (
-          <Card>
-            <CardContent className="py-6 text-center text-sm text-muted-foreground">
-              {claiming ? CLAIM_COPY.phoneClaimLinking : null}
-              {claimError ? <p className="text-destructive">{claimError}</p> : null}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2" data-testid="phone-claim-email">
-            <p className="text-sm font-medium">{CLAIM_COPY.phoneClaimEmailTitle}</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {CLAIM_COPY.phoneClaimEmailDescription}
-            </p>
-            <PayerLogin
-              createClient={props.createClient as never}
-              next={`/claim?phone=${encodeURIComponent(submittedPhone ?? '')}`}
-            />
-          </div>
-        )}
-      </div>
+            <Button type="button" variant="ghost" size="sm" onClick={resetToEntry} className="w-full">
+              {CLAIM_COPY.joinCodeWrongNumber}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -302,7 +280,7 @@ export function PhoneClaim(props: {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void runLookup(phone)
+            startCodeStep(phone)
           }}
           className="space-y-3"
         >
@@ -314,13 +292,13 @@ export function PhoneClaim(props: {
             label={CLAIM_COPY.phoneClaimLabel}
             placeholder={CLAIM_COPY.phoneClaimPlaceholder}
           />
-          {lookupError ? (
+          {phoneError ? (
             <p data-testid="phone-claim-error" className="text-xs text-destructive">
-              {lookupError}
+              {phoneError}
             </p>
           ) : null}
-          <Button type="submit" className="w-full" disabled={looking}>
-            {looking ? CLAIM_COPY.claimPhoneSaving : CLAIM_COPY.phoneClaimContinue}
+          <Button type="submit" className="w-full">
+            {CLAIM_COPY.phoneClaimContinue}
           </Button>
         </form>
       </CardContent>

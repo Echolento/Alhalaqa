@@ -47,9 +47,11 @@ interface StudentListProps {
   /** Ids of the overdue students — the ?overdue=1 email overlay lists just these. */
   overdueIds?: string[]
   showOverdue?: boolean
+  /** Teacher join code shown beside the entry link (null when unavailable). */
+  joinCode?: string | null
 }
 
-export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false }: StudentListProps) {
+export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
@@ -142,7 +144,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
       </div>
       */}
 
-      {students.length > 0 ? <ShareEntryCard /> : null}
+      {students.length > 0 ? <ShareEntryCard joinCode={joinCode} /> : null}
 
       <div className="flex gap-3 items-center">
         <div className="relative flex-1">

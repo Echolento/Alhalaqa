@@ -69,6 +69,7 @@ export async function logActivity(opts: LogActivityOptions, knownUserId?: string
     frequency_update: d => `🔁 تحديث دورة الفوترة للطالب ${d.student_name || ''}: ${d.old_frequency} ← ${d.new_frequency}`,
     teacher_settings_update: () => `⚙️ تحديث الإعدادات`,
     onboarding_complete: () => `🚀 تم إكمال الإعداد الأولي`,
+    join_code_rotated: () => `🔑 تغيير كود الانضمام`,
   }
 
   const desc = opts.details

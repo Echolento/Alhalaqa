@@ -1,7 +1,6 @@
 // components/__tests__/phone-claim.test.tsx
-// Phone-pull claim: type phone → see matches → login → they're linked.
-// Zero claim taps: with a session the matches auto-link; without one the
-// email leg runs first. Typo recovery = per-row unlink. Seams everywhere.
+// Teacher-code claim: phone → email magic-link → teacher code → linked.
+// The code is the teacher's vouch; no names are shown before it is accepted.
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -9,99 +8,107 @@ import { PhoneClaim } from '@/components/claim/phone-claim'
 
 const matches = [
   { studentId: 's1', studentName: 'Karim', teacherId: 't1', teacherName: 'Sheikh Ali' },
-  { studentId: 's2', studentName: 'Layla', teacherId: 't2', teacherName: 'Sheikh Omar' },
+  { studentId: 's2', studentName: 'Layla', teacherId: 't1', teacherName: 'Sheikh Ali' },
 ]
+
+const SESSION = { email: 'p@mail.com' }
 
 function typePhone(phone = '01055556666') {
   fireEvent.change(screen.getByLabelText(/رقم الموبايل/), { target: { value: phone } })
   fireEvent.click(screen.getByRole('button', { name: /متابعة/ }))
 }
 
+function typeCode(code = 'abcdefgh') {
+  fireEvent.change(screen.getByTestId('phone-claim-code'), { target: { value: code } })
+  fireEvent.click(screen.getByRole('button', { name: /تأكيد الكود/ }))
+}
+
 describe('PhoneClaim', () => {
-  it('rejects a malformed number without looking up', async () => {
-    const onLookup = vi.fn()
-    render(<PhoneClaim session={null} onLookup={onLookup} />)
+  it('rejects a malformed number without calling the server', async () => {
+    const onClaim = vi.fn()
+    render(<PhoneClaim session={null} onClaim={onClaim} />)
     typePhone('12345')
     await waitFor(() => expect(screen.getByTestId('phone-claim-error')).toBeTruthy())
-    expect(onLookup).not.toHaveBeenCalled()
-  })
-
-  it('without a session shows matches plus the email leg (no auto-claim)', async () => {
-    const onLookup = vi.fn(async () => ({ students: matches }))
-    const onClaim = vi.fn()
-    render(<PhoneClaim session={null} onLookup={onLookup} onClaim={onClaim} />)
-    typePhone()
-    await waitFor(() => expect(screen.getByTestId('phone-claim-matches')).toBeTruthy())
-    expect(screen.getByText(/Karim/)).toBeTruthy()
-    expect(screen.getByText(/Layla/)).toBeTruthy()
-    expect(screen.getByTestId('phone-claim-email')).toBeTruthy()
     expect(onClaim).not.toHaveBeenCalled()
   })
 
-  it('with a session auto-links matches, zero taps', async () => {
-    const onLookup = vi.fn(async () => ({ students: matches }))
-    const onClaim = vi.fn(async () => ({ success: true, claimed: matches }))
-    render(
-      <PhoneClaim
-        session={{ email: 'p@mail.com' }}
-        onLookup={onLookup}
-        onClaim={onClaim}
-      />,
-    )
+  it('without a session runs the email leg and reveals no names', async () => {
+    const onClaim = vi.fn()
+    render(<PhoneClaim session={null} onClaim={onClaim} />)
     typePhone()
-    await waitFor(() => expect(onClaim).toHaveBeenCalledWith('1055556666'))
+    await waitFor(() => expect(screen.getByTestId('phone-claim-email')).toBeTruthy())
+    expect(screen.queryByText(/Karim/)).toBeNull()
+    expect(screen.queryByText(/Layla/)).toBeNull()
+    expect(onClaim).not.toHaveBeenCalled()
+  })
+
+  it('with a session asks for the teacher code (still no names)', async () => {
+    const onClaim = vi.fn()
+    render(<PhoneClaim session={SESSION} onClaim={onClaim} />)
+    typePhone()
+    await waitFor(() => expect(screen.getByTestId('phone-claim-code')).toBeTruthy())
+    expect(screen.queryByText(/Karim/)).toBeNull()
+    expect(onClaim).not.toHaveBeenCalled()
+  })
+
+  it('accepts a dashed code, normalizes it, and links', async () => {
+    const onClaim = vi.fn(async () => ({ success: true, claimed: matches }))
+    render(<PhoneClaim session={SESSION} onClaim={onClaim} />)
+    typePhone()
+    typeCode('abcd-efgh')
+    await waitFor(() => expect(onClaim).toHaveBeenCalledWith('1055556666', 'ABCDEFGH'))
     await waitFor(() => expect(screen.getByTestId('phone-claim-success')).toBeTruthy())
     expect(screen.getByText(/تتابع رسوم: Karim، Layla/)).toBeTruthy()
   })
 
-  it('empty matches explain the fallback (links still exist)', async () => {
-    const onLookup = vi.fn(async () => ({ students: [] }))
-    render(<PhoneClaim session={null} onLookup={onLookup} />)
+  it('rejects a malformed code without calling the server', async () => {
+    const onClaim = vi.fn()
+    render(<PhoneClaim session={SESSION} onClaim={onClaim} />)
     typePhone()
-    await waitFor(() => expect(screen.getByTestId('phone-claim-empty')).toBeTruthy())
-    expect(screen.getByText(/رابط دعوة/)).toBeTruthy()
+    typeCode('NOPE')
+    await waitFor(() => expect(screen.getByTestId('phone-claim-error')).toBeTruthy())
+    expect(onClaim).not.toHaveBeenCalled()
   })
 
-  it('wrong-number escape returns to entry', async () => {
-    const onLookup = vi.fn(async () => ({ students: matches }))
-    render(<PhoneClaim session={null} onLookup={onLookup} />)
+  it('shows the server error for a wrong code and stays on the code step', async () => {
+    const onClaim = vi.fn(async () => ({ error: 'الكود غير صحيح — راجع المعلم.' }))
+    render(<PhoneClaim session={SESSION} onClaim={onClaim} />)
     typePhone()
-    await waitFor(() => expect(screen.getByTestId('phone-claim-matches')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: /رقم غلط/ }))
-    expect(screen.getByLabelText(/رقم الموبايل/)).toBeTruthy()
-    expect(screen.queryByTestId('phone-claim-matches')).toBeNull()
+    typeCode('ABCDEFGH')
+    await waitFor(() => expect(screen.getByTestId('phone-claim-error').textContent).toContain('الكود غير صحيح'))
+    expect(screen.getByTestId('phone-claim-code')).toBeTruthy()
+    expect(screen.queryByTestId('phone-claim-success')).toBeNull()
   })
 
   it('unlink removes a typo-linked row', async () => {
-    const onLookup = vi.fn(async () => ({ students: matches }))
     const onClaim = vi.fn(async () => ({ success: true, claimed: matches }))
     const onUnlink = vi.fn(async () => ({ success: true }))
-    render(
-      <PhoneClaim
-        session={{ email: 'p@mail.com' }}
-        onLookup={onLookup}
-        onClaim={onClaim}
-        onUnlink={onUnlink}
-      />,
-    )
+    render(<PhoneClaim session={SESSION} onClaim={onClaim} onUnlink={onUnlink} />)
     typePhone()
+    typeCode()
     await waitFor(() => expect(screen.getByTestId('phone-claim-success')).toBeTruthy())
     fireEvent.click(screen.getAllByRole('button', { name: /فك الربط/ })[0]!)
     await waitFor(() => expect(onUnlink).toHaveBeenCalledWith('s1'))
     await waitFor(() => expect(screen.queryByText(/Karim/)).toBeNull())
   })
 
-  it('initialPhone auto-runs lookup on mount (OTP return leg)', async () => {
-    const onLookup = vi.fn(async () => ({ students: matches }))
+  it('initialPhone + session lands on the code step (OTP return leg)', async () => {
     render(
       <PhoneClaim
-        session={{ email: 'p@mail.com' }}
+        session={SESSION}
         initialPhone="01055556666"
-        onLookup={onLookup}
         onClaim={vi.fn(async () => ({ success: true, claimed: matches }))}
       />,
     )
-    await waitFor(() => expect(onLookup).toHaveBeenCalledWith('1055556666'))
-    await waitFor(() => expect(screen.getByTestId('phone-claim-success')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTestId('phone-claim-code')).toBeTruthy())
+  })
+
+  it('wrong-number escape returns to the phone entry', async () => {
+    render(<PhoneClaim session={SESSION} onClaim={vi.fn()} />)
+    typePhone()
+    await waitFor(() => expect(screen.getByTestId('phone-claim-code')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /رقم غلط/ }))
+    expect(screen.getByLabelText(/رقم الموبايل/)).toBeTruthy()
+    expect(screen.queryByTestId('phone-claim-code')).toBeNull()
   })
 })
