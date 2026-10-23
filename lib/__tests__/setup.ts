@@ -27,11 +27,6 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-vi.mock('@/components/ui/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn(), toasts: [] }),
-  toast: vi.fn(),
-}))
-
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn(), toasts: [] }),
   toast: vi.fn(),

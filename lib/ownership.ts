@@ -18,7 +18,7 @@ export async function getOwnTeacherId(
   return (data as { id: string } | null)?.id ?? null
 }
 
-export async function getStudentTeacherId(
+async function getStudentTeacherId(
   service: SupabaseClient,
   studentId: string,
 ): Promise<string | null> {

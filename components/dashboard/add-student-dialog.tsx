@@ -15,7 +15,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Plus, Contact } from 'lucide-react'
 import { addStudent, addMultipleStudents } from '@/lib/student-actions'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
