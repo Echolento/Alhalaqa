@@ -22,8 +22,6 @@ const props = {
   students,
   payments,
   month: '2025-06',
-  initialCollected: 100,
-  initialExpected: 300,
   shareEntryDefaultOpen: true,
 }
 
@@ -39,21 +37,8 @@ describe('StudentList (merged home)', () => {
     expect(screen.getByTestId('share-entry-code').textContent).toBe('ABCD-EFGH')
   })
 
-  it.skip('renders local totals', () => {
-    render(<StudentList {...props} />)
-    expect(screen.getByText('المبالغ المستلمة')).toBeInTheDocument()
-    expect(screen.getByText('المبالغ المتبقية')).toBeInTheDocument()
-  })
-
-  it.skip('shows the pay.alhalaqa.com share card after the stat cards when students exist', () => {
-    render(<StudentList {...props} />)
-    const stats = screen.getByText('المبالغ المستلمة').closest('[class*="grid-cols-2"]')!
-    const shareCard = screen.getByTestId('share-entry-card')
-    expect(stats.compareDocumentPosition(shareCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  })
-
   it('hides the pay.alhalaqa.com share card until there is at least one student', () => {
-    render(<StudentList {...props} students={[]} payments={[]} initialCollected={0} initialExpected={0} />)
+    render(<StudentList {...props} students={[]} payments={[]} />)
     expect(screen.queryByTestId('share-entry-card')).not.toBeInTheDocument()
   })
 
@@ -175,15 +160,5 @@ describe('StudentList (merged home)', () => {
     const btn = screen.getByTestId('undo-s1')
     expect(btn.className).not.toContain('bg-destructive')
     expect(btn.className).not.toContain('w-full')
-  })
-
-  it.skip('toggle updates the received card live; remaining stays at the server value', async () => {
-    render(<StudentList {...props} />)
-    // pending 200 appears twice (summary card + s2 row readout)
-    expect(screen.getAllByText('200 ج.م')).toHaveLength(2)
-    fireEvent.click(screen.getByText('تحديد كمدفوع'))
-    // received 100 -> 300 updates live; remaining is NOT re-derived from it.
-    expect(await screen.findByText('300 ج.م')).toBeInTheDocument()
-    expect(screen.queryByText('0 ج.م')).not.toBeInTheDocument()
   })
 })

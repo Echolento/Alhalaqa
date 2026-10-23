@@ -28,7 +28,7 @@ export default async function DashboardPage({
 
   const { month, overdue } = await searchParams
   const currentMonth = month || getCurrentMonthKey()
-  const { students, payments, expected, collected } = await getTeacherPayments(currentMonth)
+  const { students, payments } = await getTeacherPayments(currentMonth)
   // The entry card is full the first time it renders, then collapsed forever.
   // Read the marker server-side so returning teachers never see it flash open.
   const shareEntrySeen = (await cookies()).get(SHARE_ENTRY_SEEN_COOKIE)?.value === '1'
@@ -106,8 +106,6 @@ export default async function DashboardPage({
         students={students}
         payments={payments}
         month={currentMonth}
-        initialCollected={collected}
-        initialExpected={expected}
         overdueIds={overdueIds}
         showOverdue={!!overdue}
         joinCode={joinCode}

@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, Clock, Search, Users, DollarSign, Undo2, ChevronDown } from 'lucide-react'
+import { Check, Clock, Search, Users, Undo2, ChevronDown } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -41,8 +41,6 @@ interface StudentListProps {
   students: DashboardStudent[]
   payments: PaymentView[]
   month: string
-  initialCollected: number
-  initialExpected: number
   /** Ids of the overdue students — the ?overdue=1 email overlay lists just these. */
   overdueIds?: string[]
   showOverdue?: boolean
@@ -52,22 +50,20 @@ interface StudentListProps {
   shareEntryDefaultOpen: boolean
 }
 
-export function StudentList({ students, payments, month, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
+export function StudentList({ students, payments, month, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [showAwaiting, setShowAwaiting] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [undoTarget, setUndoTarget] = useState<string | null>(null)
   const [localPayments, setLocalPayments] = useState(payments)
-  const [collected, setCollected] = useState(initialCollected)
   const { toast } = useToast()
   const currencySymbol = CURRENCY_SYMBOL
   const overdueList = overdueIds.length ? students.filter((s) => overdueIds.includes(s.id)) : []
 
   useEffect(() => {
     setLocalPayments(payments)
-    setCollected(initialCollected)
-  }, [payments, initialCollected])
+  }, [payments])
 
   const filtered = students.filter((s) =>
     (s.full_name || s.name || '').toLowerCase().includes(search.toLowerCase()) || !search
@@ -93,18 +89,14 @@ export function StudentList({ students, payments, month, initialCollected, initi
     // cron use), so the toggle/undo hits the right row for every frequency.
     const targetMonth = row?.paidCycleKey ?? row?.currentMonthKey ?? payment?.month ?? month
     const now = new Date().toISOString()
-    const price = Number(row?.monthly_price) || 0
     setLocalPayments((prev) =>
       prev.some((p) => p.student_id === studentId)
         ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: newPaid, paid_at: newPaid ? now : null } : p))
         : [...prev, { student_id: studentId, month: targetMonth, paid: newPaid, paid_at: newPaid ? now : null }]
     )
-    // Totals update locally — no second server trip (was router.refresh).
-    setCollected((c) => c + (newPaid ? price : -price))
     const hadEntry = !!payment
     const prevPaidAt = payment?.paid_at ?? null
     const revert = () => {
-      setCollected((c) => c + (newPaid ? -price : price))
       setLocalPayments((prev) =>
         hadEntry
           ? prev.map((p) => (p.student_id === studentId ? { ...p, paid: !newPaid, paid_at: !newPaid ? prevPaidAt : null } : p))
@@ -133,30 +125,6 @@ export function StudentList({ students, payments, month, initialCollected, initi
 
   return (
     <div className="space-y-4">
-      {/* Totals cards hidden for now
-      <div className="grid grid-cols-2 gap-3 md:gap-6">
-        <Card className="border shadow-sm">
-          <CardContent className="p-4 md:p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
-              <p className="text-sm text-muted-foreground font-medium">المبالغ المستلمة</p>
-            </div>
-            <h2 className="text-2xl font-bold">{collected} {currencySymbol}</h2>
-          </CardContent>
-        </Card>
-
-        <Card className="border shadow-sm">
-          <CardContent className="p-4 md:p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Clock className="w-5 h-5 text-amber-600" />
-              <p className="text-sm text-muted-foreground font-medium">المبالغ المتبقية</p>
-            </div>
-            <h2 className="text-2xl font-bold">{Math.max(0, initialExpected - initialCollected)} {currencySymbol}</h2>
-          </CardContent>
-        </Card>
-      </div>
-      */}
-
       {students.length > 0 ? (
         <ShareEntryCard joinCode={joinCode} defaultOpen={shareEntryDefaultOpen} />
       ) : null}

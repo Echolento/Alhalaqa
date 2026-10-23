@@ -262,9 +262,10 @@ export function StudentProfile({ student, payments, month }: StudentProfileProps
         </Row>
       </Card>
 
-      {/* Actions — hidden entirely when there's nothing to act on (a paid,
-          claimed student used to leave an empty card with only a note). */}
-      {state !== 'paid' || !student.claimed_by ? (
+      {/* Actions — hidden entirely when there's nothing to act on. Awaiting-start
+          and claimed students had no button (nothing to review/remind/invite),
+          which left an empty card. */}
+      {state === 'pending' || (state === 'unpaid' && !!student.claimed_by) || !student.claimed_by ? (
         <Card>
           <CardContent className="p-4 space-y-3" dir="rtl">
             {state === 'pending' ? (

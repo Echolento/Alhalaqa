@@ -66,6 +66,25 @@ describe('StudentProfile', () => {
     expect(screen.queryByText('مدفوع')).not.toBeInTheDocument()
   })
 
+  it('awaiting-start claimed student gets no empty actions card', () => {
+    render(
+      <StudentProfile
+        student={{
+          ...student,
+          paymentState: 'awaiting_start',
+          starts_on: '2026-11-01',
+          next_due_date: '2026-11-01',
+          claimed_by: 'payer-1',
+        }}
+        payments={[]}
+        month="2026-10-01"
+      />,
+    )
+    expect(screen.queryByText(REMIND_COPY.inviteButtonLabel)).not.toBeInTheDocument()
+    expect(screen.queryByText(REMIND_COPY.remindButtonLabel)).not.toBeInTheDocument()
+    expect(screen.queryByText('مراجعة الإيصال')).not.toBeInTheDocument()
+  })
+
   it('shows the previous-period-paid badge when the previous cycle settled', () => {
     render(
       <StudentProfile
