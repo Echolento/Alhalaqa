@@ -35,7 +35,6 @@ const mockProfile = {
 
 const mockTeacherData = {
   id: 'teacher-1',
-  currency: 'EGP',
   default_monthly_price: 150,
 }
 
@@ -55,9 +54,9 @@ describe('SettingsForm', () => {
     expect(screen.getByText('إعدادات المعلم')).toBeInTheDocument()
   })
 
-  it('renders currency select', () => {
+  it('has no currency picker (prices are always EGP)', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText((content) => content.includes('الجنية المصري'))).toBeInTheDocument()
+    expect(screen.queryByText((content) => content.includes('الجنية المصري'))).not.toBeInTheDocument()
   })
 
   it('renders save buttons', () => {
@@ -81,11 +80,6 @@ describe('SettingsForm', () => {
     const studentProfile = { ...mockProfile, role: 'student' as const }
     render(<SettingsForm profile={studentProfile} teacherData={mockTeacherData} email="test@example.com" />)
     expect(screen.queryByText('إعدادات المعلم')).not.toBeInTheDocument()
-  })
-
-  it('defaults to EGP currency when teacherData is null', () => {
-    render(<SettingsForm profile={mockProfile} teacherData={null} email="test@example.com" />)
-    expect(screen.getByText((content) => content.includes('الجنية المصري'))).toBeInTheDocument()
   })
 
   it('defaults to 0 price when teacherData is null', () => {
@@ -130,9 +124,9 @@ describe('SettingsForm', () => {
     expect(await screen.findByText('فشل حفظ الإعدادات')).toBeInTheDocument()
   })
 
-  it('shows the notifications card without any auto toggle (toggle killed)', () => {
+  it('has no notifications card or auto-reminder toggle', () => {
     render(<SettingsForm profile={mockProfile} teacherData={mockTeacherData} email="test@example.com" />)
-    expect(screen.getByText('الإشعارات')).toBeInTheDocument()
+    expect(screen.queryByText('الإشعارات')).not.toBeInTheDocument()
     expect(screen.queryByText('التذكير التلقائي مفعل')).not.toBeInTheDocument()
   })
 })

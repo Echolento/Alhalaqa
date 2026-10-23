@@ -50,6 +50,39 @@ export function validateInstapayHandle(input: unknown): InstapayHandleResult {
   return { ok: true, normalized: `${parts[0]}@instapay` }
 }
 
+/**
+ * Derive the InstaPay handle from a validated share link.
+ *
+ * Share links look like `https://ipn.eg/S/<handle>/instapay/<id>`. The handle
+ * is the first segment after `/S/`. Returns null when the link's path doesn't
+ * parse (format drift) so callers keep whatever handle they already have —
+ * link validity is enforced separately by validateInstapayLink.
+ */
+export function extractInstapayHandle(input: unknown): string | null {
+  if (typeof input !== 'string' || input.trim() === '') return null
+  let url: URL
+  try {
+    url = new URL(input.trim())
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'ipn.eg') return null
+  if (!url.pathname.startsWith('/S/')) return null
+  const segments = url.pathname.split('/').filter(Boolean)
+  const raw = segments[1]
+  if (!raw) return null
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(raw).trim()
+  } catch {
+    return null
+  }
+  const withoutSuffix = decoded.replace(/@instapay$/i, '').trim()
+  if (!withoutSuffix) return null
+  const check = validateInstapayHandle(`${withoutSuffix}@instapay`)
+  return check.ok ? check.normalized : null
+}
+
 export interface InstaPayTeacherRow {
   instapay_link?: string | null
   instapay_handle?: string | null

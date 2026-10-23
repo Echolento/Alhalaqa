@@ -23,7 +23,6 @@ export function buildWhatsAppUrl(phone: string, text: string): string {
 export function buildRemindWhatsAppText(params: {
   studentName: string
   amount?: number
-  currency?: string
   periodLabel?: string
   inviteUrl?: string
 }): string {
@@ -34,7 +33,6 @@ export function buildRemindWhatsAppUrl(params: {
   phone: string
   studentName: string
   amount?: number
-  currency?: string
   periodLabel?: string
   inviteUrl?: string
 }): string {

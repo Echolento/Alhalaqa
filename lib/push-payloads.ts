@@ -2,6 +2,8 @@
 // Pure push payload builders reused by the 4 V1 triggers (#29).
 // No DB, no network — transport happens at the sendPushNotification boundary.
 
+import { CURRENCY_CODE } from '@/lib/currency'
+
 export const PUSH_URLS = {
   DASHBOARD: '/dashboard',
   PAYMENTS: '/dashboard/payments',
@@ -29,16 +31,13 @@ export function buildAutoDuePayload(params: {
   payerProfileId: string
   studentName: string
   amount?: number
-  currency?: string
   studentId: string
   periodKey?: string
   autoRemindersEnabled?: boolean
 }): PushTarget | null {
   if (params.autoRemindersEnabled === false) return null
   const amountPart =
-    params.amount !== undefined
-      ? ` — ${params.amount}${params.currency ? ` ${params.currency}` : ''}`
-      : ''
+    params.amount !== undefined ? ` — ${params.amount} ${CURRENCY_CODE}` : ''
   return {
     profileId: params.payerProfileId,
     payload: {
@@ -53,15 +52,12 @@ export function buildManualRemindPayload(params: {
   payerProfileId: string
   studentName: string
   amount?: number
-  currency?: string
   studentId: string
   periodKey?: string
   autoRemindersEnabled?: boolean
 }): PushTarget {
   const amountPart =
-    params.amount !== undefined
-      ? ` — ${params.amount}${params.currency ? ` ${params.currency}` : ''}`
-      : ''
+    params.amount !== undefined ? ` — ${params.amount} ${CURRENCY_CODE}` : ''
   return {
     profileId: params.payerProfileId,
     payload: {

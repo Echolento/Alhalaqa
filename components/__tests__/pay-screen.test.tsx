@@ -5,7 +5,6 @@ import { PayScreen, type PayScreenData } from '@/components/pay/pay-screen'
 const baseData: PayScreenData = {
   studentName: 'أحمد',
   amount: 200,
-  currency: 'EGP',
   periodKey: '2026-09-01',
   periodLabel: 'سبتمبر 2026',
   dueDateLabel: '5 سبتمبر 2026',

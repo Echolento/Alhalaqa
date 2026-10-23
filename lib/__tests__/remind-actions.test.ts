@@ -47,7 +47,6 @@ describe('sendManualRemind routing (reuses slice-1 trigger + payload builder)', 
       studentName: 'أحمد',
       payerProfileId: 'payer-1',
       amount: 200,
-      currency: 'EGP',
       periodKey: '2026-09-01',
     })
 
@@ -58,7 +57,6 @@ describe('sendManualRemind routing (reuses slice-1 trigger + payload builder)', 
       payerProfileId: 'payer-1',
       studentName: 'أحمد',
       amount: 200,
-      currency: 'EGP',
       periodKey: '2026-09-01',
     })
     expect(mockLog).toHaveBeenCalledOnce()

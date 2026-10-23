@@ -7,14 +7,18 @@
  * behaviour. Every DB expectation below mirrors the server-action contract
  * (lib/schedule-actions.ts, lib/student-actions.ts, lib/payment-actions.ts).
  *
+ * One class schedule: there are no per-student overrides or deferred/pending
+ * schedules anymore. A class change applies to everyone who is not currently
+ * owing; a debtor keeps its current cycle untouched.
+ *
  * Flow:
- *   onboarding (weekly + Monday) → seed debtor B (overdue since yesterday,
- *   never paid) → UI-add student A (starts next Monday → awaiting-start section)
+ *   onboarding (weekly + Monday) → derived InstaPay handle
+ *   → seed debtor B (overdue since yesterday, never paid)
+ *   → UI-add student A (starts next Monday → awaiting-start section)
  *   → mark-paid round trip on B (settle_cycle / reopen_cycle)
- *   → class change weekly → monthly (B deferred to pending_*, A applied now)
- *   → custom +45d date on A → /pay awaiting card → reset A to class schedule
- *   → custom past date on B → reset B blocked while owing
- *   → settle B's deferred debt → pending class schedule promoted by settle_cycle
+ *   → class change weekly → monthly (A applied now, debtor B untouched)
+ *   → no per-student date editor / reset in the profile
+ *   → settle B's debt on its old rhythm (no promotion)
  */
 import { test, expect } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
@@ -39,8 +43,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
-const STUDENT_COLS =
-  'id, frequency, next_due_date, starts_on, schedule_overridden, pending_frequency, pending_next_due, monthly_price'
+const STUDENT_COLS = 'id, frequency, next_due_date, starts_on, monthly_price'
 
 function isoDateOf(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -71,9 +74,6 @@ type StudentRow = {
   frequency: string
   next_due_date: string
   starts_on: string
-  schedule_overridden: boolean
-  pending_frequency: string | null
-  pending_next_due: string | null
   monthly_price: number
 }
 
@@ -86,10 +86,15 @@ async function fetchStudent(id: string): Promise<StudentRow> {
 async function fetchTeacher(id: string) {
   const { data } = await admin
     .from('teachers')
-    .select('default_frequency, default_weekday, default_monthly_price')
+    .select('default_frequency, default_weekday, default_monthly_price, instapay_handle')
     .eq('id', id)
     .single()
-  return data as { default_frequency: string; default_weekday: number | null; default_monthly_price: number }
+  return data as {
+    default_frequency: string
+    default_weekday: number | null
+    default_monthly_price: number
+    instapay_handle: string | null
+  }
 }
 
 async function paymentFor(studentId: string, month: string): Promise<{ paid: boolean } | null> {
@@ -129,7 +134,7 @@ async function teacherIdFor(uid: string): Promise<string> {
   return data!.id as string
 }
 
-test('schedule model + 4-state billing: onboarding → roster → toggle → class change → custom/reset', async ({
+test('class schedule + 4-state billing: onboarding → roster → toggle → class change', async ({
   page,
 }) => {
   test.setTimeout(240000)
@@ -155,8 +160,6 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
   const firstNextMonth = firstOfMonthOnOrAfterToday()
   const seedDue = isoDaysFromNow(-1) // B: started, owes since yesterday
   const settleNext = advanceDueDate(seedDue, 'weekly')
-  const plus45 = isoDaysFromNow(45)
-  const customPast = isoDaysFromNow(-2)
 
   try {
     // ---- login → onboarding (weekly + Monday) ----
@@ -174,8 +177,9 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
     await page.getByRole('button', { name: 'متابعة' }).click()
 
     await page.waitForURL(/\/welcome\/instapay/, { timeout: 20000 })
-    await page.locator('#instapay_link').fill('https://ipn.eg/S/e2esched')
-    await page.locator('#instapay_handle').fill('e2esched@instapay')
+    // No handle field anymore — it is derived from the share link.
+    await expect(page.locator('#instapay_handle')).toHaveCount(0)
+    await page.locator('#instapay_link').fill('https://ipn.eg/S/e2esched/instapay/1')
     await page.getByRole('button', { name: 'إنهاء الإعداد' }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 20000 })
     await expect(page.getByPlaceholder('البحث عن طالب...')).toBeVisible({ timeout: 20000 })
@@ -185,8 +189,9 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
     expect(teacher.default_frequency).toBe('weekly')
     expect(teacher.default_weekday).toBe(1)
     expect(Number(teacher.default_monthly_price)).toBe(200)
+    expect(teacher.instapay_handle).toBe('e2esched@instapay')
 
-    // ---- seed debtor B: started today, never paid → main roster, unpaid ----
+    // ---- seed debtor B: started yesterday, never paid → main roster, unpaid ----
     const { data: seeded, error: seedErr } = await admin
       .from('students')
       .insert({
@@ -196,7 +201,6 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
         frequency: 'weekly',
         next_due_date: seedDue,
         starts_on: seedDue,
-        schedule_overridden: false,
       })
       .select('id')
       .single()
@@ -206,7 +210,7 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
     await page.goto(`${BASE_URL}/dashboard`)
     await expect(page.getByText('طالب مستحق')).toBeVisible({ timeout: 20000 })
     await expect(page.getByTestId('awaiting-start-toggle')).toBeHidden()
-    await expect(page.getByTestId(`custom-schedule-${bId}`)).toBeHidden()
+    await expect(page.getByTestId(`custom-schedule-${bId}`)).toHaveCount(0)
 
     // ---- add student A through the real dialog (phone optional, skip it) ----
     await page.getByRole('button', { name: 'إضافة طالب' }).click()
@@ -226,7 +230,6 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
 
     // added with no explicit date → class schedule, starts next Monday
     expect(a.frequency).toBe('weekly')
-    expect(a.schedule_overridden).toBe(false)
     expect(a.starts_on).toBe(startISO)
     expect(a.next_due_date).toBe(startISO)
     expect(Number(a.monthly_price)).toBe(200)
@@ -278,108 +281,35 @@ test('schedule model + 4-state billing: onboarding → roster → toggle → cla
     expect(aAfterChange.frequency).toBe('monthly')
     expect(aAfterChange.starts_on).toBe(firstNextMonth)
     expect(aAfterChange.next_due_date).toBe(firstNextMonth)
-    expect(aAfterChange.pending_frequency).toBeNull()
 
-    // B (owes the current cycle): old rhythm kept, new one deferred
+    // B (owes the current cycle): its rhythm and date are left untouched
     const bAfterChange = await fetchStudent(bId)
     expect(bAfterChange.frequency).toBe('weekly')
     expect(bAfterChange.next_due_date).toBe(seedDue)
-    expect(bAfterChange.pending_frequency).toBe('monthly')
-    expect(bAfterChange.pending_next_due).toBe(firstNextMonth)
-    expect(bAfterChange.schedule_overridden).toBe(false)
+    expect(bAfterChange.starts_on).toBe(seedDue)
 
     // A still lands in the awaiting section after the class change
     await page.goto(`${BASE_URL}/dashboard`)
     await expect(page.getByTestId('awaiting-start-toggle')).toBeVisible({ timeout: 20000 })
-    await expect(page.getByTestId(`custom-schedule-${bId}`)).toBeHidden()
+    await expect(page.getByTestId(`custom-schedule-${bId}`)).toHaveCount(0)
 
-    // ---- custom +45d date on A → overridden + awaiting card on /pay ----
+    // ---- no per-student date editor / reset on the profile ----
     await page.goto(`${BASE_URL}/dashboard/students/${a.id}`)
-    await page.getByRole('button', { name: 'تعديل' }).nth(3).click()
-    await page.getByTestId('profile-next-due').fill(plus45)
-    await page.getByTestId('profile-next-due-save').click()
-    await expect(page.getByTestId('profile-custom-schedule')).toBeVisible({ timeout: 20000 })
+    await expect(page.getByText('تاريخ الاستحقاق')).toBeVisible({ timeout: 20000 })
+    await expect(page.getByTestId('profile-next-due')).toHaveCount(0)
+    await expect(page.getByTestId('profile-reset-schedule')).toHaveCount(0)
+    await expect(page.getByTestId('profile-custom-schedule')).toHaveCount(0)
 
-    const aCustom = await fetchStudent(a.id)
-    expect(aCustom.schedule_overridden).toBe(true)
-    expect(aCustom.starts_on).toBe(plus45)
-    expect(aCustom.next_due_date).toBe(plus45)
-    expect(aCustom.frequency).toBe('monthly')
-    expect(aCustom.pending_frequency).toBeNull()
-
-    await page.goto(`${BASE_URL}/pay?student=${a.id}`)
-    await expect(page.getByTestId('awaiting-start')).toBeVisible({ timeout: 20000 })
-
-    // ---- reset A → back to the class schedule (monthly, 1st) ----
-    await page.goto(`${BASE_URL}/dashboard/students/${a.id}`)
-    await expect(page.getByTestId('profile-reset-schedule')).toBeVisible({ timeout: 20000 })
-    await page.getByTestId('profile-reset-schedule').click()
-    await page.getByRole('button', { name: 'رجوع للجدول' }).click()
-    await expect
-      .poll(async () => fetchStudent(a.id), { timeout: 15000 })
-      .toMatchObject({
-        schedule_overridden: false,
-        frequency: 'monthly',
-        starts_on: firstNextMonth,
-        next_due_date: firstNextMonth,
-      })
-
-    // reset kept A not-yet-started → still awaiting
+    // ---- settle the debtor on its own rhythm (nothing to promote) ----
     await page.goto(`${BASE_URL}/dashboard`)
-    await expect(page.getByTestId('awaiting-start-toggle')).toBeVisible({ timeout: 20000 })
-
-    // ---- custom PAST date on B (still owed) → overridden in main roster ----
-    await page.goto(`${BASE_URL}/dashboard/students/${bId}`)
-    await page.getByRole('button', { name: 'تعديل' }).nth(3).click()
-    await page.getByTestId('profile-next-due').fill(customPast)
-    await page.getByTestId('profile-next-due-save').click()
-    await expect(page.getByTestId('profile-custom-schedule')).toBeVisible({ timeout: 20000 })
-
-    const bCustom = await fetchStudent(bId)
-    expect(bCustom.schedule_overridden).toBe(true)
-    expect(bCustom.starts_on).toBe(customPast)
-    expect(bCustom.next_due_date).toBe(customPast)
-    expect(bCustom.frequency).toBe('weekly')
-    // the deferred class change survives the custom date
-    expect(bCustom.pending_frequency).toBe('monthly')
-    expect(bCustom.pending_next_due).toBe(firstNextMonth)
-
-    await page.goto(`${BASE_URL}/dashboard`)
-    await expect(page.getByTestId(`custom-schedule-${bId}`)).toBeVisible({ timeout: 20000 })
-    await expect(page.getByRole('button', { name: 'تحديد كمدفوع' })).toBeVisible() // B still owes
-
-    // ---- reset B blocked while owing: error toast, DB untouched ----
-    await page.goto(`${BASE_URL}/dashboard/students/${bId}`)
-    await expect(page.getByTestId('profile-reset-schedule')).toBeVisible({ timeout: 20000 })
-    await page.getByTestId('profile-reset-schedule').click()
-    await page.getByRole('button', { name: 'رجوع للجدول' }).click()
-    // .first(): the text renders in the visible toast div AND Radix's
-    // aria-live announcement span (role=status) — either proves the error fired.
-    await expect(
-      page.getByText('سدّد الدورة الحالية أولًا، ثم ارجع الطالب لجدول المجموعة').first(),
-    ).toBeVisible({ timeout: 15000 })
-
-    const bBlocked = await fetchStudent(bId)
-    expect(bBlocked.schedule_overridden).toBe(true)
-    expect(bBlocked.next_due_date).toBe(customPast)
-    expect(bBlocked.frequency).toBe('weekly')
-
-    // ---- settle the deferred debt → pending class schedule promoted ----
-    // settle_cycle promotes pending_frequency once the last old-rhythm cycle
-    // is paid: monthly rhythm + pending_next_due win, custom flag survives.
+    await expect(page.getByRole('button', { name: 'تحديد كمدفوع' })).toBeVisible({ timeout: 20000 })
     await page.getByRole('button', { name: 'تحديد كمدفوع' }).click()
     await expect
-      .poll(async () => (await paymentFor(bId, customPast))?.paid, { timeout: 15000 })
+      .poll(async () => (await paymentFor(bId, seedDue))?.paid, { timeout: 15000 })
       .toBe(true)
     await expect
       .poll(async () => fetchStudent(bId), { timeout: 15000 })
-      .toMatchObject({
-        frequency: 'monthly',
-        next_due_date: firstNextMonth,
-        pending_frequency: null,
-        pending_next_due: null,
-        schedule_overridden: true,
-      })
+      .toMatchObject({ frequency: 'weekly', next_due_date: settleNext })
   } finally {
     await cleanup(uid)
   }

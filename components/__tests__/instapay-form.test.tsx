@@ -7,10 +7,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { InstapayForm } from '@/components/welcome/instapay-form'
 
 describe('InstapayForm (step 2)', () => {
-  it('renders link + handle fields', () => {
+  it('renders the link field only (handle is derived)', () => {
     render(<InstapayForm onSubmit={vi.fn()} />)
     expect(screen.getByTestId('instapay-link-input')).toBeTruthy()
-    expect(screen.getByTestId('instapay-handle-input')).toBeTruthy()
+    expect(screen.queryByTestId('instapay-handle-input')).toBeNull()
   })
 
   it('submits the contract', async () => {

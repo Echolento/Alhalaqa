@@ -7,7 +7,6 @@ describe('buildAutoDuePayload (tracer)', () => {
       payerProfileId: 'payer-1',
       studentName: 'أحمد',
       amount: 200,
-      currency: 'EGP',
       studentId: 'stu-1',
       periodKey: '2026-09-01',
       autoRemindersEnabled: true,

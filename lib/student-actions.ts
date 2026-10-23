@@ -5,7 +5,7 @@ import { requireUser } from './action-context'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
 import { normalizeFrequency, normalizeWeekday, type BillingFrequency } from './billing-period'
-import { firstBillDate, isValidDueDate } from './billing-next'
+import { firstBillDate } from './billing-next'
 import { formatPhoneNumber } from './phone-utils'
 
 export async function getTeacherStudents() {
@@ -23,7 +23,7 @@ export async function getTeacherStudents() {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, schedule_overridden, claimed_by, created_at, updated_at, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, claimed_by, created_at, updated_at, teacher_id')
     .is('deleted_at', null)
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
@@ -36,7 +36,6 @@ export async function getTeacherStudents() {
     frequency: normalizeFrequency((s as any).frequency),
     next_due_date: ((s as any).next_due_date ?? null) as string | null,
     starts_on: ((s as any).starts_on ?? null) as string | null,
-    schedule_overridden: !!(s as any).schedule_overridden,
   }))
 }
 
@@ -79,8 +78,6 @@ export interface NewStudentInput {
   /** Per-cycle price (what the parent pays each time). Falls back to the teacher default. */
   price?: number
   frequency?: BillingFrequency
-  /** First bill date (YYYY-MM-DD). Garbage falls back to the 1st of next month. */
-  nextDueDate?: string
 }
 
 function normalizeNewStudentInput(input?: string | NewStudentInput): NewStudentInput {
@@ -122,15 +119,8 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
     ? normalizeFrequency(requestedFrequency)
     : teacherFrequency
   const price = Number((opts as { price?: unknown }).price) || Number(teacher.default_monthly_price) || 0
-  const customDate =
-    typeof (opts as { nextDueDate?: unknown }).nextDueDate === 'string' &&
-    isValidDueDate((opts as { nextDueDate?: string }).nextDueDate)
-      ? ((opts as { nextDueDate?: string }).nextDueDate as string)
-      : null
-  // Students follow the class schedule unless the caller supplied an explicit
-  // date or frequency (legacy/import paths).
-  const scheduleOverridden = !!customDate || !!requestedFrequency
-  const startsOn = customDate ?? firstBillDate(frequency, new Date(), teacherWeekday)
+  // New students always follow the class schedule.
+  const startsOn = firstBillDate(frequency, new Date(), teacherWeekday)
 
   const { data, error } = await service
     .from('students')
@@ -142,7 +132,6 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
       frequency,
       next_due_date: startsOn,
       starts_on: startsOn,
-      schedule_overridden: scheduleOverridden,
     })
     .select()
     .single()
@@ -159,70 +148,6 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
   revalidatePath('/dashboard/students')
   revalidatePath('/dashboard')
   return { success: true, student: data }
-}
-
-/**
- * Teacher's date lever: correct or reschedule the outstanding bill.
- * Strict date gate — garbage never writes. Ownership-checked.
- */
-export async function updateStudentNextDue(studentId: string, nextDueDate: string) {
-  const ctx = await requireUser()
-  if ('error' in ctx) return ctx
-  const { user, service } = ctx
-
-  if (!(await assertOwnsStudent(service, user.id, studentId))) {
-    return { error: 'الطالب غير موجود' }
-  }
-
-  if (!isValidDueDate(nextDueDate)) return { error: 'تاريخ غير صالح — استخدم YYYY-MM-DD.' }
-
-  const today = new Date()
-  const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
-  const minISO = `${minDate.getFullYear()}-${String(minDate.getMonth() + 1).padStart(2, '0')}-${String(minDate.getDate()).padStart(2, '0')}`
-  if (nextDueDate < minISO) {
-    return { error: 'لا يمكن اختيار تاريخ أقدم من ٣٠ يومًا.' }
-  }
-
-  const { data: current } = await service
-    .from('students')
-    .select('starts_on')
-    .is('deleted_at', null)
-    .eq('id', studentId)
-    .maybeSingle()
-
-  const { count: paidCount } = await service
-    .from('student_payments')
-    .select('id', { count: 'exact', head: true })
-    .eq('student_id', studentId)
-    .eq('paid', true)
-
-  const hasEverPaid = (paidCount ?? 0) > 0
-  const startsOn = hasEverPaid
-    ? ((current as { starts_on?: string | null } | null)?.starts_on ?? null)
-    : nextDueDate
-
-  const { error } = await service
-    .from('students')
-    .update({
-      next_due_date: nextDueDate,
-      starts_on: startsOn,
-      schedule_overridden: true,
-    })
-    .is('deleted_at', null)
-    .eq('id', studentId)
-
-  if (error) return { error: error.message }
-
-  await logActivity({
-    actionType: 'next_due_update',
-    entityType: 'student',
-    entityId: studentId,
-    details: { next_due_date: nextDueDate, custom_schedule: true },
-  }, user.id)
-
-  revalidatePath('/dashboard/students')
-  revalidatePath('/dashboard')
-  return { success: true }
 }
 
 export async function updateStudent(studentId: string, name: string, phone?: string) {
@@ -307,7 +232,6 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     frequency: bulkFrequency,
     next_due_date: startsOn,
     starts_on: startsOn,
-    schedule_overridden: false,
   }))
 
   const { error } = await service.from('students').insert(inserts)

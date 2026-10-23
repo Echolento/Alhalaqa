@@ -103,7 +103,7 @@ export async function GET(request: Request) {
 
   const { data: teachers } = await supabase
     .from('teachers')
-    .select('id, profile_id, default_monthly_price, currency')
+    .select('id, profile_id, default_monthly_price')
 
   if (!teachers || teachers.length === 0) {
     return NextResponse.json({ sent: 0, reason: 'no teachers', triggers, date: dateKey })
@@ -172,7 +172,6 @@ export async function GET(request: Request) {
             payerProfileId: row.claimed_by,
             studentName: row.name || 'طالب',
             amount,
-            currency: teacher.currency || 'EGP',
             studentId: row.id,
             periodKey,
           })

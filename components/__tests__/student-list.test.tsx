@@ -22,7 +22,6 @@ const props = {
   students,
   payments,
   month: '2025-06',
-  currency: 'SAR',
   initialCollected: 100,
   initialExpected: 300,
   shareEntryDefaultOpen: true,
@@ -141,7 +140,7 @@ describe('StudentList (merged home)', () => {
       { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, next_due_date: '2026-10-01', paymentState: 'unpaid' },
     ]
     const { container } = render(<StudentList {...props} students={rows} />)
-    expect(screen.getAllByText('100 ر.س').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('100 ج.م').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText(/الاستحقاق/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('مدفوع').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('لم يدفع').length).toBeGreaterThanOrEqual(1)
@@ -181,10 +180,10 @@ describe('StudentList (merged home)', () => {
   it.skip('toggle updates the received card live; remaining stays at the server value', async () => {
     render(<StudentList {...props} />)
     // pending 200 appears twice (summary card + s2 row readout)
-    expect(screen.getAllByText('200 ر.س')).toHaveLength(2)
+    expect(screen.getAllByText('200 ج.م')).toHaveLength(2)
     fireEvent.click(screen.getByText('تحديد كمدفوع'))
     // received 100 -> 300 updates live; remaining is NOT re-derived from it.
-    expect(await screen.findByText('300 ر.س')).toBeInTheDocument()
-    expect(screen.queryByText('0 ر.س')).not.toBeInTheDocument()
+    expect(await screen.findByText('300 ج.م')).toBeInTheDocument()
+    expect(screen.queryByText('0 ج.م')).not.toBeInTheDocument()
   })
 })

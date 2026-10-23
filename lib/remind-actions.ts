@@ -39,7 +39,6 @@ export interface SendManualRemindParams {
   studentName: string
   payerProfileId?: string | null
   amount?: number
-  currency?: string
   periodKey?: string
 }
 
@@ -78,7 +77,6 @@ export async function sendManualRemind(
     payerProfileId: params.payerProfileId,
     studentName: params.studentName,
     amount: params.amount,
-    currency: params.currency,
     periodKey,
   })) as { success?: boolean; reason?: string; error?: string }
 

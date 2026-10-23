@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
-import { validateInstapayHandle, validateInstapayLink } from './instapay'
+import { extractInstapayHandle, validateInstapayLink } from './instapay'
 import { logActivity } from './log-activity'
 import { getSiteUrl, authRedirectOrigin } from './auth-redirect'
 import { normalizeFrequency, normalizeWeekday } from './billing-period'
@@ -311,10 +311,8 @@ export async function updateTeacherSettings(formData: FormData) {
   if ('error' in ctx) return ctx
   const { user, service } = ctx
 
-  const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
   const rawLink = ((formData.get('instapay_link') as string) || '').trim()
-  const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
 
   let instapayLink: string | null = null
   if (rawLink !== '') {
@@ -323,19 +321,15 @@ export async function updateTeacherSettings(formData: FormData) {
     instapayLink = linkCheck.normalized
   }
 
-  let instapayHandle: string | null = null
-  if (rawHandle !== '') {
-    const handleCheck = validateInstapayHandle(rawHandle)
-    if (!handleCheck.ok) return { error: handleCheck.error }
-    instapayHandle = handleCheck.normalized
-  }
+  // The handle is derived from the share link — never asked for separately.
+  // A non-parseable path leaves it null; the link itself is already validated.
+  const instapayHandle = instapayLink ? extractInstapayHandle(instapayLink) : null
 
   const { error } = await service
     .from('teachers')
     .upsert(
       {
         profile_id: user.id,
-        currency,
         default_monthly_price: defaultMonthlyPrice,
         instapay_link: instapayLink,
         instapay_handle: instapayHandle,
@@ -348,7 +342,7 @@ export async function updateTeacherSettings(formData: FormData) {
   await logActivity({
     actionType: 'teacher_settings_update',
     entityType: 'teacher',
-    details: { currency, default_monthly_price: defaultMonthlyPrice, instapay_link: instapayLink, instapay_handle: instapayHandle },
+    details: { default_monthly_price: defaultMonthlyPrice, instapay_link: instapayLink, instapay_handle: instapayHandle },
   })
 
   revalidatePath('/dashboard/settings')
@@ -359,17 +353,16 @@ export async function updateTeacherSettings(formData: FormData) {
 }
 
 /**
- * Onboarding step 1 (/welcome): billing basics — currency, per-cycle price,
- * billing frequency. Next-due defaults stay systemic (1st of next month,
- * stated in UI) and InstaPay moves to step 2. payment_day is legacy and no
- * longer read here even if a stale form posts it.
+ * Onboarding step 1 (/welcome): billing basics — per-cycle price, billing
+ * frequency. Next-due defaults stay systemic (1st of next month, stated in
+ * UI) and InstaPay moves to step 2. Currency is fixed to EGP and payment_day
+ * is legacy — neither is read here even if a stale form posts one.
  */
 export async function completeOnboarding(formData: FormData) {
   const ctx = await requireUser()
   if ('error' in ctx) return ctx
   const { user, service } = ctx
 
-  const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
   const defaultFrequency = normalizeFrequency(formData.get('default_frequency') as string | null)
   const defaultWeekday = normalizeWeekday(formData.get('default_weekday'))
@@ -383,7 +376,6 @@ export async function completeOnboarding(formData: FormData) {
     .upsert(
       {
         profile_id: user.id,
-        currency,
         default_monthly_price: defaultMonthlyPrice,
         default_frequency: defaultFrequency,
         default_weekday: defaultFrequency === 'monthly' ? null : defaultWeekday,
@@ -397,7 +389,6 @@ export async function completeOnboarding(formData: FormData) {
     actionType: 'onboarding_complete',
     entityType: 'teacher',
     details: {
-      currency,
       default_monthly_price: defaultMonthlyPrice,
       default_frequency: defaultFrequency,
       default_weekday: defaultFrequency === 'monthly' ? null : defaultWeekday,
@@ -410,8 +401,9 @@ export async function completeOnboarding(formData: FormData) {
 
 /**
  * Onboarding step 2 (/welcome/instapay): InstaPay contract, fully optional —
- * blanks skip (set later from Settings). Invalid values are rejected with
- * an explanation. Always finishes to the dashboard.
+ * blanks skip (set later from Settings). Invalid links are rejected with an
+ * explanation. The handle is derived from the link, never entered by hand.
+ * Always finishes to the dashboard.
  */
 export async function completeInstapayOnboarding(formData: FormData) {
   const ctx = await requireUser()
@@ -419,7 +411,6 @@ export async function completeInstapayOnboarding(formData: FormData) {
   const { user, service } = ctx
 
   const rawLink = ((formData.get('instapay_link') as string) || '').trim()
-  const rawHandle = ((formData.get('instapay_handle') as string) || '').trim()
 
   let instapayLink: string | null = null
   if (rawLink !== '') {
@@ -428,12 +419,7 @@ export async function completeInstapayOnboarding(formData: FormData) {
     instapayLink = linkCheck.normalized
   }
 
-  let instapayHandle: string | null = null
-  if (rawHandle !== '') {
-    const handleCheck = validateInstapayHandle(rawHandle)
-    if (!handleCheck.ok) return { error: handleCheck.error }
-    instapayHandle = handleCheck.normalized
-  }
+  const instapayHandle = instapayLink ? extractInstapayHandle(instapayLink) : null
 
   const { error } = await service
     .from('teachers')

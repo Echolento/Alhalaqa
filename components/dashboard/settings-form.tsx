@@ -9,29 +9,23 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { User, Bell, CheckCircle, AlertCircle } from 'lucide-react'
-import { NotificationToggle } from '@/components/dashboard/notification-toggle'
 
-import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
 import { updateTeacherSchedule } from '@/lib/schedule-actions'
 import type { Profile } from '@/lib/types'
-import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
-import { CurrencySelect } from '@/components/ui/currency-select'
 import { INSTAPAY_SETTINGS_EXPLAINER } from '@/lib/instapay'
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS } from '@/lib/onboarding-copy'
-import { normalizeFrequency, normalizeWeekday } from '@/lib/billing-period'
+import { normalizeFrequency } from '@/lib/billing-period'
 
 interface TeacherData {
   id: string
-  currency: string
   default_monthly_price: number
   default_frequency?: string | null
   default_weekday?: number | null
   instapay_link?: string | null
   instapay_handle?: string | null
-  auto_reminders_enabled?: boolean
 }
 
 interface SettingsFormProps {
@@ -202,22 +196,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
         </CardContent>
       </Card>
 
-      {/* Notifications */}
-      {profile.role === 'teacher' && (
-        <Card>
-          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              الإشعارات
-            </CardTitle>
-            <CardDescription>تذكير بالمستحقات المتأخرة عبر الإشعارات</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
-            <NotificationToggle />
-          </CardContent>
-        </Card>
-      )}
-
       {/* Payment schedule */}
       {profile.role === 'teacher' && (
         <Card>
@@ -227,7 +205,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               جدول الدفع
             </CardTitle>
             <CardDescription>
-              جدول واحد للمجموعة. الطلاب اللي عندهم تاريخ مخصص مش بيتأثروا.
+              جدول واحد للمجموعة يتغيّر لكل الطلاب.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
@@ -288,8 +266,7 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               ) : null}
 
               <p className="text-xs text-muted-foreground leading-6">
-                لو فيه طالب لسه عليه دورة قديمة، هيكملها الأول وبعدين ينتقل للجدول الجديد.
-                الطالب اللي عنده تاريخ مخصص بيفضل على جدوله.
+                الطالب اللي لسه عليه دورة قديمة هيكملها الأول، وبعد كده ينتقل للجدول الجديد.
               </p>
 
               <Button type="submit" disabled={scheduleLoading}>
@@ -327,11 +304,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="currency">العملة</Label>
-                <CurrencySelect name="currency" defaultValue={teacherData?.currency || 'EGP'} onValueChange={() => {}} />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="default_monthly_price">السعر الافتراضي للطلاب الجدد</Label>
                 <Input
                   id="default_monthly_price"
@@ -360,18 +332,6 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   defaultValue={teacherData?.instapay_link || ''}
                 />
                 <p className="text-xs text-muted-foreground">الصق رابط المشاركة من تطبيق InstaPay — يجب أن يبدأ بـ https://ipn.eg/S/</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="instapay_handle">عنوان InstaPay</Label>
-                <Input
-                  id="instapay_handle"
-                  name="instapay_handle"
-                  dir="ltr"
-                  placeholder="name@instapay"
-                  defaultValue={teacherData?.instapay_handle || ''}
-                />
-                <p className="text-xs text-muted-foreground">مثال: ahmed.ali@instapay</p>
               </div>
 
               <Button type="submit" disabled={loading}>

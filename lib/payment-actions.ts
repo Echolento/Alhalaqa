@@ -8,25 +8,26 @@ import { billingState } from './billing-state'
 import { nextDueAfterSettle } from './billing-cycle'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
+import { CURRENCY_CODE } from './currency'
 
 export async function getTeacherPayments(month?: string) {
   const ctx = await requireUser()
-  if ('error' in ctx) return { students: [], payments: [], currency: 'SAR', expected: 0, collected: 0 }
+  if ('error' in ctx) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0 }
   const { user, supabase } = ctx
 
   const { data: teacher } = await supabase
     .from('teachers')
-    .select('id, currency, default_monthly_price')
+    .select('id, default_monthly_price')
     .eq('profile_id', user.id)
     .maybeSingle()
 
-  if (!teacher) return { students: [], payments: [], currency: 'SAR', expected: 0, collected: 0 }
+  if (!teacher) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0 }
 
   const monthKey = month || getCurrentMonthKey()
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, schedule_overridden, claimed_by')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, claimed_by')
     .is('deleted_at', null)
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
@@ -81,7 +82,6 @@ export async function getTeacherPayments(month?: string) {
       frequency: normalizeFrequency((s as any).frequency),
       next_due_date: ((s as any).next_due_date ?? null) as string | null,
       starts_on: ((s as any).starts_on ?? null) as string | null,
-      schedule_overridden: !!(s as any).schedule_overridden,
       claimed_by: (s as any).claimed_by ?? null,
       currentMonthKey: state.cycleKey,
       paidCycleKey: state.paidCycleKey,
@@ -127,7 +127,7 @@ export async function getTeacherPayments(month?: string) {
     (a, b) => (stateOrder[a.paymentState] ?? 9) - (stateOrder[b.paymentState] ?? 9),
   )
 
-  return { students: normalizedStudents, payments, currency: teacher.currency, expected, collected }
+  return { students: normalizedStudents, payments, currency: CURRENCY_CODE, expected, collected }
 }
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {

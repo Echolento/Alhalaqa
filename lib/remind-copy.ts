@@ -5,6 +5,8 @@
 // UI components and lib/whatsapp-share.ts MUST import from here — no hardcoded
 // duplicates elsewhere in this slice.
 
+import { CURRENCY_CODE } from '@/lib/currency'
+
 export const REMIND_COPY = {
   // ——— Student form: payer phone field ———
   payerPhoneLabel: 'رقم واتساب ولي الأمر',
@@ -54,15 +56,12 @@ export const REMIND_COPY = {
   whatsappRemindText: (params: {
     studentName: string
     amount?: number
-    currency?: string
     periodLabel?: string
     /** Claim link — the share is never naked: the parent taps it and claims. */
     inviteUrl?: string
   }) => {
     const amountPart =
-      params.amount !== undefined
-        ? ` — ${params.amount}${params.currency ? ` ${params.currency}` : ''}`
-        : ''
+      params.amount !== undefined ? ` — ${params.amount} ${CURRENCY_CODE}` : ''
     const periodPart = params.periodLabel ? ` (عن فترة ${params.periodLabel})` : ''
     const linkPart = params.inviteUrl ? `\nرابط المتابعة والدفع: ${params.inviteUrl}` : ''
     return `السلام عليكم، تذكير برسوم ${params.studentName}${amountPart}${periodPart}. يرجى الدفع ورفع الإيصال. جزاكم الله خيراً.${linkPart}`

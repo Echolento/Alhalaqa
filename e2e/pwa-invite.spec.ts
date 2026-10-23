@@ -55,7 +55,6 @@ async function onboardTeacher(page: Page) {
   }
   if (page.url().includes('/welcome/instapay')) {
     await page.locator('#instapay_link').fill('https://ipn.eg/S/pwa123')
-    await page.locator('#instapay_handle').fill('pwa@instapay')
     await page.getByRole('button', { name: 'إنهاء الإعداد' }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 30000 })
   }

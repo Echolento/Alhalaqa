@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getInstaPayContract, validateInstapayHandle, validateInstapayLink } from '@/lib/instapay'
+import { extractInstapayHandle, getInstaPayContract, validateInstapayHandle, validateInstapayLink } from '@/lib/instapay'
 
 describe('validateInstapayLink', () => {
   it('accepts a valid ipn.eg share link', () => {
@@ -41,6 +41,33 @@ describe('validateInstapayHandle', () => {
   it('rejects a handle injection string', () => {
     const result = validateInstapayHandle('ahmed<script>@instapay')
     expect(result.ok).toBe(false)
+  })
+})
+
+describe('extractInstapayHandle', () => {
+  it('derives the handle from a share link path', () => {
+    expect(extractInstapayHandle('https://ipn.eg/S/ahmed.ali/instapay/123456')).toBe(
+      'ahmed.ali@instapay',
+    )
+  })
+
+  it('accepts a link whose segment already carries the @instapay suffix', () => {
+    expect(extractInstapayHandle('https://ipn.eg/S/ahmed.ali%40instapay/instapay/1')).toBe(
+      'ahmed.ali@instapay',
+    )
+  })
+
+  it('returns null when the path has no handle segment', () => {
+    expect(extractInstapayHandle('https://ipn.eg/S/')).toBeNull()
+  })
+
+  it('returns null for a non-ipn.eg link', () => {
+    expect(extractInstapayHandle('https://ipn-eg.com/S/ahmed.ali/instapay/1')).toBeNull()
+  })
+
+  it('returns null for garbage input', () => {
+    expect(extractInstapayHandle('not a url')).toBeNull()
+    expect(extractInstapayHandle('')).toBeNull()
   })
 })
 

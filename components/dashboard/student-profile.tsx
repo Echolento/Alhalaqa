@@ -26,13 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getPaymentStatus } from '@/lib/payment-status'
-import { getCurrencySymbol } from '@/lib/currencies'
+import { CURRENCY_SYMBOL } from '@/lib/currency'
 import { toggleStudentPayment, updateStudentMonthlyPrice } from '@/lib/payment-actions'
 import { formatDueDateAr } from '@/lib/billing-next'
-import { updateStudent, deleteStudent, updateStudentNextDue } from '@/lib/student-actions'
-import { resetStudentSchedule } from '@/lib/schedule-actions'
+import { updateStudent, deleteStudent } from '@/lib/student-actions'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { useRouter } from 'next/navigation'
@@ -47,7 +45,6 @@ interface StudentProfileProps {
   student: DashboardStudent
   payments: PaymentView[]
   month: string
-  currency: string
 }
 
 function Row({
@@ -75,10 +72,10 @@ function Row({
   )
 }
 
-export function StudentProfile({ student, payments, month, currency }: StudentProfileProps) {
+export function StudentProfile({ student, payments, month }: StudentProfileProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const currencySymbol = getCurrencySymbol(currency)
+  const currencySymbol = CURRENCY_SYMBOL
   // The price label must match the student's cycle — "الاشتراك الشهري" on a
   // weekly student read as a contradiction.
   const freqWord =
@@ -91,11 +88,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   const rowPaid = current?.paid || false
   const state = student.paymentState
   const status = getPaymentStatus(state)
-  const minDueISO = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  })()
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)
@@ -104,7 +96,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     (student.phone || '').startsWith('+20') ? (student.phone || '').slice(3) : (student.phone || '')
   )
   const [priceVal, setPriceVal] = useState(String(student.monthly_price || 0))
-  const [dayOpen, setDayOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const refresh = () => router.refresh()
@@ -149,36 +140,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
       setEditField(null)
-      refresh()
-    } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
-    }
-  }
-
-  const [resetOpen, setResetOpen] = useState(false)
-  const handleResetSchedule = async () => {
-    setLoading(true)
-    const result = await resetStudentSchedule(student.id)
-    setLoading(false)
-    if ('success' in result) {
-      toast({ title: '✓ رجع الطالب لجدول المجموعة' })
-      setResetOpen(false)
-      refresh()
-    } else {
-      toast({ variant: 'destructive', title: 'خطأ', description: result.error })
-    }
-  }
-
-  const [nextDueVal, setNextDueVal] = useState(
-    student.next_due_date ?? '',
-  )
-  const saveNextDue = async () => {
-    setLoading(true)
-    const result = await updateStudentNextDue(student.id, nextDueVal)
-    setLoading(false)
-    if ('success' in result) {
-      toast({ title: '✓ تم الحفظ' })
-      setDayOpen(false)
       refresh()
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: result.error })
@@ -232,15 +193,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                   className="text-[10px] px-2 py-0.5"
                 >
                   الفترة السابقة مدفوعة
-                </Badge>
-              ) : null}
-              {student.schedule_overridden ? (
-                <Badge
-                  data-testid="profile-custom-schedule"
-                  variant="outline"
-                  className="text-[10px] px-2 py-0.5 border-violet-200 text-violet-700 bg-violet-50"
-                >
-                  تاريخ مخصص
                 </Badge>
               ) : null}
               {student.claimed_by ? (
@@ -299,61 +251,14 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         <Row
           icon={CalendarDays}
           label="تاريخ الاستحقاق"
-          edit={
-            <Popover open={dayOpen} onOpenChange={(o) => { setDayOpen(o); if (o) setNextDueVal(student.next_due_date ?? '') }}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-3 space-y-2" align="start">
-                <Label htmlFor="profile-next-due">
-                  {payments.length === 0 ? 'تاريخ أول فاتورة مستحقة' : 'تاريخ الاستحقاق القادم'}
-                </Label>
-                <Input
-                  id="profile-next-due"
-                  data-testid="profile-next-due"
-                  type="date"
-                  min={minDueISO}
-                  value={nextDueVal}
-                  onChange={(e) => setNextDueVal(e.target.value)}
-                  className="min-h-[44px]"
-                />
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  أقدم تاريخ مسموح قبل ٣٠ يومًا. تغيير التاريخ يجعله مخصصًا لهذا الطالب.
-                </p>
-                <Button
-                  onClick={saveNextDue}
-                  disabled={loading}
-                  data-testid="profile-next-due-save"
-                  className="w-full min-h-[44px]"
-                >
-                  حفظ
-                </Button>
-              </PopoverContent>
-            </Popover>
-          }
         >
           الاستحقاق {formatDueDateAr(student.next_due_date)}
         </Row>
         <Row
           icon={CalendarDays}
           label="جدول الدفع"
-          edit={
-            student.schedule_overridden ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] gap-1"
-                onClick={() => setResetOpen(true)}
-                disabled={loading}
-                data-testid="profile-reset-schedule"
-              >
-                رجوع لجدول المجموعة
-              </Button>
-            ) : null
-          }
         >
           {freqWord}
-          {student.schedule_overridden ? ' — تاريخ مخصص' : ' — ضمن جدول المجموعة'}
         </Row>
       </Card>
 
@@ -375,7 +280,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                 studentName={student.full_name || student.name || 'طالب'}
                 payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
                 amount={Number(student.monthly_price) || undefined}
-                currency={currency}
                 periodKey={month}
                 phone={student.phone ?? null}
               />
@@ -419,26 +323,6 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           )}
         </CardContent>
       </Card>
-
-      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>رجوع لجدول المجموعة</AlertDialogTitle>
-            <AlertDialogDescription>
-              هيرجع تاريخ {student.full_name || student.name} وجدوله لنفس جدول بقية المجموعة.
-              {rowPaid || state === 'awaiting_start'
-                ? ' هيتحدد أول استحقاق جديد بعد الدورة الحالية.'
-                : ' لازم تسدّد الدورة الحالية الأول.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetSchedule} disabled={loading}>
-              رجوع للجدول
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Card className="border-destructive/20">
         <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">

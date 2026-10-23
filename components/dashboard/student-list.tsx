@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog'
 import { toggleStudentPayment } from '@/lib/payment-actions'
 import { applyPaidOverride, getPaymentStatus } from '@/lib/payment-status'
-import { getCurrencySymbol } from '@/lib/currencies'
+import { CURRENCY_SYMBOL } from '@/lib/currency'
 import { AddStudentDialog } from '@/components/dashboard/add-student-dialog'
 import { ShareEntryCard } from '@/components/dashboard/share-entry-card'
 import { useToast } from '@/hooks/use-toast'
@@ -41,7 +41,6 @@ interface StudentListProps {
   students: DashboardStudent[]
   payments: PaymentView[]
   month: string
-  currency: string
   initialCollected: number
   initialExpected: number
   /** Ids of the overdue students — the ?overdue=1 email overlay lists just these. */
@@ -53,7 +52,7 @@ interface StudentListProps {
   shareEntryDefaultOpen: boolean
 }
 
-export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
+export function StudentList({ students, payments, month, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [showAwaiting, setShowAwaiting] = useState(false)
@@ -62,7 +61,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
   const [localPayments, setLocalPayments] = useState(payments)
   const [collected, setCollected] = useState(initialCollected)
   const { toast } = useToast()
-  const currencySymbol = getCurrencySymbol(currency)
+  const currencySymbol = CURRENCY_SYMBOL
   const overdueList = overdueIds.length ? students.filter((s) => overdueIds.includes(s.id)) : []
 
   useEffect(() => {
@@ -220,15 +219,6 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               الفترة السابقة مدفوعة
                             </Badge>
                           ) : null}
-                          {student.schedule_overridden ? (
-                            <Badge
-                              data-testid={`custom-schedule-${student.id}`}
-                              variant="outline"
-                              className="text-[10px] px-2 py-0.5 border-violet-200 text-violet-700 bg-violet-50"
-                            >
-                              تاريخ مخصص
-                            </Badge>
-                          ) : null}
                           {student.claimed_by ? (
                             <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
                               ولي الأمر مربوط
@@ -311,7 +301,6 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               studentName={student.full_name || student.name || 'طالب'}
                               payerProfileId={student.claimed_by ?? student.payer_profile_id ?? student.payerProfileId ?? null}
                               amount={Number(student.monthly_price) || undefined}
-                              currency={currency}
                               periodKey={student.currentMonthKey ?? month}
                               phone={student.phone ?? null}
                             />
@@ -358,11 +347,6 @@ export function StudentList({ students, payments, month, currency, initialCollec
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    {student.schedule_overridden ? (
-                      <Badge variant="outline" className="text-[10px] border-violet-200 text-violet-700 bg-violet-50">
-                        تاريخ مخصص
-                      </Badge>
-                    ) : null}
                     <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent">
                       لم يبدأ بعد
                     </Badge>

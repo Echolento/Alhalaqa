@@ -21,7 +21,6 @@ interface RemindButtonProps {
   studentName: string
   payerProfileId?: string | null
   amount?: number
-  currency?: string
   periodKey?: string
   /** Payer WhatsApp for the free wa.me fallback link. */
   phone?: string | null
@@ -35,7 +34,6 @@ export function RemindButton({
   studentName,
   payerProfileId,
   amount,
-  currency,
   periodKey,
   phone,
   variant = 'outline',
@@ -72,7 +70,6 @@ export function RemindButton({
         phone,
         studentName,
         amount,
-        currency,
         periodLabel: periodKey,
         inviteUrl: result.claimUrl,
       })
@@ -98,7 +95,6 @@ export function RemindButton({
         studentName,
         payerProfileId: payerProfileId ?? null,
         amount,
-        currency,
         periodKey,
       })
       if (result.success) {

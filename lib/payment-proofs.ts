@@ -19,6 +19,7 @@ import {
 } from '@/lib/billing-next'
 import { billingState } from '@/lib/billing-state'
 import { getInstaPayContract } from '@/lib/instapay'
+import { CURRENCY_CODE } from '@/lib/currency'
 import { buildReceiptUploadedPayload } from '@/lib/push-payloads'
 import { getPushSubscription, sendPushNotification } from '@/lib/push'
 import {
@@ -39,14 +40,12 @@ interface StudentBillingRow {
   monthly_price: number | null
   next_due_date: string | null
   starts_on: string | null
-  schedule_overridden: boolean | null
   claimed_by: string | null
 }
 
 interface TeacherBillingRow {
   id: string
   profile_id: string
-  currency: string | null
   default_monthly_price: number | null
   instapay_link: string | null
   instapay_handle: string | null
@@ -357,7 +356,7 @@ export async function getPayScreenInfo(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, frequency, monthly_price, next_due_date, starts_on, schedule_overridden')
+    .select('id, teacher_id, name, frequency, monthly_price, next_due_date, starts_on')
     .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
@@ -367,7 +366,7 @@ export async function getPayScreenInfo(studentId: string) {
 
   const { data: teacher } = await service
     .from('teachers')
-    .select('id, profile_id, currency, default_monthly_price, instapay_link, instapay_handle')
+    .select('id, profile_id, default_monthly_price, instapay_link, instapay_handle')
     .eq('id', s.teacher_id)
     .maybeSingle()
 
@@ -415,7 +414,7 @@ export async function getPayScreenInfo(studentId: string) {
     periodLabel: state.periodLabel,
     amount: effectivePrice,
     dueDate: parseISODate(state.dueISO).toISOString(),
-    currency: t.currency || 'EGP',
+    currency: CURRENCY_CODE,
     instapayLink: contract.instapayLink,
     instapayHandle: contract.instapayHandle,
     hasPending: state.isPending,
@@ -425,7 +424,6 @@ export async function getPayScreenInfo(studentId: string) {
     isAwaitingStart: state.paymentState === 'awaiting_start',
     startsOn: s.starts_on ? parseISODate(s.starts_on).toISOString() : null,
     frequency: s.frequency === 'weekly' || s.frequency === 'biweekly' ? s.frequency : 'monthly',
-    scheduleOverridden: !!s.schedule_overridden,
     paidLastPeriod: state.paidLastPeriod,
   }
 }

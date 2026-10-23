@@ -24,7 +24,7 @@ describe('WelcomeForm (step 1)', () => {
     await waitFor(() => expect(screen.getByText(/السعر الأسبوعي/)).toBeTruthy())
   })
 
-  it('submits currency + frequency + price', async () => {
+  it('submits frequency + price (currency is fixed)', async () => {
     const onSubmit = vi.fn(async () => undefined)
     render(<WelcomeForm onSubmit={onSubmit} />)
     fireEvent.change(screen.getByTestId('frequency-select'), { target: { value: 'biweekly' } })

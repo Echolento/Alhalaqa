@@ -144,7 +144,6 @@ test('push dispatch proof: claim → upload → verify → verdict', async () =>
     }
     if (teacher.url().includes('/welcome/instapay')) {
       await teacher.locator('#instapay_link').fill('https://ipn.eg/S/e2e123')
-      await teacher.locator('#instapay_handle').fill('e2e@instapay')
       await teacher.getByRole('button', { name: 'إنهاء الإعداد' }).click()
       await teacher.waitForURL(/\/dashboard/, { timeout: 15000 })
     }

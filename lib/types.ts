@@ -47,8 +47,6 @@ export interface StudentView {
   next_due_date?: string | null
   /** First boundary for a never-paid student; null once they have paid. */
   starts_on?: string | null
-  /** Teacher moved this student off the class schedule (frequency + date). */
-  schedule_overridden?: boolean
   claimed_by?: string | null
   /** Canonical state derived once by billing-state. */
   paymentState?: PaymentState

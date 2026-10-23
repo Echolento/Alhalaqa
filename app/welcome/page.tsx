@@ -13,13 +13,15 @@ export default async function WelcomePage() {
     redirect('/auth/login')
   }
 
+  // Basics already saved (the trigger seeds default_frequency='monthly', so
+  // frequency is never a safe "done" marker): skip ahead to the InstaPay step.
   const { data: teacher } = await supabase
     .from('teachers')
-    .select('default_monthly_price, currency')
+    .select('default_monthly_price')
     .eq('profile_id', user.id)
     .single()
 
-  if (teacher?.default_monthly_price && teacher?.currency) {
+  if (teacher?.default_monthly_price) {
     redirect('/welcome/instapay')
   }
 

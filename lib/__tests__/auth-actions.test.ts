@@ -531,11 +531,11 @@ describe('onboarding split (basics → instapay)', () => {
     )
 
     expect(read()).toMatchObject({
-      currency: 'EGP',
       default_monthly_price: 300,
       default_frequency: 'weekly',
       default_weekday: 6,
     })
+    expect(read()).not.toHaveProperty('currency')
     expect(read()).not.toHaveProperty('instapay_link')
     expect(read()).not.toHaveProperty('default_payment_day')
     expect(redirectMock).toHaveBeenCalledWith('/welcome/instapay')
@@ -558,11 +558,11 @@ describe('onboarding split (basics → instapay)', () => {
     )
 
     await completeInstapayOnboarding(
-      createFormData({ instapay_link: 'https://ipn.eg/S/abc', instapay_handle: 'teach@instapay' }),
+      createFormData({ instapay_link: 'https://ipn.eg/S/teach/instapay/1' }),
     )
 
     expect(read()).toMatchObject({
-      instapay_link: 'https://ipn.eg/S/abc',
+      instapay_link: 'https://ipn.eg/S/teach/instapay/1',
       instapay_handle: 'teach@instapay',
     })
     expect(redirectMock).toHaveBeenCalledWith('/dashboard')

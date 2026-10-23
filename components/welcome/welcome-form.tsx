@@ -1,10 +1,10 @@
 'use client'
 
 // components/welcome/welcome-form.tsx
-// Onboarding STEP 1 (billing basics): currency + frequency + per-cycle
-// price. Frequency comes FIRST — the price label adapts to it (weekly
-// amount vs monthly amount). InstaPay moved to step 2 (/welcome/instapay);
-// payment_day is legacy and no longer collected.
+// Onboarding STEP 1 (billing basics): frequency + per-cycle price. Frequency
+// comes FIRST — the price label adapts to it (weekly amount vs monthly
+// amount). InstaPay moved to step 2 (/welcome/instapay); currency is fixed to
+// EGP and payment_day is legacy.
 // Test seam: `onSubmit` override; production uses completeOnboarding.
 
 import { useState } from 'react'
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { CurrencySelect } from '@/components/ui/currency-select'
 import { AlertCircle } from 'lucide-react'
 import {
   FREQUENCY_OPTIONS,
@@ -67,11 +66,6 @@ export function WelcomeForm(props: {
               <span>{error}</span>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="currency">العملة</Label>
-            <CurrencySelect name="currency" defaultValue="EGP" onValueChange={() => {}} />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="default_frequency">{ONBOARDING_COPY.frequencyLabel}</Label>

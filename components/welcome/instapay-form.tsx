@@ -64,19 +64,9 @@ export function InstapayForm(props: {
               dir="ltr"
               className="text-left"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="instapay_handle">{ONBOARDING_COPY.instapayHandleLabel}</Label>
-            <Input
-              id="instapay_handle"
-              name="instapay_handle"
-              data-testid="instapay-handle-input"
-              type="text"
-              placeholder="name@instapay"
-              dir="ltr"
-              className="text-left"
-            />
+            <p className="text-xs text-muted-foreground">
+              الصق رابط المشاركة من تطبيق InstaPay.
+            </p>
           </div>
 
           <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>

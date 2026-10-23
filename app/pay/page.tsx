@@ -66,7 +66,6 @@ export default async function PayPage({
     periodKey: string
     amount: number
     dueDate: string
-    currency: string
     instapayLink: string | null
     instapayHandle: string | null
     hasPending: boolean
@@ -104,7 +103,6 @@ export default async function PayPage({
       initialData={{
         studentName: good.studentName,
         amount: good.amount,
-        currency: good.currency,
         periodKey: good.periodKey,
         dueDateLabel: new Date(good.dueDate).toLocaleDateString('ar-EG', {
           day: 'numeric',

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { assertOwnsStudent } from './ownership'
 import { billingState } from '@/lib/billing-state'
+import { CURRENCY_CODE } from '@/lib/currency'
 
 export interface StudentPaymentRecord {
   student_id: string
@@ -41,7 +42,7 @@ export async function getStudentProfile(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, schedule_overridden, claimed_by, teacher_id, teachers(currency, default_monthly_price)')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, claimed_by, teacher_id, teachers(default_monthly_price)')
     .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
@@ -81,7 +82,6 @@ export async function getStudentProfile(studentId: string) {
       frequency: (student as any).frequency === 'weekly' || (student as any).frequency === 'biweekly' ? (student as any).frequency : 'monthly',
       next_due_date: ((student as any).next_due_date ?? null) as string | null,
       starts_on: ((student as any).starts_on ?? null) as string | null,
-      schedule_overridden: !!(student as any).schedule_overridden,
       claimed_by: (student as any).claimed_by ?? null,
       currentMonthKey: state.cycleKey,
       paidCycleKey: state.paidCycleKey,
@@ -89,6 +89,6 @@ export async function getStudentProfile(studentId: string) {
       paidLastPeriod: state.paidLastPeriod,
     },
     payments,
-    currency: teacher?.currency || 'SAR',
+    currency: CURRENCY_CODE,
   }
 }

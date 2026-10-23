@@ -14,5 +14,5 @@ export default async function StudentProfilePage({
   // The profile shows the SAME cycle the payments list and the payer pay screen
   // show: the student's outstanding next-due cycle, never the wall-clock month.
   const cycleKey = outstandingCycleKey(data.student)
-  return <StudentProfile student={data.student} payments={data.payments} month={cycleKey} currency={data.currency} />
+  return <StudentProfile student={data.student} payments={data.payments} month={cycleKey} />
 }

@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { ExternalLink, Upload, Clock, Check, XCircle, Undo2 } from 'lucide-react'
 import type { PaymentProof } from '@/lib/payment-proof-validation'
 import { PAY_PUSH_COPY } from '@/lib/pay-push-copy'
+import { CURRENCY_SYMBOL } from '@/lib/currency'
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,6 @@ import {
 export interface PayScreenData {
   studentName: string
   amount: number
-  currency: string
   periodKey: string
   /** Human label (month/year, batch, or week range) — display this, not periodKey. */
   periodLabel: string
@@ -175,7 +175,7 @@ export function PayScreen(props: {
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-muted-foreground">المستحق الآن</span>
                 <span className="text-xl font-bold" data-testid="amount-due">
-                  {data.amount} {data.currency}
+                  {data.amount} {CURRENCY_SYMBOL}
                 </span>
               </div>
               <div className="flex items-baseline justify-between text-sm">

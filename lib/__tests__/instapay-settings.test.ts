@@ -61,17 +61,15 @@ describe('updateTeacherSettings InstaPay', () => {
     const { updateTeacherSettings } = await import('@/lib/auth-actions')
     const result = await updateTeacherSettings(
       createFormData({
-        currency: 'EGP',
         default_monthly_price: '150',
         instapay_link: 'https://ipn-eg.com/S/abc123',
-        instapay_handle: '',
       }),
     )
     expect(result.error).toMatch(/ipn\.eg/)
     expect(mockService.from).not.toHaveBeenCalled()
   })
 
-  it('saves valid link and handle so they flow into the pay contract', async () => {
+  it('derives the handle from the share link path and saves it', async () => {
     let upsertPayload: any = null
     mockService.from.mockImplementation((table?: string) => {
       const b = createBuilder()
@@ -86,34 +84,40 @@ describe('updateTeacherSettings InstaPay', () => {
     const { getInstaPayContract } = await import('@/lib/instapay')
     const result = await updateTeacherSettings(
       createFormData({
-        currency: 'EGP',
         default_monthly_price: '150',
-        instapay_link: 'https://ipn.eg/S/abc123XYZ',
-        instapay_handle: 'ahmed.ali@instapay',
+        instapay_link: 'https://ipn.eg/S/ahmed.ali/instapay/12345',
       }),
     )
     expect(result.success).toBe(true)
-    expect(upsertPayload.instapay_link).toBe('https://ipn.eg/S/abc123XYZ')
+    expect(upsertPayload.instapay_link).toBe('https://ipn.eg/S/ahmed.ali/instapay/12345')
     expect(upsertPayload.instapay_handle).toBe('ahmed.ali@instapay')
     const contract = getInstaPayContract({
       instapay_link: upsertPayload.instapay_link,
       instapay_handle: upsertPayload.instapay_handle,
     })
-    expect(contract.instapayLink).toBe('https://ipn.eg/S/abc123XYZ')
+    expect(contract.instapayLink).toBe('https://ipn.eg/S/ahmed.ali/instapay/12345')
     expect(contract.instapayHandle).toBe('ahmed.ali@instapay')
   })
 
-  it('rejects an invalid handle with an Arabic explanation', async () => {
+  it('leaves the handle null when the link path does not parse', async () => {
+    let upsertPayload: any = null
+    mockService.from.mockImplementation((table?: string) => {
+      const b = createBuilder()
+      b.upsert = vi.fn().mockImplementation((data: any) => {
+        if (table === 'teachers') upsertPayload = data
+        return Promise.resolve({ error: null })
+      })
+      return b
+    })
+
     const { updateTeacherSettings } = await import('@/lib/auth-actions')
     const result = await updateTeacherSettings(
       createFormData({
-        currency: 'EGP',
         default_monthly_price: '150',
-        instapay_link: '',
-        instapay_handle: 'not-a-handle',
+        instapay_link: 'https://ipn.eg/S/-/instapay/12345',
       }),
     )
-    expect(result.error).toMatch(/name@instapay/)
-    expect(mockService.from).not.toHaveBeenCalled()
+    expect(result.success).toBe(true)
+    expect(upsertPayload.instapay_handle).toBeNull()
   })
 })

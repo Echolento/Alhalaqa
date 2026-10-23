@@ -13,7 +13,6 @@ export async function triggerManualRemind(params: {
   payerProfileId: string
   studentName: string
   amount?: number
-  currency?: string
   periodKey?: string
 }) {
   const ctx = await requireUser()
@@ -26,7 +25,6 @@ export async function triggerManualRemind(params: {
     payerProfileId: params.payerProfileId,
     studentName: params.studentName,
     amount: params.amount,
-    currency: params.currency,
     studentId: params.studentId,
     periodKey: params.periodKey,
   })

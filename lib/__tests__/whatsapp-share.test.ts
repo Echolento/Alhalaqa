@@ -44,10 +44,10 @@ describe('buildRemindWhatsAppText', () => {
     expect(buildRemindWhatsAppText({ studentName: 'أحمد' })).toContain('أحمد')
   })
 
-  it('appends amount + currency when given', () => {
-    const text = buildRemindWhatsAppText({ studentName: 'أحمد', amount: 200, currency: 'ج.م' })
+  it('appends amount with the fixed EGP currency when given', () => {
+    const text = buildRemindWhatsAppText({ studentName: 'أحمد', amount: 200 })
     expect(text).toContain('200')
-    expect(text).toContain('ج.م')
+    expect(text).toContain('EGP')
   })
 })
 
