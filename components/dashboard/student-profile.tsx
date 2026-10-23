@@ -29,10 +29,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getPaymentStatus } from '@/lib/payment-status'
 import { getCurrencySymbol } from '@/lib/currencies'
-import { toggleStudentPayment, updateStudentMonthlyPrice, updateStudentFrequency } from '@/lib/payment-actions'
-import type { BillingFrequency } from '@/lib/billing-period'
+import { toggleStudentPayment, updateStudentMonthlyPrice } from '@/lib/payment-actions'
 import { formatDueDateAr } from '@/lib/billing-next'
 import { updateStudent, deleteStudent, updateStudentNextDue } from '@/lib/student-actions'
+import { resetStudentSchedule } from '@/lib/schedule-actions'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { useRouter } from 'next/navigation'
@@ -83,12 +83,19 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
   // weekly student read as a contradiction.
   const freqWord =
     FREQUENCY_PRICE_WORD[student.frequency || 'monthly'] ?? 'الشهري'
-  // The shown cycle is the student's outstanding cycle. billing-state owns the
-  // four-state rule; the UI only maps it.
-  const current = payments.find((p) => p.month === month)
+  // Paid students already advanced next_due_date, so their settled row lives
+  // on paidCycleKey (the cycle to undo). Unpaid students target the outstanding
+  // cycle. billing-state owns the four-state rule; the UI only maps it.
+  const targetMonth = student.paidCycleKey ?? student.currentMonthKey ?? month
+  const current = payments.find((p) => p.month === targetMonth)
   const rowPaid = current?.paid || false
   const state = student.paymentState
   const status = getPaymentStatus(state)
+  const minDueISO = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })()
 
   const [loading, setLoading] = useState(false)
   const [editField, setEditField] = useState<'name' | 'phone' | 'price' | null>(null)
@@ -137,7 +144,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
       return
     }
     setLoading(true)
-    const result = await updateStudentMonthlyPrice(student.id, price, month)
+    const result = await updateStudentMonthlyPrice(student.id, price, targetMonth)
     setLoading(false)
     if ('success' in result) {
       toast({ title: '✓ تم الحفظ' })
@@ -148,20 +155,14 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
     }
   }
 
-  const FREQUENCY_LABELS: Record<BillingFrequency, string> = {
-    weekly: 'أسبوعي',
-    biweekly: 'كل أسبوعين',
-    monthly: 'شهري',
-  }
-
-  const [freqOpen, setFreqOpen] = useState(false)
-  const saveFrequency = async (frequency: BillingFrequency) => {
+  const [resetOpen, setResetOpen] = useState(false)
+  const handleResetSchedule = async () => {
     setLoading(true)
-    const result = await updateStudentFrequency(student.id, frequency)
+    const result = await resetStudentSchedule(student.id)
     setLoading(false)
     if ('success' in result) {
-      toast({ title: '✓ تم الحفظ — يُطبق من الدورة القادمة' })
-      setFreqOpen(false)
+      toast({ title: '✓ رجع الطالب لجدول المجموعة' })
+      setResetOpen(false)
       refresh()
     } else {
       toast({ variant: 'destructive', title: 'خطأ', description: result.error })
@@ -186,7 +187,7 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
 
   const handleToggle = async () => {
     setLoading(true)
-    const result = await toggleStudentPayment(student.id, month)
+    const result = await toggleStudentPayment(student.id, targetMonth)
     setLoading(false)
     if ('success' in result) {
       toast({ title: '✓ تم التحديث' })
@@ -233,6 +234,15 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                   الفترة السابقة مدفوعة
                 </Badge>
               ) : null}
+              {student.schedule_overridden ? (
+                <Badge
+                  data-testid="profile-custom-schedule"
+                  variant="outline"
+                  className="text-[10px] px-2 py-0.5 border-violet-200 text-violet-700 bg-violet-50"
+                >
+                  تاريخ مخصص
+                </Badge>
+              ) : null}
               {student.claimed_by ? (
                 <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent text-[10px] px-2 py-0.5">
                   ولي الأمر مربوط
@@ -240,7 +250,10 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {student.monthly_price} {currencySymbol} · الاستحقاق {formatDueDateAr(student.next_due_date)}
+              {student.monthly_price} {currencySymbol} ·{' '}
+              {state === 'awaiting_start'
+                ? `يبدأ ${formatDueDateAr(student.starts_on ?? student.next_due_date)}`
+                : `الاستحقاق ${formatDueDateAr(student.next_due_date)}`}
             </p>
           </div>
           <Button
@@ -299,10 +312,14 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
                   id="profile-next-due"
                   data-testid="profile-next-due"
                   type="date"
+                  min={minDueISO}
                   value={nextDueVal}
                   onChange={(e) => setNextDueVal(e.target.value)}
                   className="min-h-[44px]"
                 />
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  أقدم تاريخ مسموح قبل ٣٠ يومًا. تغيير التاريخ يجعله مخصصًا لهذا الطالب.
+                </p>
                 <Button
                   onClick={saveNextDue}
                   disabled={loading}
@@ -319,31 +336,24 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
         </Row>
         <Row
           icon={CalendarDays}
-          label="دورة الدفع"
+          label="جدول الدفع"
           edit={
-            <Popover open={freqOpen} onOpenChange={setFreqOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px] gap-1"><Pencil className="w-4 h-4" />تعديل</Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="start">
-                <div className="flex flex-col gap-1">
-                  {(Object.keys(FREQUENCY_LABELS) as BillingFrequency[]).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => saveFrequency(f)}
-                      disabled={loading}
-                      className={`min-h-[44px] rounded-lg px-3 text-start text-sm font-bold ${((student.frequency || 'monthly') === f) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    >
-                      {FREQUENCY_LABELS[f]}
-                    </button>
-                  ))}
-                  <p className="pt-1 text-[11px] text-muted-foreground leading-relaxed">التغيير يُطبق من الدورة القادمة، بدون تعديل الفترة الحالية.</p>
-                </div>
-              </PopoverContent>
-            </Popover>
+            student.schedule_overridden ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] gap-1"
+                onClick={() => setResetOpen(true)}
+                disabled={loading}
+                data-testid="profile-reset-schedule"
+              >
+                رجوع لجدول المجموعة
+              </Button>
+            ) : null
           }
         >
-          {FREQUENCY_LABELS[((student.frequency || 'monthly') as BillingFrequency)] ?? 'شهري'}
+          {freqWord}
+          {student.schedule_overridden ? ' — تاريخ مخصص' : ' — ضمن جدول المجموعة'}
         </Row>
       </Card>
 
@@ -409,6 +419,26 @@ export function StudentProfile({ student, payments, month, currency }: StudentPr
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>رجوع لجدول المجموعة</AlertDialogTitle>
+            <AlertDialogDescription>
+              هيرجع تاريخ {student.full_name || student.name} وجدوله لنفس جدول بقية المجموعة.
+              {rowPaid || state === 'awaiting_start'
+                ? ' هيتحدد أول استحقاق جديد بعد الدورة الحالية.'
+                : ' لازم تسدّد الدورة الحالية الأول.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetSchedule} disabled={loading}>
+              رجوع للجدول
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card className="border-destructive/20">
         <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">

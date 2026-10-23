@@ -7,6 +7,8 @@ import { describe, it, expect } from 'vitest'
 import {
   firstOfNextMonth,
   firstBillDate,
+  firstBoundaryOnOrAfter,
+  weekdayNameAr,
   advanceDueDate,
   previousDueDate,
   previousCycleKey,
@@ -42,6 +44,22 @@ describe('firstBillDate', () => {
     expect(days).toBeGreaterThanOrEqual(0)
     expect(days).toBeLessThanOrEqual(14)
   })
+
+  it('weekly/biweekly land on the teacher-chosen weekday', () => {
+    // Saturday = 6, from Thursday 2026-10-22.
+    expect(firstBillDate('weekly', new Date(2026, 9, 22), 6)).toBe('2026-10-24')
+    expect(firstBillDate('biweekly', new Date(2026, 9, 22), 6)).toBe('2026-10-24')
+    expect(firstBillDate('weekly', new Date(2026, 9, 22), 4)).toBe('2026-10-22')
+  })
+
+  it('a student added on the boundary is due that same day', () => {
+    expect(firstBillDate('monthly', new Date(2026, 10, 1))).toBe('2026-11-01')
+    expect(firstBoundaryOnOrAfter('2026-11-01', 'monthly')).toBe('2026-11-01')
+  })
+
+  it('names weekdays for schedule copy', () => {
+    expect(weekdayNameAr(6)).toBe('السبت')
+  })
 })
 
 describe('previousCycleKey', () => {
@@ -72,6 +90,27 @@ describe('advanceDueDate', () => {
 
   it('defaults unknown frequencies to monthly', () => {
     expect(advanceDueDate('2026-09-05', null)).toBe('2026-10-05')
+  })
+})
+
+// Calendar stepping must round-trip across every DST window: +N*DAY_MS
+// arithmetic broke this for weeks spanning a fall-back (~2 days a year).
+describe('advance/previous round-trip (DST-safe stepping)', () => {
+  it.each([
+    ['2026-10-23', 'weekly'], // spans Egypt's Oct 29 fall-back
+    ['2026-10-25', 'weekly'], // due date inside the transition week
+    ['2026-04-23', 'weekly'], // spans Egypt's Apr 24 spring-forward
+    ['2026-10-16', 'biweekly'],
+    ['2026-10-20', 'biweekly'], // spans the fall-back inside 14 days
+  ] as const)('%s (%s) round-trips both directions', (due, freq) => {
+    expect(previousDueDate(advanceDueDate(due, freq), freq)).toBe(due)
+    expect(advanceDueDate(previousDueDate(due, freq), freq)).toBe(due)
+  })
+
+  it('stays exactly 7 / 14 calendar days across a DST window', () => {
+    expect(advanceDueDate('2026-10-23', 'weekly')).toBe('2026-10-30')
+    expect(advanceDueDate('2026-10-23', 'biweekly')).toBe('2026-11-06')
+    expect(previousDueDate('2026-10-30', 'weekly')).toBe('2026-10-23')
   })
 })
 

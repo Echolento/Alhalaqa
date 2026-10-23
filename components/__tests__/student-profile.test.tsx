@@ -12,6 +12,9 @@ vi.mock('@/lib/payment-actions', () => ({
   toggleStudentPayment: vi.fn(() => ({ success: true })),
   updateStudentMonthlyPrice: vi.fn(() => ({ success: true })),
 }))
+vi.mock('@/lib/schedule-actions', () => ({
+  resetStudentSchedule: vi.fn(() => ({ success: true })),
+}))
 vi.mock('@/lib/student-actions', () => ({
   updateStudent: vi.fn(() => ({ success: true })),
   deleteStudent: vi.fn(() => ({ success: true })),
@@ -61,16 +64,21 @@ describe('StudentProfile', () => {
     expect(screen.getByText('تأكيد الحذف')).toBeInTheDocument()
   })
 
-  it('a not-yet-due cycle reads "مش مستحق", not paid', () => {
+  it('an awaiting-start student reads "لم يبدأ بعد", not paid', () => {
     render(
       <StudentProfile
-        student={{ ...student, paymentState: 'not_due', next_due_date: '2026-11-01' }}
+        student={{
+          ...student,
+          paymentState: 'awaiting_start',
+          next_due_date: '2026-11-01',
+          starts_on: '2026-11-01',
+        }}
         payments={[]}
         month="2026-10-01"
         currency="SAR"
       />,
     )
-    expect(screen.getByText('مش مستحق')).toBeInTheDocument()
+    expect(screen.getByText('لم يبدأ بعد')).toBeInTheDocument()
     expect(screen.queryByText('مدفوع')).not.toBeInTheDocument()
   })
 

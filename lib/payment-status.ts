@@ -38,9 +38,9 @@ export function getPaymentStatus(state: PaymentState): PaymentStatus {
         badgeVariant: 'secondary',
         badgeClass: 'text-[10px] px-2 py-0.5 bg-amber-100 text-amber-800 border-transparent',
       }
-    case 'not_due':
+    case 'awaiting_start':
       return {
-        label: 'مش مستحق',
+        label: 'لم يبدأ بعد',
         icon: 'clock',
         cardClass: 'bg-sky-50/40 border-r-4 border-r-sky-500',
         iconClass: 'text-sky-600',
@@ -62,7 +62,7 @@ export function getPaymentStatus(state: PaymentState): PaymentStatus {
 /**
  * The roster keeps an optimistic local paid row so a tap feels instant. The
  * server state is still the base: marking paid overrides anything, and an undo
- * only turns a paid state back into unpaid. Pending/not-due states survive.
+ * returns to the server state (paid → unpaid; awaiting-start stays awaiting).
  */
 export function applyPaidOverride(state: PaymentState, paid: boolean): PaymentState {
   if (paid) return 'paid'

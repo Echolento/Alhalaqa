@@ -5,7 +5,7 @@
 // late payment never drifts the rhythm. Grace/overdue counts from the due
 // date. Local-day math (same convention as lib/billing-period.ts).
 
-import { getPeriodKey, normalizeFrequency, type BillingFrequency } from '@/lib/billing-period'
+import { normalizeFrequency, type BillingFrequency } from '@/lib/billing-period'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -40,20 +40,45 @@ export function firstOfNextMonth(from: Date = new Date()): string {
   return toISODate(new Date(from.getFullYear(), from.getMonth() + 1, 1))
 }
 
+/** Arabic weekday name, Sunday = 0 (JS getDay convention). */
+export function weekdayNameAr(weekday: number): string {
+  return ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][weekday] ?? ''
+}
+
 /**
- * First bill for a NEW student. Monthly keeps the 1st-of-next-month convention;
- * weekly/biweekly start on the NEXT cycle of the student's own grid. The old
- * always-first-of-next-month default billed a weekly student a whole month out
- * (the pay screen read "بعد 3 أسابيع" for a cycle that should be ~a week away).
+ * The first boundary of a schedule on or AFTER the given calendar date.
+ * Monthly = the 1st; weekly/biweekly = the chosen weekday (including that day).
+ * A missing weekday falls back to the date's own weekday.
+ */
+export function firstBoundaryOnOrAfter(
+  iso: string,
+  frequency: BillingFrequency | null | undefined,
+  weekday?: number | null,
+): string {
+  const freq = normalizeFrequency(frequency)
+  const date = parseISODate(iso)
+  if (freq === 'monthly') {
+    if (date.getDate() === 1) return toISODate(date)
+    return toISODate(new Date(date.getFullYear(), date.getMonth() + 1, 1))
+  }
+  const wd =
+    typeof weekday === 'number' && Number.isInteger(weekday) && weekday >= 0 && weekday <= 6
+      ? weekday
+      : date.getDay()
+  const delta = (wd - date.getDay() + 7) % 7
+  return toISODate(new Date(date.getFullYear(), date.getMonth(), date.getDate() + delta))
+}
+
+/**
+ * First bill for a NEW student. Monthly starts on the 1st; weekly/biweekly on
+ * the teacher's chosen weekday. Added exactly on a boundary → due that same day.
  */
 export function firstBillDate(
   frequency: BillingFrequency | null | undefined,
   today: Date = new Date(),
-  anchorDay?: number,
+  weekday?: number | null,
 ): string {
-  const freq = normalizeFrequency(frequency)
-  if (freq === 'monthly') return firstOfNextMonth(today)
-  return advanceDueDate(getPeriodKey(today, freq, anchorDay), freq)
+  return firstBoundaryOnOrAfter(toISODate(today), frequency, weekday)
 }
 
 /**
@@ -64,8 +89,13 @@ export function firstBillDate(
 export function advanceDueDate(dueISO: string, frequency: BillingFrequency | null | undefined): string {
   const freq = normalizeFrequency(frequency)
   const due = parseISODate(dueISO)
-  if (freq === 'weekly') return toISODate(new Date(due.getTime() + 7 * DAY_MS))
-  if (freq === 'biweekly') return toISODate(new Date(due.getTime() + 14 * DAY_MS))
+  // Calendar-day stepping, never +N*DAY_MS: a ms window that spans a DST
+  // fall-back lands on local 23:00 the day before — weekly loses a day.
+  if (freq === 'weekly' || freq === 'biweekly') {
+    const next = new Date(due)
+    next.setDate(due.getDate() + (freq === 'weekly' ? 7 : 14))
+    return toISODate(next)
+  }
   const day = due.getDate()
   const next = new Date(due.getFullYear(), due.getMonth() + 1, 1)
   const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
@@ -77,8 +107,11 @@ export function advanceDueDate(dueISO: string, frequency: BillingFrequency | nul
 export function previousDueDate(dueISO: string, frequency: BillingFrequency | null | undefined): string {
   const freq = normalizeFrequency(frequency)
   const due = parseISODate(dueISO)
-  if (freq === 'weekly') return toISODate(new Date(due.getTime() - 7 * DAY_MS))
-  if (freq === 'biweekly') return toISODate(new Date(due.getTime() - 14 * DAY_MS))
+  if (freq === 'weekly' || freq === 'biweekly') {
+    const prev = new Date(due)
+    prev.setDate(due.getDate() - (freq === 'weekly' ? 7 : 14))
+    return toISODate(prev)
+  }
   const day = due.getDate()
   const prev = new Date(due.getFullYear(), due.getMonth() - 1, 1)
   const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate()

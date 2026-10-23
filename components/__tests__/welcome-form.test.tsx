@@ -28,12 +28,14 @@ describe('WelcomeForm (step 1)', () => {
     const onSubmit = vi.fn(async () => undefined)
     render(<WelcomeForm onSubmit={onSubmit} />)
     fireEvent.change(screen.getByTestId('frequency-select'), { target: { value: 'biweekly' } })
+    fireEvent.change(screen.getByTestId('weekday-select'), { target: { value: '6' } })
     fireEvent.change(screen.getByTestId('price-input'), { target: { value: '150' } })
     fireEvent.click(screen.getByRole('button', { name: /متابعة/ }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
     const calls = onSubmit.mock.calls as unknown as Array<[FormData]>
     expect(calls).toHaveLength(1)
     expect(calls[0]?.[0]?.get('default_frequency')).toBe('biweekly')
+    expect(calls[0]?.[0]?.get('default_weekday')).toBe('6')
     expect(calls[0]?.[0]?.get('default_monthly_price')).toBe('150')
   })
 

@@ -38,6 +38,8 @@ interface StudentBillingRow {
   frequency: unknown
   monthly_price: number | null
   next_due_date: string | null
+  starts_on: string | null
+  schedule_overridden: boolean | null
   claimed_by: string | null
 }
 
@@ -355,7 +357,7 @@ export async function getPayScreenInfo(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, frequency, monthly_price, next_due_date')
+    .select('id, teacher_id, name, frequency, monthly_price, next_due_date, starts_on, schedule_overridden')
     .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
@@ -418,7 +420,12 @@ export async function getPayScreenInfo(studentId: string) {
     instapayHandle: contract.instapayHandle,
     hasPending: state.isPending,
     isPaidForPeriod: state.isPaidForPeriod,
-    isPaidUp: state.isSettled && !state.isPaidForPeriod,
+    isPaidUp: state.paymentState === 'paid',
+    paymentState: state.paymentState,
+    isAwaitingStart: state.paymentState === 'awaiting_start',
+    startsOn: s.starts_on ? parseISODate(s.starts_on).toISOString() : null,
+    frequency: s.frequency === 'weekly' || s.frequency === 'biweekly' ? s.frequency : 'monthly',
+    scheduleOverridden: !!s.schedule_overridden,
     paidLastPeriod: state.paidLastPeriod,
   }
 }

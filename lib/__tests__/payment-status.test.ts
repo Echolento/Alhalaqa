@@ -24,9 +24,9 @@ describe('getPaymentStatus', () => {
     expect(s.badgeClass).toContain('bg-amber-100')
   })
 
-  it('not-yet-due maps to sky, not paid and not red', () => {
-    const s = getPaymentStatus('not_due')
-    expect(s.label).toBe('مش مستحق')
+  it('awaiting start maps to sky, not paid and not red', () => {
+    const s = getPaymentStatus('awaiting_start')
+    expect(s.label).toBe('لم يبدأ بعد')
     expect(s.icon).toBe('clock')
     expect(s.iconClass).toBe('text-sky-600')
     expect(s.cardClass).toContain('bg-sky-50')
@@ -51,14 +51,14 @@ describe('getPaymentStatus', () => {
 
 describe('applyPaidOverride', () => {
   it('shows paid immediately after a local mark-paid', () => {
-    expect(applyPaidOverride('not_due', true)).toBe('paid')
+    expect(applyPaidOverride('awaiting_start', true)).toBe('paid')
     expect(applyPaidOverride('unpaid', true)).toBe('paid')
     expect(applyPaidOverride('pending', true)).toBe('paid')
   })
 
   it('restores the server state when a local paid row is undone', () => {
     expect(applyPaidOverride('paid', false)).toBe('unpaid')
-    expect(applyPaidOverride('not_due', false)).toBe('not_due')
+    expect(applyPaidOverride('awaiting_start', false)).toBe('awaiting_start')
     expect(applyPaidOverride('pending', false)).toBe('pending')
   })
 })

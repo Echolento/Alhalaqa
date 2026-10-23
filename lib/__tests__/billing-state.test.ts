@@ -16,16 +16,50 @@ describe('billingState', () => {
     expect(state.paymentState).toBe('paid')
   })
 
-  it('reads a not-yet-due cycle as settled (due on the 18th is not unpaid on the 14th)', () => {
+  it('reads a never-paid student before their start date as awaiting_start', () => {
     const state = billingState({
-      student: { frequency: 'monthly', next_due_date: '2026-10-18' },
+      student: { frequency: 'monthly', next_due_date: '2026-10-18', starts_on: '2026-10-18' },
       payments: [],
       today: new Date(2026, 9, 14),
     })
 
     expect(state.isSettled).toBe(true)
     expect(state.isOverdue).toBe(false)
-    expect(state.paymentState).toBe('not_due')
+    expect(state.paymentState).toBe('awaiting_start')
+  })
+
+  it('paid persists between the settlement and the next due date', () => {
+    const state = billingState({
+      student: { frequency: 'monthly', next_due_date: '2026-11-01' },
+      payments: [{ month: '2026-10-01', paid: true }],
+      today: new Date(2026, 9, 20),
+    })
+
+    expect(state.paymentState).toBe('paid')
+    expect(state.paidCycleKey).toBe('2026-10-01')
+    expect(state.isSettled).toBe(true)
+  })
+
+  it('pending wins over awaiting_start when a receipt arrives before the start', () => {
+    const state = billingState({
+      student: { frequency: 'monthly', next_due_date: '2026-11-01', starts_on: '2026-11-01' },
+      payments: [],
+      proofs: [{ period_key: '2026-11-01', status: 'pending' }],
+      today: new Date(2026, 9, 20),
+    })
+
+    expect(state.paymentState).toBe('pending')
+    expect(state.isSettled).toBe(true)
+  })
+
+  it('ignores starts_on for a student who has paid before', () => {
+    const state = billingState({
+      student: { frequency: 'monthly', next_due_date: '2026-11-01', starts_on: '2026-12-01' },
+      payments: [{ month: '2026-10-01', paid: true }],
+      today: new Date(2026, 9, 20),
+    })
+
+    expect(state.paymentState).toBe('paid')
   })
 
   it('reads a due-past unpaid cycle as overdue, counting the days', () => {
@@ -63,7 +97,7 @@ describe('billingState', () => {
       today: new Date(2026, 9, 20),
     })
 
-    expect(state.isSettled).toBe(true)
+    expect(state.isSettled).toBe(false)
     expect(state.isPending).toBe(true)
     expect(state.paymentState).toBe('pending')
   })
@@ -104,7 +138,7 @@ describe('billingState', () => {
 
   it('ignores a pending receipt for a cycle that already advanced', () => {
     const state = billingState({
-      student: { frequency: 'monthly', next_due_date: '2026-11-01' },
+      student: { frequency: 'monthly', next_due_date: '2026-11-01', starts_on: '2026-11-01' },
       payments: [],
       proofs: [{ period_key: '2026-10-01', status: 'pending' }],
       today: new Date(2026, 9, 20),
@@ -112,6 +146,7 @@ describe('billingState', () => {
 
     expect(state.isPending).toBe(false)
     expect(state.isSettled).toBe(true)
+    expect(state.paymentState).toBe('awaiting_start')
   })
 
   it('falls back to the 1st of next month for a legacy row with no due date', () => {

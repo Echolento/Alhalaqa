@@ -97,15 +97,18 @@ describe('StudentList (merged home)', () => {
     expect(screen.queryByTestId('missing-phone-s3')).not.toBeInTheDocument()
   })
 
-  it('a not-yet-due student reads "مش مستحق" — not "paid" — and can still be prepaid', () => {
-    const rows: DashboardStudent[] = [{ id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'not_due' }]
+  it('puts awaiting-start students in a collapsed section, not the main list', () => {
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'awaiting_start', starts_on: '2026-11-01' },
+      { id: 's2', full_name: 'محمد حسن', monthly_price: 200, payment_day: 10, paymentState: 'unpaid' },
+    ]
     render(<StudentList {...props} students={rows} payments={[]} />)
-    expect(screen.getByText('مش مستحق')).toBeInTheDocument()
-    expect(screen.queryByText('مدفوع')).not.toBeInTheDocument()
-    expect(screen.getByText('تحديد كمدفوع')).toBeInTheDocument()
-    const icon = screen.getByText('مش مستحق').closest('[class*="bg-sky-50"]')?.querySelector('svg')
-    expect(icon?.getAttribute('class')).toContain('text-sky-600')
-    expect(icon?.getAttribute('class')).not.toContain('text-red-600')
+    expect(screen.getByTestId('awaiting-start-toggle')).toBeInTheDocument()
+    expect(screen.queryByText('أحمد علي')).not.toBeInTheDocument()
+    expect(screen.getByText('محمد حسن')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('awaiting-start-toggle'))
+    expect(screen.getByText('أحمد علي')).toBeInTheDocument()
+    expect(screen.getByText('محمد حسن')).toBeInTheDocument()
   })
 
   it('keeps a pending receipt actionable even when the cycle is not due', () => {

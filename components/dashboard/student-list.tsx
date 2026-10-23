@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, Clock, Search, Users, DollarSign, Undo2 } from 'lucide-react'
+import { Check, Clock, Search, Users, DollarSign, Undo2, ChevronDown } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -56,6 +56,7 @@ interface StudentListProps {
 export function StudentList({ students, payments, month, currency, initialCollected, initialExpected, overdueIds = [], showOverdue = false, joinCode = null, shareEntryDefaultOpen }: StudentListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  const [showAwaiting, setShowAwaiting] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [undoTarget, setUndoTarget] = useState<string | null>(null)
   const [localPayments, setLocalPayments] = useState(payments)
@@ -73,6 +74,17 @@ export function StudentList({ students, payments, month, currency, initialCollec
     (s.full_name || s.name || '').toLowerCase().includes(search.toLowerCase()) || !search
   )
 
+  const resolved = filtered.map((student) => {
+    const payment = localPayments.find((p) => p.student_id === student.id)
+    const rowPaid = payment?.paid || false
+    // billing-state owns the four-state rule; the local paid row is an
+    // optimistic overlay so mark-paid/undo update the card immediately.
+    const state = applyPaidOverride(student.paymentState, rowPaid)
+    return { student, payment, rowPaid, state }
+  })
+  const awaitingRows = resolved.filter((r) => r.state === 'awaiting_start')
+  const mainRows = resolved.filter((r) => r.state !== 'awaiting_start')
+
   const handleToggle = async (studentId: string) => {
     setLoading(studentId)
     const payment = localPayments.find((p) => p.student_id === studentId)
@@ -80,7 +92,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
     const row = students.find((s) => s.id === studentId)
     // Target the student's OUTSTANDING cycle (the same one the pay screen and
     // cron use), so the toggle/undo hits the right row for every frequency.
-    const targetMonth = row?.currentMonthKey ?? payment?.month ?? month
+    const targetMonth = row?.paidCycleKey ?? row?.currentMonthKey ?? payment?.month ?? month
     const now = new Date().toISOString()
     const price = Number(row?.monthly_price) || 0
     setLocalPayments((prev) =>
@@ -178,12 +190,7 @@ export function StudentList({ students, payments, month, currency, initialCollec
         </Card>
       ) : (
         <div className="grid gap-4 bg-muted/40 md:bg-transparent rounded-2xl p-2 md:p-0">
-          {filtered.map((student) => {
-            const payment = localPayments.find((p) => p.student_id === student.id)
-            const rowPaid = payment?.paid || false
-            // billing-state owns the four-state rule; the local paid row is an
-            // optimistic overlay so mark-paid/undo update the card immediately.
-            const state = applyPaidOverride(student.paymentState, rowPaid)
+          {mainRows.map(({ student, rowPaid, state }) => {
             const status = getPaymentStatus(state)
             const cardHref =
               state === 'pending'
@@ -211,6 +218,15 @@ export function StudentList({ students, payments, month, currency, initialCollec
                               className="text-[10px] px-2 py-0.5"
                             >
                               الفترة السابقة مدفوعة
+                            </Badge>
+                          ) : null}
+                          {student.schedule_overridden ? (
+                            <Badge
+                              data-testid={`custom-schedule-${student.id}`}
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 border-violet-200 text-violet-700 bg-violet-50"
+                            >
+                              تاريخ مخصص
                             </Badge>
                           ) : null}
                           {student.claimed_by ? (
@@ -309,6 +325,54 @@ export function StudentList({ students, payments, month, currency, initialCollec
           })}
         </div>
       )}
+
+      {awaitingRows.length > 0 ? (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowAwaiting((v) => !v)}
+            className="flex w-full items-center gap-2 rounded-xl border bg-muted/40 px-4 py-3 text-start"
+            data-testid="awaiting-start-toggle"
+          >
+            <Clock className="h-5 w-5 text-sky-600" />
+            <span className="font-bold">لم يبدأ بعد</span>
+            <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent">
+              {awaitingRows.length}
+            </Badge>
+            <ChevronDown
+              className={`ms-auto h-5 w-5 transition-transform ${showAwaiting ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showAwaiting ? (
+            <div className="grid gap-3">
+              {awaitingRows.map(({ student }) => (
+                <Link
+                  key={student.id}
+                  href={`/dashboard/students/${student.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border bg-sky-50/40 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{student.full_name || student.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      يبدأ {formatDueDateAr(student.starts_on ?? student.next_due_date)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {student.schedule_overridden ? (
+                      <Badge variant="outline" className="text-[10px] border-violet-200 text-violet-700 bg-violet-50">
+                        تاريخ مخصص
+                      </Badge>
+                    ) : null}
+                    <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-transparent">
+                      لم يبدأ بعد
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ?overdue=1 (the "still hasn't paid" email CTA): overlay the roster with
           just the overdue students the email named. */}

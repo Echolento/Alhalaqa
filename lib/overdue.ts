@@ -12,6 +12,7 @@ export interface DueDatedStudent {
   name: string
   frequency?: BillingFrequency | null
   next_due_date?: string | null
+  starts_on?: string | null
 }
 
 /**
@@ -35,7 +36,11 @@ export function getOverdueStudents(
   const result: OverdueStudent[] = []
   for (const student of students) {
     const state = billingState({
-      student: { frequency: student.frequency, next_due_date: student.next_due_date },
+      student: {
+        frequency: student.frequency,
+        next_due_date: student.next_due_date,
+        starts_on: student.starts_on,
+      },
       payments: rowsByStudent.get(student.id) ?? [],
       today,
     })

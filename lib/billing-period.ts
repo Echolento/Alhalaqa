@@ -51,6 +51,13 @@ export function normalizeFrequency(f: unknown): BillingFrequency {
   return f === 'weekly' || f === 'biweekly' || f === 'monthly' ? f : 'monthly'
 }
 
+/** 0 = Sunday … 6 = Saturday; anything else is “not chosen”. */
+export function normalizeWeekday(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? n : null
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }

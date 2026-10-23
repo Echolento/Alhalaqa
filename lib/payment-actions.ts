@@ -26,7 +26,7 @@ export async function getTeacherPayments(month?: string) {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, schedule_overridden, claimed_by')
     .is('deleted_at', null)
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
@@ -80,17 +80,23 @@ export async function getTeacherPayments(month?: string) {
       payment_day: s.payment_day || 1,
       frequency: normalizeFrequency((s as any).frequency),
       next_due_date: ((s as any).next_due_date ?? null) as string | null,
+      starts_on: ((s as any).starts_on ?? null) as string | null,
+      schedule_overridden: !!(s as any).schedule_overridden,
       claimed_by: (s as any).claimed_by ?? null,
       currentMonthKey: state.cycleKey,
+      paidCycleKey: state.paidCycleKey,
       paymentState: state.paymentState,
       paidLastPeriod: state.paidLastPeriod,
     }
   })
 
-  // The row for each student's outstanding cycle (paid or unpaid) — the card's
-  // toggle target. A missing row means unpaid.
+  // Target row for the toggle. Paid students have already advanced
+  // next_due_date, so their settled row lives on paidCycleKey, not cycleKey.
   const payments = normalizedStudents
-    .map(s => (rowsByStudent.get(s.id) ?? []).filter(p => String(p.month) === s.currentMonthKey)[0])
+    .map(s => {
+      const target = s.paidCycleKey ?? s.currentMonthKey
+      return (rowsByStudent.get(s.id) ?? []).filter(p => String(p.month) === target)[0]
+    })
     .filter(Boolean)
 
   // Month totals honour frequency: an interval student contributes one price
@@ -99,6 +105,7 @@ export async function getTeacherPayments(month?: string) {
   let expected = 0
   let collected = 0
   for (const s of normalizedStudents) {
+    if (s.paymentState === 'awaiting_start') continue
     const starts = cycleStartsInMonth(s.frequency, monthKey, s.payment_day)
     expected += (Number(s.monthly_price) || 0) * starts.length
     const startsSet = new Set(starts)
@@ -109,6 +116,16 @@ export async function getTeacherPayments(month?: string) {
       }
     }
   }
+
+  const stateOrder: Record<string, number> = {
+    pending: 0,
+    unpaid: 1,
+    paid: 2,
+    awaiting_start: 3,
+  }
+  normalizedStudents.sort(
+    (a, b) => (stateOrder[a.paymentState] ?? 9) - (stateOrder[b.paymentState] ?? 9),
+  )
 
   return { students: normalizedStudents, payments, currency: teacher.currency, expected, collected }
 }

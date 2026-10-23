@@ -38,6 +38,11 @@ export interface PayScreenData {
   isPaidForPeriod: boolean
   /** Settled and the next cycle isn't due yet → show "nothing due", no pay. */
   isPaidUp?: boolean
+  /** Never paid and the schedule start is still in the future. */
+  isAwaitingStart?: boolean
+  startsOnLabel?: string | null
+  /** “كل أسبوعين — السبت” for the payer-facing schedule row. */
+  scheduleLabel?: string | null
   /** Previous cycle settled but this one isn't → reassure the payer it registered. */
   paidLastPeriod?: boolean
 }
@@ -72,8 +77,9 @@ export function PayScreen(props: {
   // A submitted period is settled: verified (paid) OR awaiting review (pending).
   // Either way the payer must not be able to pay the SAME period twice.
   const settled = data.isPaidForPeriod || data.hasPending
+  const awaitingStart = !!data.isAwaitingStart
   // Settled and the next cycle hasn't come due → don't ask again yet.
-  const paidUp = !settled && !!data.isPaidUp
+  const paidUp = !settled && !awaitingStart && !!data.isPaidUp
 
   function stageFile(file: File) {
     setStaged((prev) => {
@@ -126,7 +132,24 @@ export function PayScreen(props: {
         </Card>
       ) : null}
 
-      {!settled && !paidUp ? (
+      {awaitingStart ? (
+        <Card data-testid="awaiting-start" className="border-sky-400 bg-sky-50 shadow-md">
+          <CardContent className="flex flex-col items-center gap-1 py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500">
+              <Clock className="h-7 w-7 text-white" />
+            </span>
+            <p className="text-xl font-black text-sky-900">لم يبدأ بعد</p>
+            <p className="text-sm text-sky-800">
+              رسوم {data.studentName} تبدأ من {data.startsOnLabel ?? data.dueDateLabel} — لا يوجد مبلغ مطلوب الآن.
+            </p>
+            {data.scheduleLabel ? (
+              <p className="text-xs text-sky-700">جدول الدفع: {data.scheduleLabel}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!settled && !paidUp && !awaitingStart ? (
         <>
           {data.paidLastPeriod ? (
             <div className="flex justify-center">
@@ -150,7 +173,7 @@ export function PayScreen(props: {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">المبلغ المستحق</span>
+                <span className="text-sm text-muted-foreground">المستحق الآن</span>
                 <span className="text-xl font-bold" data-testid="amount-due">
                   {data.amount} {data.currency}
                 </span>
@@ -159,6 +182,12 @@ export function PayScreen(props: {
                 <span className="text-muted-foreground">الفترة</span>
                 <span data-testid="period-key">{data.periodLabel}</span>
               </div>
+              {data.scheduleLabel ? (
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="text-muted-foreground">الجدول</span>
+                  <span>{data.scheduleLabel}</span>
+                </div>
+              ) : null}
               <div className="flex items-baseline justify-between text-sm">
                 <span className="text-muted-foreground">تاريخ الاستحقاق</span>
                 <span>{data.dueDateLabel}</span>

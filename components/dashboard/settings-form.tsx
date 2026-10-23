@@ -14,16 +14,21 @@ import { NotificationToggle } from '@/components/dashboard/notification-toggle'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-actions'
+import { updateTeacherSchedule } from '@/lib/schedule-actions'
 import type { Profile } from '@/lib/types'
 import { formatPhoneNumber } from '@/lib/phone-utils'
 import { PhoneInput } from '@/components/auth/phone-input'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { INSTAPAY_SETTINGS_EXPLAINER } from '@/lib/instapay'
+import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS } from '@/lib/onboarding-copy'
+import { normalizeFrequency, normalizeWeekday } from '@/lib/billing-period'
 
 interface TeacherData {
   id: string
   currency: string
   default_monthly_price: number
+  default_frequency?: string | null
+  default_weekday?: number | null
   instapay_link?: string | null
   instapay_handle?: string | null
   auto_reminders_enabled?: boolean
@@ -44,6 +49,33 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
   const [loadingProfile, setLoadingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
+
+  const [scheduleFrequency, setScheduleFrequency] = useState(
+    normalizeFrequency(teacherData?.default_frequency),
+  )
+  const [scheduleWeekday, setScheduleWeekday] = useState(
+    teacherData?.default_weekday == null ? '' : String(teacherData.default_weekday),
+  )
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleSuccess, setScheduleSuccess] = useState(false)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
+  const scheduleNeedsWeekday = scheduleFrequency !== 'monthly'
+
+  const handleScheduleSettings = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setScheduleLoading(true)
+    setScheduleError(null)
+    setScheduleSuccess(false)
+    const result = await updateTeacherSchedule(new FormData(e.currentTarget))
+    if (result?.error) {
+      setScheduleError(result.error)
+    } else {
+      setScheduleSuccess(true)
+      setTimeout(() => setScheduleSuccess(false), 3000)
+      router.refresh()
+    }
+    setScheduleLoading(false)
+  }
 
   const roleLabels: Record<string, string> = {
     admin: 'مشرف',
@@ -182,6 +214,88 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
           </CardHeader>
           <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
             <NotificationToggle />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment schedule */}
+      {profile.role === 'teacher' && (
+        <Card>
+          <CardHeader className="px-4 md:px-6 pt-4 md:pt-6">
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              جدول الدفع
+            </CardTitle>
+            <CardDescription>
+              جدول واحد للمجموعة. الطلاب اللي عندهم تاريخ مخصص مش بيتأثروا.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+            <form onSubmit={handleScheduleSettings} className="space-y-4">
+              {scheduleSuccess && (
+                <div className="flex items-center gap-2 p-3 text-sm text-success bg-success/10 rounded-lg">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>تم تحديث الجدول</span>
+                </div>
+              )}
+              {scheduleError && (
+                <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{scheduleError}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="default_frequency">نظام الدفع</Label>
+                <select
+                  id="default_frequency"
+                  name="default_frequency"
+                  value={scheduleFrequency}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setScheduleFrequency(normalizeFrequency(next))
+                    if (next === 'monthly') setScheduleWeekday('')
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px]"
+                >
+                  {FREQUENCY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {scheduleNeedsWeekday ? (
+                <div className="space-y-2">
+                  <Label htmlFor="default_weekday">يوم الدفع</Label>
+                  <select
+                    id="default_weekday"
+                    name="default_weekday"
+                    required
+                    value={scheduleWeekday}
+                    onChange={(e) => setScheduleWeekday(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px]"
+                  >
+                    <option value="" disabled>اختر يوم الأسبوع</option>
+                    {WEEKDAY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <p className="text-xs text-muted-foreground leading-6">
+                لو فيه طالب لسه عليه دورة قديمة، هيكملها الأول وبعدين ينتقل للجدول الجديد.
+                الطالب اللي عنده تاريخ مخصص بيفضل على جدوله.
+              </p>
+
+              <Button type="submit" disabled={scheduleLoading}>
+                {scheduleLoading ? 'جاري الحفظ...' : 'حفظ الجدول'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       )}

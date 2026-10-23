@@ -20,6 +20,7 @@ import {
   FREQUENCY_PRICE_WORD,
   FREQUENCY_CYCLE_WORD,
   ONBOARDING_COPY,
+  WEEKDAY_OPTIONS,
 } from '@/lib/onboarding-copy'
 import { normalizeFrequency } from '@/lib/billing-period'
 
@@ -29,8 +30,10 @@ export function WelcomeForm(props: {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [frequency, setFrequency] = useState<string>('monthly')
+  const [weekday, setWeekday] = useState<string>('')
 
   const freq = normalizeFrequency(frequency)
+  const needsWeekday = freq !== 'monthly'
   const priceWord = FREQUENCY_PRICE_WORD[freq] ?? FREQUENCY_PRICE_WORD.monthly
   const cycleWord = FREQUENCY_CYCLE_WORD[freq] ?? FREQUENCY_CYCLE_WORD.monthly
 
@@ -77,7 +80,11 @@ export function WelcomeForm(props: {
               name="default_frequency"
               data-testid="frequency-select"
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value
+                setFrequency(next)
+                if (next === 'monthly') setWeekday('')
+              }}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px]"
             >
               {FREQUENCY_OPTIONS.map((o) => (
@@ -87,6 +94,29 @@ export function WelcomeForm(props: {
               ))}
             </select>
           </div>
+
+          {needsWeekday ? (
+            <div className="space-y-2">
+              <Label htmlFor="default_weekday">{ONBOARDING_COPY.weekdayLabel}</Label>
+              <select
+                id="default_weekday"
+                name="default_weekday"
+                data-testid="weekday-select"
+                required
+                value={weekday}
+                onChange={(e) => setWeekday(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px]"
+              >
+                <option value="" disabled>اختر يوم الأسبوع</option>
+                {WEEKDAY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground leading-5">{ONBOARDING_COPY.weekdayHint}</p>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="default_monthly_price">

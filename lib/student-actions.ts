@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from './action-context'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent, getOwnTeacherId } from './ownership'
-import { normalizeFrequency, type BillingFrequency } from './billing-period'
+import { normalizeFrequency, normalizeWeekday, type BillingFrequency } from './billing-period'
 import { firstBillDate, isValidDueDate } from './billing-next'
 import { formatPhoneNumber } from './phone-utils'
 
@@ -23,7 +23,7 @@ export async function getTeacherStudents() {
 
   const { data: students } = await supabase
     .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, claimed_by, created_at, updated_at, teacher_id')
+    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, schedule_overridden, claimed_by, created_at, updated_at, teacher_id')
     .is('deleted_at', null)
     .eq('teacher_id', teacher.id)
     .order('created_at', { ascending: false })
@@ -35,6 +35,8 @@ export async function getTeacherStudents() {
     payment_day: Number(s.payment_day) || 1,
     frequency: normalizeFrequency((s as any).frequency),
     next_due_date: ((s as any).next_due_date ?? null) as string | null,
+    starts_on: ((s as any).starts_on ?? null) as string | null,
+    schedule_overridden: !!(s as any).schedule_overridden,
   }))
 }
 
@@ -45,24 +47,32 @@ export async function getTeacherStudents() {
  */
 export async function getBillingDefaults() {
   const ctx = await requireUser()
-  const fallback = { frequency: 'monthly' as const, price: 0, nextDueDate: firstBillDate('monthly') }
+  const fallback = {
+    frequency: 'monthly' as const,
+    weekday: null as number | null,
+    price: 0,
+    nextDueDate: firstBillDate('monthly'),
+  }
   if ('error' in ctx) return fallback
   const { user, service } = ctx
   const teacherId = await getOwnTeacherId(service, user.id)
   if (!teacherId) return fallback
   const { data: teacher } = await service
     .from('teachers')
-    .select('default_monthly_price, default_frequency')
+    .select('default_monthly_price, default_frequency, default_weekday')
     .eq('id', teacherId)
     .maybeSingle()
   if (!teacher) return fallback
   const frequency = normalizeFrequency((teacher as { default_frequency?: unknown }).default_frequency)
+  const weekday = normalizeWeekday((teacher as { default_weekday?: unknown }).default_weekday)
   return {
     frequency,
+    weekday,
     price: Number((teacher as { default_monthly_price?: unknown }).default_monthly_price) || 0,
-    nextDueDate: firstBillDate(frequency),
+    nextDueDate: firstBillDate(frequency, new Date(), weekday),
   }
 }
+
 
 export interface NewStudentInput {
   phone?: string
@@ -88,7 +98,7 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
 
   let { data: teacher } = await service
     .from('teachers')
-    .select('id, default_monthly_price, default_frequency')
+    .select('id, default_monthly_price, default_frequency, default_weekday')
     .eq('profile_id', user.id)
     .maybeSingle()
 
@@ -96,22 +106,31 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
     const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
-      .select('id, default_monthly_price, default_frequency')
+      .select('id, default_monthly_price, default_frequency, default_weekday')
       .single()
 
     if (createError || !newTeacher) return { error: 'Teacher not found' }
     teacher = newTeacher
   }
 
-  const frequency = normalizeFrequency(
-    (opts as { frequency?: unknown }).frequency ?? (teacher as { default_frequency?: unknown }).default_frequency,
+  const teacherFrequency = normalizeFrequency(
+    (teacher as { default_frequency?: unknown }).default_frequency,
   )
+  const teacherWeekday = normalizeWeekday((teacher as { default_weekday?: unknown }).default_weekday)
+  const requestedFrequency = (opts as { frequency?: unknown }).frequency
+  const frequency = requestedFrequency
+    ? normalizeFrequency(requestedFrequency)
+    : teacherFrequency
   const price = Number((opts as { price?: unknown }).price) || Number(teacher.default_monthly_price) || 0
-  const nextDueDate =
+  const customDate =
     typeof (opts as { nextDueDate?: unknown }).nextDueDate === 'string' &&
     isValidDueDate((opts as { nextDueDate?: string }).nextDueDate)
       ? ((opts as { nextDueDate?: string }).nextDueDate as string)
-      : firstBillDate(frequency)
+      : null
+  // Students follow the class schedule unless the caller supplied an explicit
+  // date or frequency (legacy/import paths).
+  const scheduleOverridden = !!customDate || !!requestedFrequency
+  const startsOn = customDate ?? firstBillDate(frequency, new Date(), teacherWeekday)
 
   const { data, error } = await service
     .from('students')
@@ -121,7 +140,9 @@ export async function addStudent(name: string, input?: string | NewStudentInput)
       phone: opts.phone ? formatPhoneNumber(opts.phone) : null,
       monthly_price: price,
       frequency,
-      next_due_date: nextDueDate,
+      next_due_date: startsOn,
+      starts_on: startsOn,
+      schedule_overridden: scheduleOverridden,
     })
     .select()
     .single()
@@ -155,9 +176,38 @@ export async function updateStudentNextDue(studentId: string, nextDueDate: strin
 
   if (!isValidDueDate(nextDueDate)) return { error: 'تاريخ غير صالح — استخدم YYYY-MM-DD.' }
 
+  const today = new Date()
+  const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
+  const minISO = `${minDate.getFullYear()}-${String(minDate.getMonth() + 1).padStart(2, '0')}-${String(minDate.getDate()).padStart(2, '0')}`
+  if (nextDueDate < minISO) {
+    return { error: 'لا يمكن اختيار تاريخ أقدم من ٣٠ يومًا.' }
+  }
+
+  const { data: current } = await service
+    .from('students')
+    .select('starts_on')
+    .is('deleted_at', null)
+    .eq('id', studentId)
+    .maybeSingle()
+
+  const { count: paidCount } = await service
+    .from('student_payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('student_id', studentId)
+    .eq('paid', true)
+
+  const hasEverPaid = (paidCount ?? 0) > 0
+  const startsOn = hasEverPaid
+    ? ((current as { starts_on?: string | null } | null)?.starts_on ?? null)
+    : nextDueDate
+
   const { error } = await service
     .from('students')
-    .update({ next_due_date: nextDueDate })
+    .update({
+      next_due_date: nextDueDate,
+      starts_on: startsOn,
+      schedule_overridden: true,
+    })
     .is('deleted_at', null)
     .eq('id', studentId)
 
@@ -167,7 +217,7 @@ export async function updateStudentNextDue(studentId: string, nextDueDate: strin
     actionType: 'next_due_update',
     entityType: 'student',
     entityId: studentId,
-    details: { next_due_date: nextDueDate },
+    details: { next_due_date: nextDueDate, custom_schedule: true },
   }, user.id)
 
   revalidatePath('/dashboard/students')
@@ -226,7 +276,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   if (teacherId) {
     const { data } = await service
       .from('teachers')
-      .select('id, default_monthly_price, default_frequency')
+      .select('id, default_monthly_price, default_frequency, default_weekday')
       .eq('id', teacherId)
       .maybeSingle()
     teacher = data as { id: string; default_monthly_price: unknown } | null
@@ -236,7 +286,7 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
     const { data: newTeacher, error: createError } = await service
       .from('teachers')
       .insert({ profile_id: user.id })
-      .select('id, default_monthly_price, default_frequency')
+      .select('id, default_monthly_price, default_frequency, default_weekday')
       .single()
     if (createError || !newTeacher) return { error: 'Teacher not found' }
     teacher = newTeacher as { id: string; default_monthly_price: unknown }
@@ -245,13 +295,19 @@ export async function addMultipleStudents(students: { name: string; phone?: stri
   const bulkFrequency = normalizeFrequency(
     (teacher as unknown as { default_frequency?: unknown })?.default_frequency,
   )
+  const bulkWeekday = normalizeWeekday(
+    (teacher as unknown as { default_weekday?: unknown })?.default_weekday,
+  )
+  const startsOn = firstBillDate(bulkFrequency, new Date(), bulkWeekday)
   const inserts = students.map((s) => ({
     teacher_id: teacher!.id,
     name: s.name,
     phone: s.phone ? formatPhoneNumber(s.phone) : null,
     monthly_price: Number(teacher!.default_monthly_price) || 0,
     frequency: bulkFrequency,
-    next_due_date: firstBillDate(bulkFrequency),
+    next_due_date: startsOn,
+    starts_on: startsOn,
+    schedule_overridden: false,
   }))
 
   const { error } = await service.from('students').insert(inserts)

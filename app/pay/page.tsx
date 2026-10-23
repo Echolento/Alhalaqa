@@ -5,6 +5,8 @@ import { PayUploadContainer } from '@/components/pay/pay-upload-container'
 import { PayerHub } from '@/components/pay/payer-hub'
 import { PayerLogin } from '@/components/pay/payer-login'
 import { Card, CardContent } from '@/components/ui/card'
+import { weekdayNameAr } from '@/lib/billing-next'
+import { FREQUENCY_CYCLE_WORD } from '@/lib/onboarding-copy'
 
 // Frozen pay-screen URL contract (see payScreenUrl in lib/push-payloads.ts):
 // /pay?student=<id>&period=<periodKey>. The period param is informational —
@@ -70,6 +72,10 @@ export default async function PayPage({
     hasPending: boolean
     isPaidForPeriod: boolean
     isPaidUp?: boolean
+    isAwaitingStart?: boolean
+    startsOn?: string | null
+    frequency?: string | null
+    paymentState?: string
     paidLastPeriod?: boolean
     periodLabel: string
   }
@@ -77,6 +83,20 @@ export default async function PayPage({
   const proofs =
     (history as { proofs?: import('@/lib/payment-proof-validation').PaymentProof[] })
       .proofs ?? []
+
+  const frequency = good.frequency === 'weekly' || good.frequency === 'biweekly' ? good.frequency : 'monthly'
+  const dueDay = new Date(good.dueDate).getDay()
+  const scheduleLabel =
+    frequency === 'monthly'
+      ? 'كل شهر — أول الشهر'
+      : `${FREQUENCY_CYCLE_WORD[frequency]} — ${weekdayNameAr(dueDay)}`
+  const startsOnLabel = good.startsOn
+    ? new Date(good.startsOn).toLocaleDateString('ar-EG', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null
 
   return (
     <PayUploadContainer
@@ -96,6 +116,9 @@ export default async function PayPage({
         hasPending: good.hasPending,
         isPaidForPeriod: good.isPaidForPeriod,
         isPaidUp: good.isPaidUp,
+        isAwaitingStart: good.isAwaitingStart,
+        startsOnLabel,
+        scheduleLabel,
         paidLastPeriod: good.paidLastPeriod,
         periodLabel: good.periodLabel,
       }}

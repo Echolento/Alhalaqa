@@ -523,6 +523,7 @@ describe('onboarding split (basics → instapay)', () => {
         currency: 'EGP',
         default_monthly_price: '300',
         default_frequency: 'weekly',
+        default_weekday: '6',
         // Legacy/ignored fields never persist from this step:
         default_payment_day: '5',
         instapay_link: 'https://ipn.eg/S/x',
@@ -533,6 +534,7 @@ describe('onboarding split (basics → instapay)', () => {
       currency: 'EGP',
       default_monthly_price: 300,
       default_frequency: 'weekly',
+      default_weekday: 6,
     })
     expect(read()).not.toHaveProperty('instapay_link')
     expect(read()).not.toHaveProperty('default_payment_day')

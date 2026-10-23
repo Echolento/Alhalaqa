@@ -10,7 +10,7 @@ import { formatPhoneNumber, isValidPhoneNumber } from './phone-utils'
 import { validateInstapayHandle, validateInstapayLink } from './instapay'
 import { logActivity } from './log-activity'
 import { getSiteUrl, authRedirectOrigin } from './auth-redirect'
-import { normalizeFrequency } from './billing-period'
+import { normalizeFrequency, normalizeWeekday } from './billing-period'
 
 /**
  * Prefer the actual request host over env vars. NEXT_PUBLIC_SITE_URL on
@@ -372,6 +372,11 @@ export async function completeOnboarding(formData: FormData) {
   const currency = formData.get('currency') as string
   const defaultMonthlyPrice = Number(formData.get('default_monthly_price')) || 0
   const defaultFrequency = normalizeFrequency(formData.get('default_frequency') as string | null)
+  const defaultWeekday = normalizeWeekday(formData.get('default_weekday'))
+
+  if (defaultFrequency !== 'monthly' && defaultWeekday === null) {
+    return { error: 'اختر يوم الأسبوع الذي تُدفع فيه الرسوم.' }
+  }
 
   const { error } = await service
     .from('teachers')
@@ -381,6 +386,7 @@ export async function completeOnboarding(formData: FormData) {
         currency,
         default_monthly_price: defaultMonthlyPrice,
         default_frequency: defaultFrequency,
+        default_weekday: defaultFrequency === 'monthly' ? null : defaultWeekday,
       },
       { onConflict: 'profile_id' },
     )
@@ -390,7 +396,12 @@ export async function completeOnboarding(formData: FormData) {
   await logActivity({
     actionType: 'onboarding_complete',
     entityType: 'teacher',
-    details: { currency, default_monthly_price: defaultMonthlyPrice, default_frequency: defaultFrequency },
+    details: {
+      currency,
+      default_monthly_price: defaultMonthlyPrice,
+      default_frequency: defaultFrequency,
+      default_weekday: defaultFrequency === 'monthly' ? null : defaultWeekday,
+    },
   })
 
   revalidatePath('/', 'layout')

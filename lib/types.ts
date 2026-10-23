@@ -45,6 +45,10 @@ export interface StudentView {
   payment_day?: number | null
   frequency?: string | null
   next_due_date?: string | null
+  /** First boundary for a never-paid student; null once they have paid. */
+  starts_on?: string | null
+  /** Teacher moved this student off the class schedule (frequency + date). */
+  schedule_overridden?: boolean
   claimed_by?: string | null
   /** Canonical state derived once by billing-state. */
   paymentState?: PaymentState
@@ -52,6 +56,8 @@ export interface StudentView {
   paidLastPeriod?: boolean
   /** The student's outstanding cycle key (from next_due_date). */
   currentMonthKey?: string
+  /** The cycle an undo would reopen (only when the student is Paid). */
+  paidCycleKey?: string | null
   payer_profile_id?: string | null
   payerProfileId?: string | null
 }

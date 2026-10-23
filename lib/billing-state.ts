@@ -12,6 +12,8 @@ export interface BillingStudent {
   frequency?: unknown
   next_due_date?: string | null
   payment_day?: number | null
+  /** First boundary for a student who has never paid. Null once they have paid. */
+  starts_on?: string | null
 }
 
 export interface PaymentRow {
@@ -24,8 +26,11 @@ export interface ProofRow {
   status: string
 }
 
-/** The four states every UI surface renders. Precedence is paid → pending → not due → unpaid. */
-export type PaymentState = 'paid' | 'pending' | 'not_due' | 'unpaid'
+/**
+ * The four states every UI surface renders.
+ * Precedence: paid → pending → awaiting_start → unpaid.
+ */
+export type PaymentState = 'paid' | 'pending' | 'awaiting_start' | 'unpaid'
 
 export interface BillingState {
   /** The outstanding cycle's history key (month-first for monthly, cycle-start date for weekly/biweekly). */
@@ -40,7 +45,7 @@ export interface BillingState {
   isPending: boolean
   /** The outstanding cycle was explicitly reopened (unpaid row or revoked receipt). */
   isReopened: boolean
-  /** Paid for the cycle OR the cycle is not due yet (and not reopened) → nothing owed. */
+  /** Nothing is owed: covered through the next boundary, or not started yet. */
   isSettled: boolean
   /** Due today/past, not settled, no pending receipt. */
   isOverdue: boolean
@@ -50,6 +55,8 @@ export interface BillingState {
   paidLastPeriod: boolean
   /** Days past the due date (0 when not past). */
   daysOverdue: number
+  /** The cycle to undo. Paid (covered) students point at the cycle they paid. */
+  paidCycleKey: string | null
 }
 
 export function billingState(input: {
@@ -59,6 +66,7 @@ export function billingState(input: {
   today?: Date
 }): BillingState {
   const today = input.today ?? new Date()
+  const todayISO = toISODate(today)
   const freq = normalizeFrequency(input.student.frequency)
   const dueISO = outstandingDueISO(input.student, today)
   const cycleKey = duePeriodKey(dueISO, freq)
@@ -74,19 +82,37 @@ export function billingState(input: {
     (input.proofs ?? []).some(
       (p) => p.period_key === cycleKey && (p.status === 'rejected' || p.status === 'undone'),
     )
-  const isSettled = isPaidForPeriod || (dueISO > toISODate(today) && !isReopened)
+  const hasEverPaid = input.payments.some((p) => p.paid)
+  const startsOn = input.student.starts_on ?? null
+  const beforeStart = !!startsOn && todayISO < startsOn
+
+  // Paid means covered for the current period: either the outstanding cycle is
+  // prepaid, or the previous cycle is settled and the next one isn't due yet.
+  // Unlike the old model, Paid no longer flashes for one render then becomes
+  // "not due" — it holds until the next boundary.
+  const isCovered =
+    isPaidForPeriod || (!isReopened && dueISO > todayISO && hasEverPaid)
+  const isAwaitingStart = beforeStart && !hasEverPaid
+  const isSettled = isCovered || isAwaitingStart
   const isOverdue = !isSettled && !isPending
-  const paymentState: PaymentState = isPaidForPeriod
+
+  const paymentState: PaymentState = isCovered
     ? 'paid'
     : isPending
       ? 'pending'
-      : isSettled
-        ? 'not_due'
+      : isAwaitingStart
+        ? 'awaiting_start'
         : 'unpaid'
+
   const { daysOverdue } = dueOverdueInfo(dueISO, today, 0)
   const prevKey = previousCycleKey(dueISO, freq)
   const paidLastPeriod =
     !isSettled && input.payments.some((p) => p.month === prevKey && p.paid)
+  const paidCycleKey = isCovered
+    ? isPaidForPeriod
+      ? cycleKey
+      : prevKey
+    : null
 
   return {
     cycleKey,
@@ -100,5 +126,6 @@ export function billingState(input: {
     paymentState,
     paidLastPeriod,
     daysOverdue,
+    paidCycleKey,
   }
 }
