@@ -239,7 +239,7 @@ test('class schedule + 4-state billing: onboarding → roster → toggle → cla
     await expect(toggle).toBeVisible({ timeout: 20000 })
     await expect(toggle).toContainText('1')
     await toggle.click()
-    await expect(page.getByText('طالب واجب')).toBeVisible()
+    await expect(page.getByText('طالب واجب', { exact: true })).toBeVisible()
     await expect(page.getByText('طالب مستحق')).toBeVisible() // B still in main roster
 
     // ---- mark-paid round trip on B (settle_cycle → reopen_cycle) ----
