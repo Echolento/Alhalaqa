@@ -102,6 +102,25 @@ describe('StudentList (merged home)', () => {
     expect(container.querySelector('a[href="/dashboard/unpaid?student=s1"]')).toBeInTheDocument()
   })
 
+  it('opens the exact receipt for a pending row instead of blind-settling it', () => {
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'pending', pendingProofId: 'p1' },
+    ]
+    render(<StudentList {...props} students={rows} payments={[]} />)
+    const cta = screen.getByText('مراجعة الإيصال').closest('a')
+    expect(cta).toHaveAttribute('href', '/dashboard/unpaid?student=s1&receipt=p1')
+    expect(screen.queryByText('تحديد كمدفوع')).not.toBeInTheDocument()
+  })
+
+  it('falls back to the student-scoped queue when the proof id is unknown', () => {
+    const rows: DashboardStudent[] = [
+      { id: 's1', full_name: 'أحمد علي', monthly_price: 100, payment_day: 5, paymentState: 'pending', pendingProofId: null },
+    ]
+    render(<StudentList {...props} students={rows} payments={[]} />)
+    const cta = screen.getByText('مراجعة الإيصال').closest('a')
+    expect(cta).toHaveAttribute('href', '/dashboard/unpaid?student=s1')
+  })
+
   it('each row links to profile', () => {
     const { container } = render(<StudentList {...props} />)
     const link = container.querySelector('a[href="/dashboard/students/s1"]')

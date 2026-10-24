@@ -15,11 +15,17 @@ export default async function WelcomePage() {
 
   // Basics already saved (the trigger seeds default_frequency='monthly', so
   // frequency is never a safe "done" marker): skip ahead to the InstaPay step.
+  // A published InstaPay contract means onboarding is DONE — returning teachers
+  // were being re-run through step 2 by the / → /welcome funnel.
   const { data: teacher } = await supabase
     .from('teachers')
-    .select('default_monthly_price')
+    .select('default_monthly_price, instapay_link, instapay_handle')
     .eq('profile_id', user.id)
     .single()
+
+  if (teacher?.instapay_link || teacher?.instapay_handle) {
+    redirect('/dashboard')
+  }
 
   if (teacher?.default_monthly_price) {
     redirect('/welcome/instapay')

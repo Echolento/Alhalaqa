@@ -6,8 +6,10 @@ import { ONBOARDING_COPY } from '@/lib/onboarding-copy'
 import Image from 'next/image'
 
 // Onboarding STEP 2: InstaPay contract (optional). Basics-first: teachers
-// without a teacher row land back on /welcome; the faint Later jumps to
-// the dashboard (Settings covers the contract later).
+// without a teacher row land back on /welcome; a teacher who already published
+// a contract is done — never show this step again (any return leg to /welcome
+// used to re-run it). The faint Later jumps to the dashboard (Settings covers
+// the contract later).
 export default async function InstapayOnboardingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -18,12 +20,16 @@ export default async function InstapayOnboardingPage() {
 
   const { data: teacher } = await supabase
     .from('teachers')
-    .select('id')
+    .select('id, instapay_link, instapay_handle')
     .eq('profile_id', user.id)
     .maybeSingle()
 
   if (!teacher) {
     redirect('/welcome')
+  }
+
+  if (teacher.instapay_link || teacher.instapay_handle) {
+    redirect('/dashboard')
   }
 
   return (

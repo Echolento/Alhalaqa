@@ -56,6 +56,8 @@ export interface StudentView {
   currentMonthKey?: string
   /** The cycle an undo would reopen (only when the student is Paid). */
   paidCycleKey?: string | null
+  /** Receipt awaiting review for the outstanding cycle (drives the review CTA). */
+  pendingProofId?: string | null
   payer_profile_id?: string | null
   payerProfileId?: string | null
 }

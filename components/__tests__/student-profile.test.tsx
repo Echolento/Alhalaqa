@@ -85,7 +85,26 @@ describe('StudentProfile', () => {
     expect(screen.queryByText('مراجعة الإيصال')).not.toBeInTheDocument()
   })
 
+  it('routes a pending student to the receipt instead of a blind mark-paid', () => {
+    render(
+      <StudentProfile
+        student={{
+          ...student,
+          paymentState: 'pending',
+          pendingProofId: 'p1',
+          next_due_date: '2026-10-01',
+        }}
+        payments={[]}
+        month="2026-10-01"
+      />,
+    )
+    const cta = screen.getAllByText('مراجعة الإيصال')[0].closest('a')
+    expect(cta).toHaveAttribute('href', '/dashboard/unpaid?student=s1&receipt=p1')
+    expect(screen.queryByText('تحديد كمدفوع')).not.toBeInTheDocument()
+  })
+
   it('shows the previous-period-paid badge when the previous cycle settled', () => {
+
     render(
       <StudentProfile
         student={{ ...student, paidLastPeriod: true }}

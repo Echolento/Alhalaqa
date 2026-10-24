@@ -208,21 +208,41 @@ export function StudentProfile({ student, payments, month }: StudentProfileProps
                 : `الاستحقاق ${formatDueDateAr(student.next_due_date)}`}
             </p>
           </div>
-          <Button
-            onClick={handleToggle}
-            disabled={loading}
-            className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
-            variant={rowPaid ? 'ghost' : 'default'}
-          >
-            {loading ? (
-              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-            ) : rowPaid ? (
-              <>
-                <Undo2 className="w-4 h-4" />
-                تراجع
-              </>
-            ) : 'تحديد كمدفوع'}
-          </Button>
+          {state === 'pending' ? (
+            // Same rule as the roster: a receipt under review is verified from
+            // the receipts area, not settled blind from here.
+            <Button
+              asChild
+              className="font-bold min-h-[44px] w-auto ms-auto bg-amber-500 hover:bg-amber-600"
+            >
+              <Link
+                href={
+                  student.pendingProofId
+                    ? `/dashboard/unpaid?student=${student.id}&receipt=${student.pendingProofId}`
+                    : `/dashboard/unpaid?student=${student.id}`
+                }
+              >
+                <Receipt className="w-4 h-4" />
+                مراجعة الإيصال
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              onClick={handleToggle}
+              disabled={loading}
+              className={rowPaid ? 'font-bold min-h-[44px] w-auto ms-auto text-red-600 hover:text-red-700 hover:bg-red-50' : 'font-bold min-h-[44px] bg-emerald-600 hover:bg-emerald-700'}
+              variant={rowPaid ? 'ghost' : 'default'}
+            >
+              {loading ? (
+                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+              ) : rowPaid ? (
+                <>
+                  <Undo2 className="w-4 h-4" />
+                  تراجع
+                </>
+              ) : 'تحديد كمدفوع'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

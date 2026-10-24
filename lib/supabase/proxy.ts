@@ -72,11 +72,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // if user is logged in and lands on the marketing home, skip it
-  // (/welcome gates onboarding -> dashboard when ready)
+  // if user is logged in and lands on the marketing home, hand them to the
+  // role-aware launcher — NOT /welcome, which is onboarding (a returning
+  // teacher was being re-run through the InstaPay step from here).
   if (request.nextUrl.pathname === '/' && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/welcome'
+    url.pathname = '/start'
     return NextResponse.redirect(url)
   }
 

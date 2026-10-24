@@ -55,7 +55,7 @@ export async function getStudentProfile(studentId: string) {
 
   const { data: proofs } = await service
     .from('payment_proofs')
-    .select('period_key, status')
+    .select('id, period_key, status')
     .eq('student_id', studentId)
 
   // Every status field comes from ONE billing-state call (the same rule the
@@ -70,6 +70,13 @@ export async function getStudentProfile(studentId: string) {
     })),
     today: new Date(),
   })
+
+  // The receipt awaiting review for the outstanding cycle — the profile's
+  // primary action deep-links to it instead of blind-settling the ledger.
+  const pendingProofId =
+    ((proofs ?? []) as { id: string; period_key: string; status: string }[]).find(
+      (p) => p.status === 'pending' && String(p.period_key) === state.cycleKey,
+    )?.id ?? null
 
   return {
     student: {
@@ -87,6 +94,7 @@ export async function getStudentProfile(studentId: string) {
       paidCycleKey: state.paidCycleKey,
       paymentState: state.paymentState,
       paidLastPeriod: state.paidLastPeriod,
+      pendingProofId,
     },
     payments,
     currency: CURRENCY_CODE,

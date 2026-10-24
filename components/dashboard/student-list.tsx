@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, Clock, Search, Users, Undo2, ChevronDown } from 'lucide-react'
+import { Check, Clock, Search, Users, Undo2, ChevronDown, Receipt } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -161,7 +161,9 @@ export function StudentList({ students, payments, month, overdueIds = [], showOv
             const status = getPaymentStatus(state)
             const cardHref =
               state === 'pending'
-                ? `/dashboard/unpaid?student=${student.id}`
+                ? student.pendingProofId
+                  ? `/dashboard/unpaid?student=${student.id}&receipt=${student.pendingProofId}`
+                  : `/dashboard/unpaid?student=${student.id}`
                 : `/dashboard/students/${student.id}`
             return (
               <Card
@@ -212,7 +214,26 @@ export function StudentList({ students, payments, month, overdueIds = [], showOv
                       className={state === 'paid' ? 'shrink-0' : 'w-full sm:w-auto flex flex-col gap-2'}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {rowPaid ? (
+                      {state === 'pending' ? (
+                        // A receipt is waiting for review: never blind-settle the
+                        // ledger from here (that left the proof pending forever).
+                        // Send the teacher to the receipt itself.
+                        <Button
+                          asChild
+                          className="w-full sm:w-auto font-bold bg-amber-500 hover:bg-amber-600 min-h-[44px]"
+                        >
+                          <Link
+                            href={
+                              student.pendingProofId
+                                ? `/dashboard/unpaid?student=${student.id}&receipt=${student.pendingProofId}`
+                                : `/dashboard/unpaid?student=${student.id}`
+                            }
+                          >
+                            <Receipt className="w-4 h-4" />
+                            مراجعة الإيصال
+                          </Link>
+                        </Button>
+                      ) : rowPaid ? (
                         <AlertDialog open={undoTarget === student.id} onOpenChange={(open) => setUndoTarget(open ? student.id : null)}>
                           <AlertDialogTrigger asChild>
                             <Button

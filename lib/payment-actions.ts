@@ -37,13 +37,13 @@ export async function getTeacherPayments(month?: string) {
 
   // One fetch of the roster's payment rows + pending proofs, keyed by student.
   const rowsByStudent = new Map<string, Record<string, unknown>[]>()
-  const proofsByStudent = new Map<string, { period_key: string; status: string }[]>()
+  const proofsByStudent = new Map<string, { id: string; period_key: string; status: string }[]>()
   if (ids.length > 0) {
     const [{ data: rows }, { data: pendingProofs }] = await Promise.all([
       supabase.from('student_payments').select('*').in('student_id', ids),
       supabase
         .from('payment_proofs')
-        .select('student_id, period_key')
+        .select('id, student_id, period_key')
         .eq('status', 'pending')
         .in('student_id', ids),
     ])
@@ -55,9 +55,9 @@ export async function getTeacherPayments(month?: string) {
       rowsByStudent.set(key, list)
     }
     for (const proof of pendingProofs || []) {
-      const p = proof as { student_id: string; period_key: string }
+      const p = proof as { id: string; student_id: string; period_key: string }
       const list = proofsByStudent.get(p.student_id) ?? []
-      list.push({ period_key: p.period_key, status: 'pending' })
+      list.push({ id: p.id, period_key: p.period_key, status: 'pending' })
       proofsByStudent.set(p.student_id, list)
     }
   }
@@ -67,12 +67,17 @@ export async function getTeacherPayments(month?: string) {
   // "previous period paid" reassurance. No caller re-derives the rule.
   const normalizedStudents = (students || []).map(s => {
     const rows = rowsByStudent.get(s.id) ?? []
+    const proofs = proofsByStudent.get(s.id) ?? []
     const state = billingState({
       student: s,
       payments: rows.map(r => ({ month: String(r.month), paid: !!r.paid })),
-      proofs: proofsByStudent.get(s.id) ?? [],
+      proofs,
       today,
     })
+    // The receipt awaiting review for THIS cycle — the review CTA deep-links to
+    // it so the teacher verifies the proof instead of blind-settling the ledger
+    // (which left the proof stuck at pending forever).
+    const pendingProofId = proofs.find(p => p.period_key === state.cycleKey)?.id ?? null
     return {
       id: s.id,
       full_name: s.name || 'طالب',
@@ -87,6 +92,7 @@ export async function getTeacherPayments(month?: string) {
       paidCycleKey: state.paidCycleKey,
       paymentState: state.paymentState,
       paidLastPeriod: state.paidLastPeriod,
+      pendingProofId,
     }
   })
 
@@ -282,6 +288,11 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
     if (error) {
       if (String(error.message).includes('student_deleted')) {
         return { error: 'الطالب غير موجود' }
+      }
+      // DB guard: a receipt for this cycle is awaiting review — verify it from
+      // الإيصالات instead of settling the ledger behind it.
+      if (String(error.message).includes('proof_pending')) {
+        return { error: 'يوجد إيصال قيد المراجعة لهذه الفترة — راجعه من الإيصالات' }
       }
       return { error: error.message }
     }
