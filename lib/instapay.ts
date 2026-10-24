@@ -6,11 +6,60 @@ export type InstapayHandleResult =
   | { ok: true; normalized: string }
   | { ok: false; error: string }
 
+/**
+ * Pull the first InstaPay share link out of messy pasted text.
+ *
+ * The InstaPay app's share copy comes with surrounding words
+ * ("ادفع لـ ... عبر انستاباي https://ipn.eg/S/..."), so a raw paste is
+ * almost never a bare URL. This finds `ipn.eg/S/` anywhere in the input,
+ * walks left to include the scheme when present, cuts at the first
+ * delimiter (whitespace, quotes, angle brackets), heals zero-width chars,
+ * and strips chat trailing punctuation (`. , ) »` + Arabic `، ؛`).
+ * Returns null when no marker is present — callers fall back to strict
+ * validation so the error copy stays accurate.
+ */
+export function extractInstapayLink(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const text = input
+  if (!text) return null
+  const lower = text.toLowerCase()
+  const marker = 'ipn.eg/s/'
+  const idx = lower.indexOf(marker)
+  if (idx === -1) return null
+
+  // Include the scheme when the paste has one ("https://ipn.eg/...").
+  let start = idx
+  const schemeIdx = lower.lastIndexOf('http', idx)
+  if (schemeIdx !== -1 && idx - schemeIdx <= 10) {
+    const between = text.slice(schemeIdx, idx)
+    if (/^https?\s*:\s*\/\s*\/\s*/i.test(between)) start = schemeIdx
+  }
+
+  // Cut at the first delimiter — everything after the link is copy, not URL.
+  let end = text.length
+  const delim = /[\s<>"'`\\\u200B-\u200F\u202A-\u202E]/
+  for (let i = start; i < text.length; i++) {
+    if (delim.test(text[i])) {
+      end = i
+      break
+    }
+  }
+  let candidate = text.slice(start, end)
+  candidate = candidate.replace(/[\s\u200B-\u200F\u202A-\u202E]+/g, '')
+  candidate = candidate.replace(/[.,;!?)\]}»«…،؛:]+$/g, '')
+  if (!candidate) return null
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = 'https://' + candidate.replace(/^\/+/, '')
+  }
+  return candidate || null
+}
+
 export function validateInstapayLink(input: unknown): InstapayLinkResult {
   if (typeof input !== 'string' || input.trim() === '') {
     return { ok: false, error: 'رابط InstaPay مطلوب' }
   }
-  const trimmed = input.trim()
+  // Tolerate share-copy pastes: extract the link first, validate the result.
+  const trimmed = extractInstapayLink(input) ?? input.trim()
   if (/[<>"'`\s\\]/.test(trimmed)) {
     return { ok: false, error: 'رابط InstaPay يحتوي على رموز غير مسموحة — الصق رابط المشاركة كما هو من تطبيق InstaPay' }
   }
@@ -60,9 +109,11 @@ export function validateInstapayHandle(input: unknown): InstapayHandleResult {
  */
 export function extractInstapayHandle(input: unknown): string | null {
   if (typeof input !== 'string' || input.trim() === '') return null
+  // Tolerate share-copy pastes the same way the link validator does.
+  const cleaned = extractInstapayLink(input) ?? input.trim()
   let url: URL
   try {
-    url = new URL(input.trim())
+    url = new URL(cleaned)
   } catch {
     return null
   }

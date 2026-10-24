@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { completeInstapayOnboarding } from '@/lib/auth-actions'
+import { extractInstapayLink } from '@/lib/instapay'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -63,6 +64,21 @@ export function InstapayForm(props: {
               placeholder="https://ipn.eg/S/..."
               dir="ltr"
               className="text-left"
+              // Share-copy pastes carry surrounding words — strip to the bare
+              // link live so the teacher sees what will actually save.
+              onPaste={(e) => {
+                const el = e.currentTarget
+                setTimeout(() => {
+                  const cleaned = extractInstapayLink(el.value)
+                  if (cleaned && cleaned !== el.value) el.value = cleaned
+                }, 0)
+              }}
+              onBlur={(e) => {
+                const cleaned = extractInstapayLink(e.currentTarget.value)
+                if (cleaned && cleaned !== e.currentTarget.value) {
+                  e.currentTarget.value = cleaned
+                }
+              }}
             />
             <p className="text-xs text-muted-foreground">
               الصق رابط المشاركة من تطبيق InstaPay.

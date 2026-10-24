@@ -15,7 +15,7 @@ import { updateTeacherSettings, signOut, updateUserProfile } from '@/lib/auth-ac
 import { updateTeacherSchedule } from '@/lib/schedule-actions'
 import type { Profile } from '@/lib/types'
 import { PhoneInput } from '@/components/auth/phone-input'
-import { INSTAPAY_SETTINGS_EXPLAINER } from '@/lib/instapay'
+import { INSTAPAY_SETTINGS_EXPLAINER, extractInstapayLink } from '@/lib/instapay'
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS } from '@/lib/onboarding-copy'
 import { normalizeFrequency } from '@/lib/billing-period'
 
@@ -330,6 +330,21 @@ export function SettingsForm({ profile, teacherData, email }: SettingsFormProps)
                   dir="ltr"
                   placeholder="https://ipn.eg/S/..."
                   defaultValue={teacherData?.instapay_link || ''}
+                  // Same live cleanup as onboarding: share-copy pastes carry
+                  // surrounding words, keep only the bare link.
+                  onPaste={(e) => {
+                    const el = e.currentTarget
+                    setTimeout(() => {
+                      const cleaned = extractInstapayLink(el.value)
+                      if (cleaned && cleaned !== el.value) el.value = cleaned
+                    }, 0)
+                  }}
+                  onBlur={(e) => {
+                    const cleaned = extractInstapayLink(e.currentTarget.value)
+                    if (cleaned && cleaned !== e.currentTarget.value) {
+                      e.currentTarget.value = cleaned
+                    }
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">الصق رابط المشاركة من تطبيق InstaPay — يجب أن يبدأ بـ https://ipn.eg/S/</p>
               </div>
