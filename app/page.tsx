@@ -171,7 +171,7 @@ export default function HomePage() {
       <section className="flex-1 flex items-center justify-center py-20">
         <div className="container mx-auto px-6 text-center">
           <h1 className="hero-title text-4xl md:text-6xl font-bold text-foreground leading-tight text-balance">
-            لكل معلم قرآن يستحق
+            كل معلم قرآن يستحق
             <br />
             <span className="text-primary"> أدوات تليق برسالته</span>
           </h1>
