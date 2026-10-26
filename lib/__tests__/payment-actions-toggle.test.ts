@@ -91,6 +91,13 @@ describe('toggleStudentPayment + proof guard', () => {
     expect(result).toEqual({ error: 'الطالب غير موجود' })
   })
 
+  it('rejects a client-supplied cycle that is neither outstanding nor just settled', async () => {
+    const { toggleStudentPayment } = await import('@/lib/payment-actions')
+    const result = await toggleStudentPayment('s1', '2026-03-01')
+    expect(result).toEqual({ error: 'دورة غير قابلة للتعديل' })
+    expect(state.rpcCalls).toHaveLength(0)
+  })
+
   it('passes the undo direction to reopen_cycle, never the guard path', async () => {
     state.existingRow = { id: 'pay1', paid: true }
     const { toggleStudentPayment } = await import('@/lib/payment-actions')

@@ -105,6 +105,24 @@ describe('getOverdueStudents', () => {
     expect(result.map((s) => s.id)).toEqual(['w1'])
   })
 
+  it('never flags a student whose due date is still ahead, even at grace 0', () => {
+    // daysOverdue clamps to 0, so `daysOverdue < graceDays` alone cannot tell
+    // "due today" from "due next month" when grace is 0 (cron / email CTA).
+    const students = [{ id: 's1', name: 'Ahmed', next_due_date: '2026-11-01' }]
+    const today = new Date('2026-10-26')
+    expect(getOverdueStudents(students, [], today, 0)).toHaveLength(0)
+  })
+
+  it('treats a receipt awaiting review as not overdue', () => {
+    const students = [{ id: 's1', name: 'Ahmed', next_due_date: '2026-10-01' }]
+    const today = new Date('2026-10-26')
+    const proofs = [{ student_id: 's1', period_key: '2026-10-01', status: 'pending' }]
+    expect(getOverdueStudents(students, [], today, 0, proofs)).toHaveLength(0)
+    // Without the receipts the same roster reads as overdue — the caller must
+    // pass them, which is why every surface now shares loadRosterBilling.
+    expect(getOverdueStudents(students, [], today, 0)).toHaveLength(1)
+  })
+
   it('legacy row without frequency reads as monthly', () => {
     const students = [{ id: 's1', name: 'Legacy', next_due_date: '2024-06-01' }]
     const payments = [{ student_id: 's1', month: '2024-06-01', paid: true }]

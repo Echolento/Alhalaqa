@@ -356,13 +356,20 @@ export async function getPayScreenInfo(studentId: string) {
 
   const { data: student } = await service
     .from('students')
-    .select('id, teacher_id, name, frequency, monthly_price, next_due_date, starts_on')
+    .select('id, teacher_id, name, frequency, monthly_price, next_due_date, starts_on, claimed_by')
     .is('deleted_at', null)
     .eq('id', studentId)
     .maybeSingle()
 
   const s = student as StudentBillingRow | null
   if (!s) return { error: 'الطالب غير موجود' }
+
+  // Service-role read: RLS gives no cover here, so prove the caller may see
+  // this student. Only the owning teacher or the student's linked payer may
+  // open the pay screen — a bare student UUID must never leak name, price,
+  // due date, or the teacher's InstaPay contract.
+  const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
+  if (!ownerTeacherId && s.claimed_by !== user.id) return { error: 'Forbidden' }
 
   const { data: teacher } = await service
     .from('teachers')
@@ -378,8 +385,6 @@ export async function getPayScreenInfo(studentId: string) {
     instapay_link: t.instapay_link,
     instapay_handle: t.instapay_handle,
   })
-
-  const ownerTeacherId = await assertOwnsStudent(service, user.id, studentId)
 
   // All payer-facing status comes from ONE billing-state call: the outstanding
   // cycle, whether it is paid / pending / overdue / reopened, and the

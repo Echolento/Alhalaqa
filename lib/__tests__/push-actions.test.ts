@@ -4,6 +4,7 @@ function createBuilder() {
   const builder: Record<string, any> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    neq: vi.fn(() => builder),
     maybeSingle: vi.fn(() => builder),
     single: vi.fn(() => builder),
     upsert: vi.fn(() => builder),
@@ -62,6 +63,37 @@ describe('registerPushSubscription', () => {
     expect(upsertPayload.endpoint).toBe('https://example.com/push')
     expect(upsertPayload.p256dh).toBe('abc123')
     expect(upsertPayload.auth).toBe('def456')
+  })
+
+  it('clears a shared browser endpoint from another profile before saving', async () => {
+    const seen: Record<string, [string, any]> = {}
+    mockService.from.mockImplementation((_table?: string) => {
+      const b = createBuilder()
+      b.delete = vi.fn(() => {
+        const chain: any = {
+          eq: (col: string, val: any) => {
+            seen.eq = [col, val]
+            return chain
+          },
+          neq: (col: string, val: any) => {
+            seen.neq = [col, val]
+            return Promise.resolve({ error: null })
+          },
+        }
+        return chain
+      })
+      return b
+    })
+
+    const { registerPushSubscription } = await import('@/lib/push-actions')
+    const result = await registerPushSubscription({
+      endpoint: 'https://example.com/shared',
+      keys: { p256dh: 'abc', auth: 'def' },
+    })
+
+    expect(result.success).toBe(true)
+    expect(seen.eq).toEqual(['endpoint', 'https://example.com/shared'])
+    expect(seen.neq).toEqual(['profile_id', 'user-1'])
   })
 
   it('returns error when not authenticated', async () => {

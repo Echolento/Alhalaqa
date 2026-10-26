@@ -13,6 +13,15 @@ export async function registerPushSubscription(subscription: {
   // Keyed by the caller's own id — service write, no anon writes (#25).
   const service = createServiceClient()
 
+  // One browser endpoint belongs to ONE profile. On a shared/family device the
+  // previous user's row would otherwise keep this endpoint and receive the new
+  // user's student names (and vice versa).
+  await service
+    .from('push_subscriptions')
+    .delete()
+    .eq('endpoint', subscription.endpoint)
+    .neq('profile_id', user.id)
+
   const { error } = await service
     .from('push_subscriptions')
     .upsert(

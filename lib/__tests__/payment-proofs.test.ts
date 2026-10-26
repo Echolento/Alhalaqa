@@ -447,6 +447,16 @@ describe('getPayScreenInfo', () => {
     expect((result as any).instapayHandle).toBe('ahmed@instapay')
   })
 
+  it('refuses a caller who is neither the teacher nor the linked payer', async () => {
+    ctx.student = { ...ctx.student, teacher_id: 't2', claimed_by: 'someone-else' }
+    const { getPayScreenInfo } = await import('@/lib/payment-proofs')
+
+    const result = await getPayScreenInfo('stu-1')
+
+    expect((result as any).error).toBe('Forbidden')
+    expect((result as any).studentName).toBeUndefined()
+  })
+
   it('falls back to the 1st of next month when no next-due is stored', async () => {
     ctx.student = { ...ctx.student, next_due_date: null }
     const { getPayScreenInfo } = await import('@/lib/payment-proofs')
@@ -487,7 +497,7 @@ describe('getPayScreenInfo', () => {
   it('reads paid-up when the outstanding cycle has not come due (no reopen)', async () => {
     mockService.from.mockImplementation(
       filterAwareService({
-        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-11-01' }],
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-11-01', claimed_by: 'payer-1' }],
         teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 200, instapay_link: null, instapay_handle: null }],
         payment_proofs: [],
         student_payments: [{ id: 'b', student_id: 'stu-1', month: '2026-10-01', paid: true }],
@@ -506,7 +516,7 @@ describe('getPayScreenInfo', () => {
     // just reopened (explicit unpaid row) with a revoked receipt.
     mockService.from.mockImplementation(
       filterAwareService({
-        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'weekly', monthly_price: 50, next_due_date: '2026-11-01' }],
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'weekly', monthly_price: 50, next_due_date: '2026-11-01', claimed_by: 'payer-1' }],
         teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 50, instapay_link: null, instapay_handle: null }],
         payment_proofs: [{ id: 'p1', student_id: 'stu-1', period_key: '2026-11-01', status: 'undone' }],
         student_payments: [
@@ -528,7 +538,7 @@ describe('getPayScreenInfo', () => {
     // Due 2026-10-01 (in the past) unpaid; 2026-09-01 settled → reassure, not paid-up.
     mockService.from.mockImplementation(
       filterAwareService({
-        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-10-01' }],
+        students: [{ id: 'stu-1', teacher_id: 't1', name: 'أحمد', frequency: 'monthly', monthly_price: 200, next_due_date: '2026-10-01', claimed_by: 'payer-1' }],
         teachers: [{ id: 't1', profile_id: 'teacher-1', currency: 'EGP', default_monthly_price: 200, instapay_link: null, instapay_handle: null }],
         payment_proofs: [],
         student_payments: [{ id: 'b', student_id: 'stu-1', month: '2026-09-01', paid: true }],

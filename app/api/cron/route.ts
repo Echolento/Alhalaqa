@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getOverdueStudents } from '@/lib/overdue'
-import { billingState } from '@/lib/billing-state'
+import { loadRosterBilling } from '@/lib/roster-billing'
+import { normalizeFrequency } from '@/lib/billing-period'
 import { sendOverdueEmail } from '@/lib/email-actions'
 import {
   buildAutoDuePayload,
@@ -9,7 +10,7 @@ import {
   buildOverdueEscalationPayload,
   type PushPayload,
 } from '@/lib/push-payloads'
-import { getPushSubscription, sendPushNotification } from '@/lib/push'
+import { getPushSubscription, sendPushNotification, SubscriptionGoneError } from '@/lib/push'
 import {
   cairoDateKey,
   dueTriggers,
@@ -42,6 +43,14 @@ async function pushToProfile(
     const sent = await sendPushNotification(subscription, payload)
     return { attempted: true, sent }
   } catch (err: any) {
+    // A dead endpoint is permanent: prune it so the next tick doesn't retry
+    // (and hang) on the same subscription forever.
+    if (err instanceof SubscriptionGoneError || err?.name === 'SubscriptionGoneError') {
+      try {
+        await service.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint)
+      } catch {}
+      return { attempted: true, sent: false, reason: 'subscription_gone' }
+    }
     console.log(`[cron-push] push failed: ${err?.message || 'unknown'}`)
     return { attempted: true, sent: false, reason: err?.message || 'push_failed' }
   }
@@ -101,6 +110,11 @@ export async function GET(request: Request) {
   const triggers = dueTriggers(now)
   const dateKey = cairoDateKey(now)
 
+  // Dead hours (22 of 24 ticks) must not read a single roster row.
+  if (triggers.length === 0) {
+    return NextResponse.json({ triggers, date: dateKey, results: [] })
+  }
+
   const { data: teachers } = await supabase
     .from('teachers')
     .select('id, profile_id, default_monthly_price')
@@ -113,50 +127,54 @@ export async function GET(request: Request) {
 
   for (const teacher of teachers) {
     const teacherRes: Record<string, any> = { teacher: teacher.id, triggers: {} }
-
-    const { data: students } = await supabase
-      .from('students')
-      .select('id, name, phone, monthly_price, frequency, next_due_date, starts_on, claimed_by')
-      .is('deleted_at', null)
-      .eq('teacher_id', teacher.id)
-      .eq('is_active', true)
-
-    if (!students || students.length === 0) continue
-
     const today = new Date()
-    // Outstanding cycle key per student — the ONE billing-state derivation
-    // (from next_due_date), never the wall clock. Legacy rows without a date
-    // bill the 1st of next month.
-    const cycleKeyFor = (row: any): string =>
-      billingState({ student: row, payments: [], today }).cycleKey
-    const months = [...new Set(students.map((s) => cycleKeyFor(s)))]
 
-    const [{ data: payments }, { data: pendingProofs }] = await Promise.all([
-      supabase
-        .from('student_payments')
-        .select('student_id, month, paid')
-        .in('month', months)
-        .in('student_id', students.map((s) => s.id)),
-      supabase
-        .from('payment_proofs')
-        .select('student_id, period_key')
-        .eq('status', 'pending')
-        .in('student_id', students.map((s) => s.id)),
-    ])
+    // Same read the dashboard uses: live students + FULL payment history +
+    // pending receipts + the canonical billing state. A narrowed query window
+    // here is how a payer who just settled got nagged as unpaid.
+    let roster: Awaited<ReturnType<typeof loadRosterBilling>>
+    try {
+      roster = await loadRosterBilling(supabase, teacher.id, today)
+    } catch (err: any) {
+      // Unreadable history is not an empty history — skip this teacher instead
+      // of nagging the whole roster on a failed query.
+      console.log(`[cron] roster read failed for teacher ${teacher.id}: ${err?.message || 'unknown'}`)
+      teacherRes.error = 'roster_read_failed'
+      results.push(teacherRes)
+      continue
+    }
 
-    // No grace: nagging starts on due day. Paid rows + pending-review rows
+    if (roster.entries.length === 0) continue
+
+    const students = roster.entries.map((entry) => entry.student)
+    const entriesById = new Map(roster.entries.map((entry) => [entry.student.id, entry]))
+
+    // No grace: nagging starts on due day. Settled rows + pending-review rows
     // never get nagged.
-    const overdue = getOverdueStudents(students as any[], payments || [], today, 0)
+    const overdue = getOverdueStudents(
+      roster.entries.map(({ student }) => ({
+        id: student.id,
+        name: student.name || 'طالب',
+        frequency: normalizeFrequency(student.frequency),
+        next_due_date: student.next_due_date,
+        starts_on: student.starts_on,
+      })),
+      roster.payments,
+      today,
+      0,
+      roster.proofs,
+    )
     const pendingKeys = new Set(
-      (pendingProofs || []).map((p: any) => `${p.student_id}_${p.period_key}`),
+      roster.proofs.map((p) => `${p.student_id}_${p.period_key}`),
     )
     const nagTargets = overdue.filter((o) => {
-      const row = (students as any[]).find((s) => s.id === o.id)
-      if (!row?.claimed_by) return false
-      if (pendingKeys.has(`${o.id}_${cycleKeyFor(row)}`)) return false
+      const entry = entriesById.get(o.id)
+      if (!entry?.student.claimed_by) return false
+      // A receipt pending review for the outstanding cycle is not a debt yet.
+      if (pendingKeys.has(`${o.id}_${entry.state.cycleKey}`)) return false
       return true
     })
-    const unclaimedCount = (students as any[]).filter((s) => !s.claimed_by).length
+    const unclaimedCount = students.filter((s) => !s.claimed_by).length
 
     // ——— 10:00 payer nags: daily, no cap, skip-pending above ———
     if (triggers.includes('payer_nag')) {
@@ -164,12 +182,13 @@ export async function GET(request: Request) {
         let sent = 0
         const skipped: string[] = []
         for (const target of nagTargets) {
-          const row = (students as any[]).find((s) => s.id === target.id)
-          const periodKey = cycleKeyFor(row)
+          const entry = entriesById.get(target.id)!
+          const row = entry.student
+          const periodKey = entry.state.cycleKey
           const amount =
             Number(row.monthly_price) || Number(teacher.default_monthly_price) || 0
           const built = buildAutoDuePayload({
-            payerProfileId: row.claimed_by,
+            payerProfileId: row.claimed_by!,
             studentName: row.name || 'طالب',
             amount,
             studentId: row.id,
@@ -219,17 +238,24 @@ export async function GET(request: Request) {
           const result = await supabase.auth.admin.getUserById(teacher.profile_id)
           email = result.data?.user?.email ?? undefined
         } catch {}
-        let emailRes = { sent: false }
+        let emailRes: { sent: boolean; reason?: string } = { sent: false }
         if (email && overdue.length > 0) {
-          emailRes = await sendOverdueEmail({
-            to: email,
-            teacherName: 'أستاذ',
-            overdueNames: overdue.map((s) => s.name),
-          })
+          try {
+            emailRes = await sendOverdueEmail({
+              to: email,
+              teacherName: 'أستاذ',
+              overdueNames: overdue.map((s) => s.name),
+            })
+          } catch (err: any) {
+            // The digest claim is already burned; a mail failure must not abort
+            // the remaining teachers (or the push next to it).
+            console.log(`[cron] digest email failed: ${err?.message || 'unknown'}`)
+            emailRes = { sent: false, reason: 'email_failed' }
+          }
         }
         const built = buildDailyDigestPayload({
           teacherProfileId: teacher.profile_id,
-          pendingCount: (pendingProofs || []).length,
+          pendingCount: roster.proofs.length,
           overdueCount: overdue.length,
           unclaimedCount,
         })

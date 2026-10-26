@@ -1,6 +1,15 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND)
+// Lazy: constructing Resend with a missing key throws at import time, which
+// would take down the whole cron route (push included). A missing email key
+// must degrade to "email skipped", never to "notifications dead".
+let resendClient: Resend | null = null
+
+function getResend(): Resend | null {
+  if (!process.env.RESEND) return null
+  if (!resendClient) resendClient = new Resend(process.env.RESEND)
+  return resendClient
+}
 
 const primary = '#10b981'
 const primaryLight = '#d1fae5'
@@ -13,6 +22,8 @@ export async function sendOverdueEmail(params: {
   overdueNames: string[]
 }): Promise<{ sent: boolean; reason?: string }> {
   const { to, teacherName, overdueNames } = params
+  const resend = getResend()
+  if (!resend) return { sent: false, reason: 'no_email_config' }
 
   const names = overdueNames.slice(0, 3)
   const remaining = overdueNames.length - 3

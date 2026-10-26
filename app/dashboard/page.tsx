@@ -6,7 +6,6 @@ import { getOwnTeacherId } from '@/lib/ownership'
 import { ensureJoinCode } from '@/lib/join-code-store'
 import { getTeacherPayments } from '@/lib/payment-actions'
 import { callerHasClaimedStudents } from '@/lib/claim-actions'
-import { getOverdueStudents } from '@/lib/overdue'
 import { MyPaymentsLink } from '@/components/dashboard/my-payments-link'
 import { TeacherNotifyPrompt } from '@/components/dashboard/teacher-notify-prompt'
 import { StudentList } from '@/components/dashboard/student-list'
@@ -28,7 +27,7 @@ export default async function DashboardPage({
 
   const { month, overdue } = await searchParams
   const currentMonth = month || getCurrentMonthKey()
-  const { students, payments } = await getTeacherPayments(currentMonth)
+  const { students, payments, overdueIds: overdueStudentIds } = await getTeacherPayments(currentMonth)
   // The entry card is full the first time it renders, then collapsed forever.
   // Read the marker server-side so returning teachers never see it flash open.
   const shareEntrySeen = (await cookies()).get(SHARE_ENTRY_SEEN_COOKIE)?.value === '1'
@@ -47,24 +46,9 @@ export default async function DashboardPage({
   }
 
   // ?overdue=1 (the "still hasn't paid" email CTA) overlays the list with just
-  // the overdue students — same set the email named (grace 0).
-  const overdueIds = overdue
-    ? getOverdueStudents(
-        students.map((s) => ({
-          id: s.id,
-          name: s.full_name || 'طالب',
-          frequency: s.frequency,
-          next_due_date: s.next_due_date,
-        })),
-        payments.map((p) => ({
-          student_id: String(p.student_id ?? ''),
-          month: String(p.month ?? ''),
-          paid: !!p.paid,
-        })),
-        new Date(),
-        0,
-      ).map((o) => o.id)
-    : []
+  // the overdue students — the same set the email named (grace 0, full history,
+  // pending receipts excluded).
+  const overdueIds = overdue ? overdueStudentIds : []
 
   const monthDate = new Date(currentMonth)
   const monthLabel = monthDate.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'long', year: 'numeric' })

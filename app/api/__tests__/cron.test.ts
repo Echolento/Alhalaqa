@@ -38,12 +38,27 @@ let tableData: TableData
 
 function makeBuilder(table: string): any {
   const builder: any = {}
+  // Row-level filter fidelity: the cron's payment query narrowed history to the
+  // outstanding cycle keys, which is exactly how a settled payer went missing.
+  // A mock that ignores .in() hides that class of bug.
+  const filters: Array<{ op: 'eq' | 'in' | 'is'; col: string; val: any }> = []
   builder.select = vi.fn(() => builder)
-  builder.eq = vi.fn(() => builder)
-  builder.is = vi.fn(() => builder)
-  builder.in = vi.fn(() => builder)
+  builder.eq = vi.fn((col: string, val: any) => {
+    filters.push({ op: 'eq', col, val })
+    return builder
+  })
+  builder.is = vi.fn((col: string, val: any) => {
+    filters.push({ op: 'is', col, val })
+    return builder
+  })
+  builder.in = vi.fn((col: string, val: any[]) => {
+    filters.push({ op: 'in', col, val })
+    return builder
+  })
   builder.order = vi.fn(() => builder)
   builder.limit = vi.fn(() => builder)
+  builder.range = vi.fn(() => builder)
+  builder.delete = vi.fn(() => builder)
   builder.upsert = vi.fn(() => ({
     select: vi.fn(() =>
       Promise.resolve({ data: tableData.claimRows ?? [{ trigger: 'x' }], error: null }),
@@ -61,6 +76,11 @@ function makeBuilder(table: string): any {
     else if (table === 'students') data = tableData.studentsList
     else if (table === 'student_payments') data = tableData.paymentsList
     else if (table === 'payment_proofs') data = tableData.proofsList
+    for (const f of filters) {
+      if (f.op === 'eq') data = data.filter((row) => row[f.col] === f.val)
+      else if (f.op === 'in') data = data.filter((row) => (f.val as any[]).includes(row[f.col]))
+      else data = data.filter((row) => (row[f.col] ?? null) === f.val)
+    }
     return Promise.resolve({ data }).then(resolve)
   }
   return builder
@@ -111,6 +131,9 @@ function baseData(): TableData {
         frequency: 'monthly',
         next_due_date: '2026-09-05',
         claimed_by: 'payer-1',
+        teacher_id: 't1',
+        is_active: true,
+        deleted_at: null,
       },
     ],
     paymentsList: [],
@@ -179,9 +202,12 @@ describe('GET /api/cron (timing engine)', () => {
         frequency: 'monthly',
         next_due_date: '2026-09-05',
         claimed_by: 'payer-2',
+        teacher_id: 't1',
+        is_active: true,
+        deleted_at: null,
       },
     ]
-    tableData.proofsList = [{ student_id: 's2', period_key: '2026-09-01' }]
+    tableData.proofsList = [{ student_id: 's2', period_key: '2026-09-01', status: 'pending' }]
     tableData.subscriptionByProfile['payer-2'] = PAYER_SUB
 
     const { GET } = await import('@/app/api/cron/route')
@@ -192,7 +218,9 @@ describe('GET /api/cron (timing engine)', () => {
     )
     expect(payerCalls.length).toBe(0)
     expect(body.results[0].triggers.payer_nag.sent).toBe(0)
-    expect(body.results[0].triggers.payer_nag.skipped).toBe(2)
+    // Only the unclaimed payer counts as skipped: the pending receipt is not
+    // overdue at all (excluded upstream, not "skipped").
+    expect(body.results[0].triggers.payer_nag.skipped).toBe(1)
   })
 
   it('10:00 escalates to the teacher from overdue day 3', async () => {
@@ -207,6 +235,99 @@ describe('GET /api/cron (timing engine)', () => {
     )
     expect(teacherCalls.length).toBe(1)
     expect(teacherCalls[0][1].title).toContain('تدخلك')
+  })
+
+  it('does not nag a payer whose own cycle is already settled and the next is ahead', async () => {
+    vi.setSystemTime(AT_10)
+    // Production shape: biweekly, paid 2026-10-24, ratcheted to 2026-11-07.
+    tableData.studentsList = [
+      {
+        id: 's1',
+        name: 'أحمد',
+        phone: '+2010',
+        monthly_price: 200,
+        frequency: 'biweekly',
+        next_due_date: '2026-11-07',
+        claimed_by: 'payer-1',
+        teacher_id: 't1',
+        is_active: true,
+        deleted_at: null,
+      },
+    ]
+    tableData.paymentsList = [{ student_id: 's1', month: '2026-10-24', paid: true }]
+
+    const { GET } = await import('@/app/api/cron/route')
+    const body = await (await GET(authedReq())).json()
+
+    const payerCalls = mockSendPush.mock.calls.filter(
+      ([sub]: any[]) => sub.endpoint === 'https://push.example/payer',
+    )
+    expect(payerCalls.length).toBe(0)
+    expect(body.results[0].triggers.payer_nag.sent).toBe(0)
+    // Escalation is for day 3+ only — a future cycle can never qualify.
+    expect(body.results[0].triggers.escalation.reason).toBe('none_stale')
+  })
+
+  it('08:00 digest reports no overdue students after a verified payment', async () => {
+    vi.setSystemTime(AT_08)
+    tableData.studentsList = [
+      {
+        id: 's1',
+        name: 'أحمد',
+        phone: '+2010',
+        monthly_price: 200,
+        frequency: 'biweekly',
+        next_due_date: '2026-11-07',
+        claimed_by: 'payer-1',
+        teacher_id: 't1',
+        is_active: true,
+        deleted_at: null,
+      },
+    ]
+    tableData.paymentsList = [{ student_id: 's1', month: '2026-10-24', paid: true }]
+
+    const { GET } = await import('@/app/api/cron/route')
+    const body = await (await GET(authedReq())).json()
+
+    expect(body.results[0].triggers.digest_morning.push.reason).toBe('nothing_to_report')
+    expect(mockSendEmail).not.toHaveBeenCalled()
+    const teacherCalls = mockSendPush.mock.calls.filter(
+      ([sub]: any[]) => sub.endpoint === 'https://push.example/teacher',
+    )
+    expect(teacherCalls.length).toBe(0)
+  })
+
+  it('08:00 digest does not report a receipt under review as overdue', async () => {
+    vi.setSystemTime(AT_08)
+    tableData.studentsList = [
+      {
+        id: 's1',
+        name: 'أحمد',
+        phone: '+2010',
+        monthly_price: 200,
+        frequency: 'monthly',
+        next_due_date: '2026-09-05',
+        claimed_by: 'payer-1',
+        teacher_id: 't1',
+        is_active: true,
+        deleted_at: null,
+      },
+    ]
+    tableData.proofsList = [
+      { student_id: 's1', period_key: '2026-09-01', status: 'pending' },
+    ]
+
+    const { GET } = await import('@/app/api/cron/route')
+    const body = await (await GET(authedReq())).json()
+
+    const teacherCalls = mockSendPush.mock.calls.filter(
+      ([sub]: any[]) => sub.endpoint === 'https://push.example/teacher',
+    )
+    expect(teacherCalls).toHaveLength(1)
+    expect(teacherCalls[0][1].body).toContain('بانتظار مراجعتك: 1')
+    expect(teacherCalls[0][1].body).not.toContain('متأخرون')
+    expect(mockSendEmail).not.toHaveBeenCalled()
+    expect(body.results[0].triggers.digest_morning.push.sent).toBe(true)
   })
 
   it('08:00 sends email + the daily digest, no payer nags', async () => {

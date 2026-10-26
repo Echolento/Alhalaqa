@@ -3,16 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { requireUser } from './action-context'
 import { getCurrentMonthKey, getPeriodDueDate, cycleStartsInMonth, normalizeFrequency, type BillingFrequency } from './billing-period'
-import { duePeriodKey, firstOfNextMonth, toISODate } from './billing-next'
-import { billingState } from './billing-state'
+import { duePeriodKey, firstOfNextMonth, toISODate, previousCycleKey } from './billing-next'
 import { nextDueAfterSettle } from './billing-cycle'
+import { loadRosterBilling, type RosterPaymentRow } from './roster-billing'
+import { getOverdueStudents } from './overdue'
 import { logActivity } from './log-activity'
 import { assertOwnsStudent } from './ownership'
 import { CURRENCY_CODE } from './currency'
 
 export async function getTeacherPayments(month?: string) {
   const ctx = await requireUser()
-  if ('error' in ctx) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0 }
+  if ('error' in ctx) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0, overdueIds: [] }
   const { user, supabase } = ctx
 
   const { data: teacher } = await supabase
@@ -21,104 +22,62 @@ export async function getTeacherPayments(month?: string) {
     .eq('profile_id', user.id)
     .maybeSingle()
 
-  if (!teacher) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0 }
+  if (!teacher) return { students: [], payments: [], currency: CURRENCY_CODE, expected: 0, collected: 0, overdueIds: [] }
 
   const monthKey = month || getCurrentMonthKey()
-
-  const { data: students } = await supabase
-    .from('students')
-    .select('id, name, phone, monthly_price, payment_day, frequency, next_due_date, starts_on, claimed_by')
-    .is('deleted_at', null)
-    .eq('teacher_id', teacher.id)
-    .order('created_at', { ascending: false })
-
   const today = new Date()
-  const ids = (students || []).map(s => s.id)
 
-  // One fetch of the roster's payment rows + pending proofs, keyed by student.
-  const rowsByStudent = new Map<string, Record<string, unknown>[]>()
-  const proofsByStudent = new Map<string, { id: string; period_key: string; status: string }[]>()
-  if (ids.length > 0) {
-    const [{ data: rows }, { data: pendingProofs }] = await Promise.all([
-      supabase.from('student_payments').select('*').in('student_id', ids),
-      supabase
-        .from('payment_proofs')
-        .select('id, student_id, period_key')
-        .eq('status', 'pending')
-        .in('student_id', ids),
-    ])
-    for (const row of rows || []) {
-      const r = row as Record<string, unknown>
-      const key = r.student_id as string
-      const list = rowsByStudent.get(key) ?? []
-      list.push(r)
-      rowsByStudent.set(key, list)
-    }
-    for (const proof of pendingProofs || []) {
-      const p = proof as { id: string; student_id: string; period_key: string }
-      const list = proofsByStudent.get(p.student_id) ?? []
-      list.push({ id: p.id, period_key: p.period_key, status: 'pending' })
-      proofsByStudent.set(p.student_id, list)
-    }
-  }
+  // One shared roster read (same module the cron uses): full payment history +
+  // pending receipts + the canonical per-student billing state.
+  const roster = await loadRosterBilling(supabase, teacher.id, today)
 
   // Every per-student field the list renders comes from ONE billing-state call:
   // the outstanding cycle, whether it is settled / pending / overdue, and the
   // "previous period paid" reassurance. No caller re-derives the rule.
-  const normalizedStudents = (students || []).map(s => {
-    const rows = rowsByStudent.get(s.id) ?? []
-    const proofs = proofsByStudent.get(s.id) ?? []
-    const state = billingState({
-      student: s,
-      payments: rows.map(r => ({ month: String(r.month), paid: !!r.paid })),
-      proofs,
-      today,
-    })
-    // The receipt awaiting review for THIS cycle — the review CTA deep-links to
-    // it so the teacher verifies the proof instead of blind-settling the ledger
-    // (which left the proof stuck at pending forever).
-    const pendingProofId = proofs.find(p => p.period_key === state.cycleKey)?.id ?? null
-    return {
-      id: s.id,
-      full_name: s.name || 'طالب',
-      monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
-      phone: (s as any).phone ?? null,
-      payment_day: s.payment_day || 1,
-      frequency: normalizeFrequency((s as any).frequency),
-      next_due_date: ((s as any).next_due_date ?? null) as string | null,
-      starts_on: ((s as any).starts_on ?? null) as string | null,
-      claimed_by: (s as any).claimed_by ?? null,
-      currentMonthKey: state.cycleKey,
-      paidCycleKey: state.paidCycleKey,
-      paymentState: state.paymentState,
-      paidLastPeriod: state.paidLastPeriod,
-      pendingProofId,
-    }
-  })
+  const normalizedStudents = roster.entries.map(({ student: s, state, pendingProofId }) => ({
+    id: s.id,
+    full_name: s.name || 'طالب',
+    monthly_price: s.monthly_price || teacher.default_monthly_price || 0,
+    phone: s.phone ?? null,
+    payment_day: s.payment_day || 1,
+    frequency: normalizeFrequency(s.frequency),
+    next_due_date: s.next_due_date ?? null,
+    starts_on: s.starts_on ?? null,
+    claimed_by: s.claimed_by ?? null,
+    currentMonthKey: state.cycleKey,
+    paidCycleKey: state.paidCycleKey,
+    paymentState: state.paymentState,
+    paidLastPeriod: state.paidLastPeriod,
+    pendingProofId,
+  }))
 
   // Target row for the toggle. Paid students have already advanced
   // next_due_date, so their settled row lives on paidCycleKey, not cycleKey.
-  const payments = normalizedStudents
-    .map(s => {
-      const target = s.paidCycleKey ?? s.currentMonthKey
-      return (rowsByStudent.get(s.id) ?? []).filter(p => String(p.month) === target)[0]
-    })
-    .filter(Boolean)
+  const payments: RosterPaymentRow[] = roster.entries.flatMap(({ state, rows }) => {
+    const target = state.paidCycleKey ?? state.cycleKey
+    const row = rows.find((p) => String(p.month) === target)
+    return row ? [row] : []
+  })
 
   // Month totals honour frequency: an interval student contributes one price
   // per cycle that STARTS in the selected month (weekly ≈ 4, biweekly ≈ 2),
   // and collected counts only paid cycles inside that month.
   let expected = 0
   let collected = 0
-  for (const s of normalizedStudents) {
-    if (s.paymentState === 'awaiting_start') continue
-    const starts = cycleStartsInMonth(s.frequency, monthKey, s.payment_day)
-    expected += (Number(s.monthly_price) || 0) * starts.length
+  for (const entry of roster.entries) {
+    if (entry.state.paymentState === 'awaiting_start') continue
+    const s = entry.student
+    const price = s.monthly_price || teacher.default_monthly_price || 0
+    const starts = cycleStartsInMonth(
+      normalizeFrequency(s.frequency),
+      monthKey,
+      s.payment_day || 1,
+    )
+    expected += (Number(price) || 0) * starts.length
     const startsSet = new Set(starts)
-    for (const row of rowsByStudent.get(s.id) ?? []) {
-      const r = row as { paid?: boolean; month?: string; amount_paid?: number }
-      if (r.paid && r.month && startsSet.has(r.month)) {
-        collected += Number(r.amount_paid) || 0
+    for (const row of entry.rows) {
+      if (row.paid && row.month && startsSet.has(String(row.month))) {
+        collected += Number(row.amount_paid) || 0
       }
     }
   }
@@ -133,7 +92,32 @@ export async function getTeacherPayments(month?: string) {
     (a, b) => (stateOrder[a.paymentState] ?? 9) - (stateOrder[b.paymentState] ?? 9),
   )
 
-  return { students: normalizedStudents, payments, currency: CURRENCY_CODE, expected, collected }
+  // The ?overdue=1 email CTA overlays exactly the students the email named.
+  // Derived from the SAME roster read (full history + pending receipts, grace
+  // 0) — never from the one-row-per-student list below, which cannot tell
+  // "settled last cycle" from "never paid" or spot a pending receipt.
+  const overdueIds = getOverdueStudents(
+    roster.entries.map(({ student }) => ({
+      id: student.id,
+      name: student.name || 'طالب',
+      frequency: normalizeFrequency(student.frequency),
+      next_due_date: student.next_due_date,
+      starts_on: student.starts_on,
+    })),
+    roster.payments,
+    today,
+    0,
+    roster.proofs,
+  ).map((o) => o.id)
+
+  return {
+    students: normalizedStudents,
+    payments,
+    currency: CURRENCY_CODE,
+    expected,
+    collected,
+    overdueIds,
+  }
 }
 
 export async function updateStudentMonthlyPrice(studentId: string, price: number, month?: string) {
@@ -247,7 +231,17 @@ export async function toggleStudentPayment(studentId: string, month?: string) {
   const cycleFrequency = normalizeFrequency((cycleRow as any)?.frequency)
   const cycleDue = ((cycleRow as any)?.next_due_date ?? null) as string | null
   const cyclePayDay = ((cycleRow as any)?.payment_day ?? 1) as number
-  const monthKey = month ?? duePeriodKey(cycleDue ?? firstOfNextMonth(), cycleFrequency)
+  const outstandingKey = duePeriodKey(cycleDue ?? firstOfNextMonth(), cycleFrequency)
+  const paidKey = previousCycleKey(cycleDue ?? firstOfNextMonth(), cycleFrequency)
+
+  // The cycle key comes from the client. Only the outstanding cycle or the one
+  // just settled may be toggled — otherwise a crafted call could settle an
+  // arbitrary month, or undo an old cycle and rewind next_due_date (settle and
+  // undo are only inverses on the same edge).
+  if (month && month !== outstandingKey && month !== paidKey) {
+    return { error: 'دورة غير قابلة للتعديل' }
+  }
+  const monthKey = month ?? outstandingKey
 
   // Independent reads: run together, not one-after-another (toggle latency).
   const [{ data: existing }, { data: student }] = await Promise.all([
