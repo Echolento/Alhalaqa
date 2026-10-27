@@ -29,6 +29,9 @@ function installContacts(select: unknown) {
 function openDialog() {
   render(<AddStudentDialog students={[]} />)
   fireEvent.click(screen.getByText('إضافة طالب'))
+}
+
+function contactsButton() {
   return screen.getByRole('button', { name: /إضافة من جهات الاتصال/ })
 }
 
@@ -49,7 +52,8 @@ describe('AddStudentDialog — import from contacts', () => {
     const error = new TypeError('Unable to open a contact picker')
     installContacts(vi.fn().mockRejectedValue(error))
 
-    fireEvent.click(openDialog())
+    openDialog()
+    fireEvent.click(contactsButton())
 
     await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1))
     const toast = mockToast.mock.calls[0][0]
@@ -64,7 +68,7 @@ describe('AddStudentDialog — import from contacts', () => {
     expect(logged).toContain('Unable to open a contact picker')
   })
 
-  it('offers an in-dialog Chrome escape hatch after a blocked picker', async () => {
+  it('offers the one-time Chrome install path after a blocked picker', async () => {
     const ua = navigator.userAgent
     Object.defineProperty(navigator, 'userAgent', {
       value:
@@ -73,11 +77,33 @@ describe('AddStudentDialog — import from contacts', () => {
     })
     installContacts(vi.fn().mockRejectedValue(new TypeError('Unable to open a contact picker')))
 
-    fireEvent.click(openDialog())
+    openDialog()
+    fireEvent.click(contactsButton())
     await waitFor(() => expect(mockToast).toHaveBeenCalled())
 
-    const link = await screen.findByText(/افتح في Chrome/)
-    expect(link.closest('a')?.getAttribute('href')).toContain('package=com.android.chrome')
+    // Not "use the app in Chrome" — the link moves the icon itself: it hands
+    // the /install page to the Chrome app, where the WebAPK is installed once.
+    const link = await screen.findByText(/ثبّت الحلقة من Chrome/)
+    const href = link.closest('a')?.getAttribute('href') ?? ''
+    expect(href).toContain('package=com.android.chrome')
+    expect(href).toContain('/install')
+
+    Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true })
+  })
+
+  it('explains the missing button on Android hosts without the picker', async () => {
+    const ua = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Linux; Android 14; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/22.0 Chrome/99.0 Mobile Safari/537.36',
+      configurable: true,
+    })
+
+    openDialog()
+
+    // Samsung Internet 22+ removed the API entirely: no button to tap.
+    expect(screen.queryByRole('button', { name: /إضافة من جهات الاتصال/ })).toBeNull()
+    expect(await screen.findByText(/استيراد جهات الاتصال يعمل داخل تطبيق/)).toBeTruthy()
 
     Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true })
   })
@@ -86,7 +112,8 @@ describe('AddStudentDialog — import from contacts', () => {
     const abort = Object.assign(new Error('user cancelled'), { name: 'AbortError' })
     installContacts(vi.fn().mockRejectedValue(abort))
 
-    fireEvent.click(openDialog())
+    openDialog()
+    fireEvent.click(contactsButton())
     await act(async () => {
       await Promise.resolve()
     })
@@ -97,7 +124,8 @@ describe('AddStudentDialog — import from contacts', () => {
   it('ignores an empty selection without an error toast', async () => {
     installContacts(vi.fn().mockResolvedValue([]))
 
-    fireEvent.click(openDialog())
+    openDialog()
+    fireEvent.click(contactsButton())
     await act(async () => {
       await Promise.resolve()
     })
@@ -110,7 +138,8 @@ describe('AddStudentDialog — import from contacts', () => {
       vi.fn().mockResolvedValue([{ name: ['أحمد علي'], tel: ['01012345678'] }]),
     )
 
-    fireEvent.click(openDialog())
+    openDialog()
+    fireEvent.click(contactsButton())
 
     expect(await screen.findByText('استيراد من جهات الاتصال')).toBeTruthy()
     expect(screen.getByDisplayValue('أحمد علي')).toBeTruthy()

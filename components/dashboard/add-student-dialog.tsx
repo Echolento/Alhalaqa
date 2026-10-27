@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -31,24 +31,34 @@ import { REMIND_COPY } from '@/lib/remind-copy'
 import type { StudentView } from '@/lib/types'
 
 const CONTACTS_COPY = {
-  // The API exists but the host refuses to open the native picker — in-app
-  // browsers (WhatsApp / Instagram links) and Android WebViews do this.
+  // The API exists but the host refuses to open the native picker. That host
+  // can never succeed: the picker IS Chrome's Android UI. Samsung Internet
+  // (default on Samsung phones) is the common case — it exposes
+  // `navigator.contacts` and then throws, and removes the API entirely in 22+.
   blocked:
-    'متصفح التطبيق لا يسمح بفتح جهات الاتصال. افتح الحلقة في Chrome وأعد المحاولة، أو أضف الطالب يدويًا من النموذج.',
+    'هذا المتصفح لا يستطيع فتح جهات الاتصال. ثبّت «الحلقة» من Chrome مرة واحدة، وبعدها يعمل الزر من أيقونة التطبيق.',
+  noPicker:
+    'استيراد جهات الاتصال يعمل داخل تطبيق «الحلقة» المثبّت من Chrome.',
   failed: 'تعذر الوصول إلى جهات الاتصال',
-  chrome: 'افتح في Chrome',
+  install: 'ثبّت الحلقة من Chrome',
 } as const
 
+function isAndroidHost(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
+}
+
 /**
- * Android intent URL that hands the current page to Chrome. A link opened from
- * WhatsApp opens inside the app's own browser, where the contact picker is
- * unavailable — this is the only way out of that dead end.
+ * Hands the /install page to the Chrome app. A link to the same origin would
+ * stay inside the current container (that is the whole problem), so the intent
+ * URL is the only thing that actually crosses over. Returns null where there is
+ * no Chrome app to hand off to.
  */
-function androidChromeUrl(): string | null {
+function installInChromeUrl(): string | null {
   if (typeof window === 'undefined') return null
-  if (!/Android/i.test(navigator.userAgent)) return null
-  const { host, pathname, search, hash } = window.location
-  return `intent://${host}${pathname}${search}${hash}#Intent;scheme=https;package=com.android.chrome;end`
+  if (!isAndroidHost()) return null
+  const { host } = window.location
+  return `intent://${host}/install#Intent;scheme=https;package=com.android.chrome;end`
 }
 
 interface AddStudentDialogProps {
@@ -70,10 +80,19 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
   }[]>([])
   const [importLoading, setImportLoading] = useState(false)
   const [pickerBlocked, setPickerBlocked] = useState(false)
+  // Computed after mount: the server render has no navigator, and branching on
+  // it during render would make the markup disagree with the client.
+  const [noPickerHost, setNoPickerHost] = useState(false)
   const contactPickerAvailable = typeof navigator !== 'undefined' && isContactPickerAvailable()
-  const chromeUrl = pickerBlocked ? androidChromeUrl() : null
+  const chromeInstallUrl = pickerBlocked || noPickerHost ? installInChromeUrl() : null
   const { toast } = useToast()
   const router = useRouter()
+
+  useEffect(() => {
+    // Android without the API (Samsung Internet 22+, in-app browsers) would
+    // otherwise render no import affordance at all, with no explanation.
+    setNoPickerHost(isAndroidHost() && !isContactPickerAvailable())
+  }, [])
 
   const handleDialogOpen = (o: boolean) => {
     setOpen(o)
@@ -274,17 +293,31 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
                 {pickerBlocked && (
                   <div className="rounded-lg border border-dashed p-3 text-xs leading-relaxed text-muted-foreground space-y-2">
                     <p>{CONTACTS_COPY.blocked}</p>
-                    {chromeUrl && (
+                    {chromeInstallUrl && (
                       <a
-                        href={chromeUrl}
+                        href={chromeInstallUrl}
                         className="inline-block font-medium text-primary underline underline-offset-2"
                       >
-                        {CONTACTS_COPY.chrome}
+                        {CONTACTS_COPY.install}
                       </a>
                     )}
                   </div>
                 )}
               </>
+            )}
+
+            {noPickerHost && !contactPickerAvailable && (
+              <div className="rounded-lg border border-dashed p-3 text-xs leading-relaxed text-muted-foreground space-y-2">
+                <p>{CONTACTS_COPY.noPicker}</p>
+                {chromeInstallUrl && (
+                  <a
+                    href={chromeInstallUrl}
+                    className="inline-block font-medium text-primary underline underline-offset-2"
+                  >
+                    {CONTACTS_COPY.install}
+                  </a>
+                )}
+              </div>
             )}
           </>
         )}
