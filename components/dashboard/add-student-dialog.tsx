@@ -20,10 +20,36 @@ import { PhoneInput } from '@/components/auth/phone-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { isContactPickerAvailable, pickContacts, findDuplicates } from '@/lib/contacts'
+import {
+  isContactPickerAvailable,
+  pickContacts,
+  findDuplicates,
+  ContactPickerError,
+} from '@/lib/contacts'
 import { useRouter } from 'next/navigation'
 import { REMIND_COPY } from '@/lib/remind-copy'
 import type { StudentView } from '@/lib/types'
+
+const CONTACTS_COPY = {
+  // The API exists but the host refuses to open the native picker — in-app
+  // browsers (WhatsApp / Instagram links) and Android WebViews do this.
+  blocked:
+    'متصفح التطبيق لا يسمح بفتح جهات الاتصال. افتح الحلقة في Chrome وأعد المحاولة، أو أضف الطالب يدويًا من النموذج.',
+  failed: 'تعذر الوصول إلى جهات الاتصال',
+  chrome: 'افتح في Chrome',
+} as const
+
+/**
+ * Android intent URL that hands the current page to Chrome. A link opened from
+ * WhatsApp opens inside the app's own browser, where the contact picker is
+ * unavailable — this is the only way out of that dead end.
+ */
+function androidChromeUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  if (!/Android/i.test(navigator.userAgent)) return null
+  const { host, pathname, search, hash } = window.location
+  return `intent://${host}${pathname}${search}${hash}#Intent;scheme=https;package=com.android.chrome;end`
+}
 
 interface AddStudentDialogProps {
   students: StudentView[]
@@ -43,7 +69,9 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
     nameMissing: boolean
   }[]>([])
   const [importLoading, setImportLoading] = useState(false)
+  const [pickerBlocked, setPickerBlocked] = useState(false)
   const contactPickerAvailable = typeof navigator !== 'undefined' && isContactPickerAvailable()
+  const chromeUrl = pickerBlocked ? androidChromeUrl() : null
   const { toast } = useToast()
   const router = useRouter()
 
@@ -53,6 +81,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       setPhoneValue('')
       setImportMode(false)
       setImportItems([])
+      setPickerBlocked(false)
     }
   }
 
@@ -81,6 +110,7 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
     try {
       const contacts = await pickContacts()
       if (!contacts.length) return
+      setPickerBlocked(false)
       const duplicates = findDuplicates(
         contacts,
         students.map((s) => ({ name: s.name ?? null, phone: s.phone ?? null })),
@@ -95,12 +125,23 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
       }))
       setImportItems(items)
       setImportMode(true)
-    } catch {
-      toast({ variant: 'destructive', title: 'خطأ', description: 'تعذر الوصول إلى جهات الاتصال' })
+    } catch (err) {
+      // Never swallow the reason: the toast can only be as specific as the
+      // error we keep, and the console is the only trace a teacher's device
+      // leaves. A blocked picker is a host limitation, not a bug in the data.
+      console.warn('[contacts] picker failed', err)
+      const blocked = err instanceof ContactPickerError && err.reason === 'blocked'
+      setPickerBlocked(blocked)
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: blocked ? CONTACTS_COPY.blocked : CONTACTS_COPY.failed,
+      })
     }
   }
 
-  const handleImportSubmit = async () => {    const selected = importItems.filter((i) => i.checked && !i.nameMissing)
+  const handleImportSubmit = async () => {
+    const selected = importItems.filter((i) => i.checked && !i.nameMissing)
     if (!selected.length) {
       toast({ variant: 'destructive', title: 'خطأ', description: 'لم يتم اختيار أي طالب صالح' })
       return
@@ -230,6 +271,19 @@ export function AddStudentDialog({ students }: AddStudentDialogProps) {
                   إضافة من جهات الاتصال
                 </Button>
                 <p className="text-center text-xs text-muted-foreground -mt-1">يمكن اختيار أكثر من طالب</p>
+                {pickerBlocked && (
+                  <div className="rounded-lg border border-dashed p-3 text-xs leading-relaxed text-muted-foreground space-y-2">
+                    <p>{CONTACTS_COPY.blocked}</p>
+                    {chromeUrl && (
+                      <a
+                        href={chromeUrl}
+                        className="inline-block font-medium text-primary underline underline-offset-2"
+                      >
+                        {CONTACTS_COPY.chrome}
+                      </a>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </>

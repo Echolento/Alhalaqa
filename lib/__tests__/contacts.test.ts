@@ -1,5 +1,65 @@
-import { describe, it, expect } from 'vitest'
-import { normalizePhone, findDuplicates } from '@/lib/contacts'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import {
+  normalizePhone,
+  findDuplicates,
+  pickContacts,
+  isContactPickerAvailable,
+  ContactPickerError,
+} from '@/lib/contacts'
+
+function installContacts(select: unknown) {
+  Object.defineProperty(navigator, 'contacts', { value: { select }, configurable: true })
+}
+
+afterEach(() => {
+  delete (navigator as unknown as Record<string, unknown>).contacts
+})
+
+describe('pickContacts', () => {
+  it('reports a missing API as unsupported', async () => {
+    expect(isContactPickerAvailable()).toBe(false)
+    await expect(pickContacts()).rejects.toMatchObject({ reason: 'unsupported' })
+  })
+
+  it('classifies a refused picker as blocked and keeps the original error', async () => {
+    const original = new TypeError('Unable to open a contact picker')
+    installContacts(vi.fn().mockRejectedValue(original))
+    expect(isContactPickerAvailable()).toBe(true)
+
+    const error = await pickContacts().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ContactPickerError)
+    expect((error as ContactPickerError).reason).toBe('blocked')
+    expect((error as ContactPickerError).message).toContain('Unable to open a contact picker')
+    expect((error as ContactPickerError).original).toBe(original)
+  })
+
+  it('treats AbortError as a cancel, not a failure', async () => {
+    installContacts(
+      vi.fn().mockRejectedValue(Object.assign(new Error('dismissed'), { name: 'AbortError' })),
+    )
+    await expect(pickContacts()).resolves.toEqual([])
+  })
+
+  it('maps name/tel arrays to flat strings, tolerating missing fields', async () => {
+    installContacts(
+      vi.fn().mockResolvedValue([
+        { name: ['أحمد'], tel: ['01012345678'] },
+        { tel: ['01111111111'] },
+        {},
+      ]),
+    )
+    await expect(pickContacts()).resolves.toEqual([
+      { name: 'أحمد', phone: '01012345678' },
+      { name: '', phone: '01111111111' },
+      { name: '', phone: '' },
+    ])
+  })
+
+  it('treats a non-array result as an empty selection', async () => {
+    installContacts(vi.fn().mockResolvedValue(undefined))
+    await expect(pickContacts()).resolves.toEqual([])
+  })
+})
 
 describe('normalizePhone', () => {
   it('strips non-digit characters', () => {
